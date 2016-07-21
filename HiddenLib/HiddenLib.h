@@ -1,0 +1,64 @@
+#pragma once
+
+typedef unsigned int HidStatus;
+
+#define HID_STATUS_SUCCESSFUL(status) (status & 1)
+#define HID_STATUS_CODE(status)       (status >> 1)
+
+#define HID_SET_STATUS(state, code)   (code << 1 | (state ? 1 : 0))
+
+typedef void*       HidContext;
+typedef HidContext* PHidContext;
+
+typedef unsigned long long HidObjId;
+
+HidStatus Hid_Initialize(PHidContext pcontext);
+void Hid_Destroy(HidContext context);
+
+/*#define HID_IOCTL_SET_DRIVER_STATE               CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 0), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define HID_IOCTL_GET_DRIVER_STATE               CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 1), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+
+#define HID_IOCTL_ADD_HIDDEN_REG_KEY             CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 10), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define HID_IOCTL_REMOVE_HIDDEN_REG_KEY          CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 11), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define HID_IOCTL_REMOVE_ALL_HIDDEN_REG_KEYS     CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 12), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+
+#define HID_IOCTL_ADD_HIDDEN_REG_VALUE           CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 20), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define HID_IOCTL_REMOVE_HIDDEN_REG_VALUE        CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 21), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define HID_IOCTL_REMOVE_ALL_HIDDEN_REG_VALUES   CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 22), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+
+#define HID_IOCTL_ADD_HIDDEN_FILE                CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 30), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define HID_IOCTL_REMOVE_HIDDEN_FILE             CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 31), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define HID_IOCTL_REMOVE_ALL_HIDDEN_FILES        CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 32), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+
+#define HID_IOCTL_ADD_HIDDEN_DIR                 CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 40), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define HID_IOCTL_REMOVE_HIDDEN_DIR              CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 41), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define HID_IOCTL_REMOVE_ALL_HIDDEN_DIRS         CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 42), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+
+#define HID_IOCTL_ADD_PROTECTED_EXE_PATH         CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 50), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define HID_IOCTL_ATTACH_PROTECTED_EXE_PID       CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 51), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define HID_IOCTL_REMOVE_PROTECTED_EXE_PATH      CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 52), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define HID_IOCTL_REMOVE_ALL_PROTECTED_EXE_PATHS CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 53), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+
+#define HID_IOCTL_ADD_EXCLUDED_EXE_PATH          CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 54), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define HID_IOCTL_ATTACH_EXCLUDED_EXE_PID        CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 55), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define HID_IOCTL_REMOVE_EXCLUDED_EXE_PATH       CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 56), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)
+#define HID_IOCTL_REMOVE_ALL_EXCLUDED_EXE_PATHS  CTL_CODE (FILE_DEVICE_UNKNOWN, (0x800 + 57), METHOD_BUFFERED, FILE_SPECIAL_ACCESS)*/
+
+HidStatus Hid_SetState(HidContext context, int state);
+HidStatus Hid_GetState(HidContext context, int* pstate);
+
+HidStatus Hid_AddHiddenRegKey(HidContext context, wchar_t* regKey, HidObjId* objId);
+HidStatus Hid_RemoveHiddenRegKey(HidContext context, HidObjId objId);
+HidStatus Hid_RemoveAllHiddenRegKeys(HidContext context);
+
+HidStatus Hid_AddHiddenRegValue(HidContext context, wchar_t* regValue, HidObjId* objId);
+HidStatus Hid_RemoveHiddenRegValue(HidContext context, HidObjId objId);
+HidStatus Hid_RemoveAllHiddenRegValues(HidContext context);
+
+HidStatus Hid_AddHiddenFile(HidContext context, wchar_t* filePath, HidObjId* objId);
+HidStatus Hid_RemoveHiddenFile(HidContext context, HidObjId objId);
+HidStatus Hid_RemoveAllHiddenFiles(HidContext context);
+
+HidStatus Hid_AddHiddenDir(HidContext context, wchar_t* dirPath, HidObjId* objId);
+HidStatus Hid_RemoveHiddenDir(HidContext context, HidObjId objId);
+HidStatus Hid_RemoveAllHiddenDirs(HidContext context);
