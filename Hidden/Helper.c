@@ -87,17 +87,43 @@ VOID FreeInformation(PVOID Buffer)
 	ExFreePoolWithTag(Buffer, HELPER_ALLOC_TAG);
 }
 
+NTSTATUS ResolveSymbolicLink(PUNICODE_STRING Link, PUNICODE_STRING Resolved)
+{
+	OBJECT_ATTRIBUTES attribs;
+	HANDLE hsymLink;
+	ULONG written;
+	NTSTATUS status = STATUS_SUCCESS;
+
+	// Open symlink
+
+	InitializeObjectAttributes(&attribs, Link, OBJ_KERNEL_HANDLE, NULL, NULL);
+
+	status = ZwOpenSymbolicLinkObject(&hsymLink, GENERIC_READ, &attribs);
+	if (!NT_SUCCESS(status))
+		return status;
+
+	// Query original name
+
+	status = ZwQuerySymbolicLinkObject(hsymLink, Resolved, &written);
+	ZwClose(hsymLink);
+	if (!NT_SUCCESS(status))
+		return status;
+
+	return status;
+}
+
 //
 // Convertion template:
 //   \\??\\C:\\Windows -> \\Device\\HarddiskVolume1\\Windows
 //
 NTSTATUS NormalizeDevicePath(PCUNICODE_STRING Path, PUNICODE_STRING Normalized)
 {
-	UNICODE_STRING globalPrefix , dvcPrefix;
+	UNICODE_STRING globalPrefix, dvcPrefix, sysrootPrefix;
 	NTSTATUS status;
 	
 	RtlInitUnicodeString(&globalPrefix, L"\\??\\");
 	RtlInitUnicodeString(&dvcPrefix, L"\\Device\\");
+	RtlInitUnicodeString(&sysrootPrefix, L"\\SystemRoot\\");
 
 	if (RtlPrefixUnicodeString(&globalPrefix, Path, TRUE))
 	{
@@ -156,6 +182,59 @@ NTSTATUS NormalizeDevicePath(PCUNICODE_STRING Path, PUNICODE_STRING Normalized)
 	{
 		Normalized->Length = 0;
 		status = RtlAppendUnicodeStringToString(Normalized, Path);
+		if (!NT_SUCCESS(status))
+			return status;
+	}
+	else if (RtlPrefixUnicodeString(&sysrootPrefix, Path, TRUE))
+	{
+		UNICODE_STRING subPath, resolvedLink, winDir;
+		WCHAR buffer[64];
+		SHORT i;
+
+		// Open symlink
+
+		subPath.Buffer = sysrootPrefix.Buffer;
+		subPath.MaximumLength = subPath.Length = sysrootPrefix.Length - sizeof(WCHAR);
+
+		resolvedLink.Buffer = buffer;
+		resolvedLink.Length = 0;
+		resolvedLink.MaximumLength = sizeof(buffer);
+
+		status = ResolveSymbolicLink(&subPath, &resolvedLink);
+		if (!NT_SUCCESS(status))
+			return status;
+
+		// \Device\Harddisk0\Partition0\Windows -> \Device\Harddisk0\Partition0
+
+		winDir.Length = 0;
+		for (i = (resolvedLink.Length - sizeof(WCHAR)) / sizeof(WCHAR); i >= 0; i--)
+		{
+			if (resolvedLink.Buffer[i] == L'\\')
+			{
+				winDir.Buffer = resolvedLink.Buffer + i;
+				winDir.Length = resolvedLink.Length - (i * sizeof(WCHAR));
+				winDir.MaximumLength = winDir.Length;
+				resolvedLink.Length = (i * sizeof(WCHAR));
+				break;
+			}
+		}
+
+		// \Device\Harddisk0\Partition0 -> \Device\HarddiskVolume1
+
+		status = ResolveSymbolicLink(&resolvedLink, Normalized);
+		if (!NT_SUCCESS(status))
+			return status;
+
+		// Construct new variable
+
+		subPath.Buffer = (PWCHAR)((PCHAR)Path->Buffer + sysrootPrefix.Length - sizeof(WCHAR));
+		subPath.MaximumLength = subPath.Length = Path->Length - sysrootPrefix.Length + sizeof(WCHAR);
+
+		status = RtlAppendUnicodeStringToString(Normalized, &winDir);
+		if (!NT_SUCCESS(status))
+			return status;
+
+		status = RtlAppendUnicodeStringToString(Normalized, &subPath);
 		if (!NT_SUCCESS(status))
 			return status;
 	}
