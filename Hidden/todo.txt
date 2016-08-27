@@ -39,3 +39,4 @@
 	- Сокрытие VMBox Tools
 		- Отреверсить установщик VMBox tools
 - Насодить на ETL и DbgPrintEx
+
