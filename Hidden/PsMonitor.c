@@ -2,38 +2,34 @@
 #include "ExcludeList.h"
 #include "Helper.h"
 #include "PsTable.h"
+#include "PsRules.h"
+
+#define PROCESS_QUERY_LIMITED_INFORMATION      0x1000
+#define SYSTEM_PROCESS_ID (HANDLE)4
 
 PVOID g_obRegCallback = NULL;
 
 OB_OPERATION_REGISTRATION g_regOperation[2];
 OB_CALLBACK_REGISTRATION g_regCallback;
 
-ExcludeContext g_excludeProcessContext;
-ExcludeContext g_protectProcessContext;
+PsRulesContext g_excludeProcessRules;
+PsRulesContext g_protectProcessRules;
+//ExcludeContext g_protectProcessContext;
 
 CONST PWCHAR g_excludeProcesses[] = {
-	L"\\??\\C:\\Windows\\System32\\calc.exe",
+	//L"\\??\\C:\\Windows\\System32\\calc.exe",
 	L"\\??\\C:\\Windows\\System32\\cmd.exe",
 	L"\\??\\C:\\Windows\\System32\\reg.exe",
 	NULL
 };
 
 CONST PWCHAR g_protectProcesses[] = {
-	L"\\??\\C:\\Windows\\System32\\cmd.exe",
-	L"\\??\\C:\\Windows\\System32\\csrss.exe",
-	L"\\??\\C:\\Windows\\System32\\services.exe",
+	L"\\??\\C:\\Windows\\System32\\calc.exe",
+	//L"\\??\\C:\\Windows\\System32\\cmd.exe",
+	//L"\\??\\C:\\Windows\\System32\\csrss.exe",
+	//L"\\??\\C:\\Windows\\System32\\services.exe",
 	NULL
 };
-
-CONST PWCHAR g_systemProcesses[] = {
-	L"\\??\\C:\\Windows\\System32\\smss.exe",
-	L"\\??\\C:\\Windows\\System32\\csrss.exe",
-	L"\\??\\C:\\Windows\\System32\\wininit.exe",
-	L"\\??\\C:\\Windows\\System32\\services.exe",
-	NULL
-};
-
-#define PROCESS_QUERY_LIMITED_INFORMATION      0x1000
 
 OB_PREOP_CALLBACK_STATUS ProcessPreCallback(PVOID RegistrationContext, POB_PRE_OPERATION_INFORMATION OperationInformation)
 {
@@ -102,42 +98,63 @@ OB_PREOP_CALLBACK_STATUS ThreadPreCallback(PVOID RegistrationContext, POB_PRE_OP
 VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDLE ParentId)
 {
 	ProcessTableEntry lookup;
+	ULONG inheritType;
+
 	RtlZeroMemory(&lookup, sizeof(lookup));
 
 	// Check exclude flag
 
-	if (CheckExcludeListFile(g_excludeProcessContext, ImgPath))
+	Entry->excluded = FALSE;
+	Entry->inheritExclusion = PsRuleTypeWithoutInherit;
+
+	if (FindInheritanceInPsRuleList(g_excludeProcessRules, ImgPath, &inheritType))
 	{
 		Entry->excluded = TRUE;
+		Entry->inheritExclusion = inheritType;
 	}
 	else if (ParentId != 0)
 	{
 		lookup.processId = ParentId;
-		if (!GetProcessInProcessTable(&lookup))
-			DbgPrint("FsFilter1!" __FUNCTION__ ": can't find parent process(pid:%d) in process table (exclude)\n", ParentId);
-		else
-			Entry->excluded = lookup.excluded;
+		if (GetProcessInProcessTable(&lookup))
+		{
+			if (lookup.inheritExclusion == PsRuleTypeInherit)
+			{
+				Entry->excluded = TRUE;
+				Entry->inheritExclusion = PsRuleTypeInherit;
+			}
+			else if (lookup.inheritExclusion == PsRuleTypeInheritOnce)
+			{
+				Entry->excluded = TRUE;
+				Entry->inheritExclusion = PsRuleTypeWithoutInherit;
+			}
+		}
 	}
 
 	// Check protected flag
 
-	if (CheckExcludeListFile(g_protectProcessContext, ImgPath))
+	Entry->protected = FALSE;
+	Entry->inheritProtection = PsRuleTypeWithoutInherit;
+
+	if (FindInheritanceInPsRuleList(g_protectProcessRules, ImgPath, &inheritType))
 	{
 		Entry->protected = TRUE;
+		Entry->inheritProtection = inheritType;
 	}
 	else if (ParentId != 0)
 	{
-		if (!lookup.processId)
+		lookup.processId = ParentId;
+		if (GetProcessInProcessTable(&lookup))
 		{
-			lookup.processId = ParentId;
-			if (!GetProcessInProcessTable(&lookup))
-				DbgPrint("FsFilter1!" __FUNCTION__ ": can't find parent process(pid:%d) in process table (protected)\n", ParentId);
-			else
-				Entry->protected = lookup.protected;
-		}
-		else
-		{
-			Entry->protected = lookup.protected;
+			if (lookup.inheritProtection == PsRuleTypeInherit)
+			{
+				Entry->protected = TRUE;
+				Entry->inheritProtection = PsRuleTypeInherit;
+			}
+			else if (lookup.inheritProtection == PsRuleTypeInheritOnce)
+			{
+				Entry->protected = TRUE;
+				Entry->inheritProtection = PsRuleTypeWithoutInherit;
+			}
 		}
 	}
 }
@@ -173,14 +190,13 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 		}
 
 		status = NormalizeDevicePath(CreateInfo->ImageFileName, &normalized);
-		ExFreePool(normalized.Buffer);
 		if (!NT_SUCCESS(status))
 		{
 			DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, CreateInfo->ImageFileName);
 			return;
 		}
 
-		CheckProcessFlags(&entry, CreateInfo->ImageFileName, CreateInfo->ParentProcessId);
+		CheckProcessFlags(&entry, &normalized, CreateInfo->ParentProcessId);
 
 		if (entry.excluded)
 			DbgPrint("FsFilter1!" __FUNCTION__ ": excluded process:%d\n", ProcessId);
@@ -190,6 +206,8 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 
 		if (!AddProcessToProcessTable(&entry))
 			DbgPrint("FsFilter1!" __FUNCTION__ ": can't add process(pid:%d) to process table\n", ProcessId);
+
+		ExFreePool(normalized.Buffer);
 	}
 	else
 	{
@@ -227,7 +245,7 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 	NTSTATUS status;
 	UNICODE_STRING str, normalized;
 	UINT32 i;
-	ExcludeEntryId id;
+	PsRuleEntryId ruleId;
 
 	UNREFERENCED_PARAMETER(DriverObject);
 
@@ -242,10 +260,12 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 
 	// Initialize and fill exclude file\dir lists 
 
-	status = InitializeExcludeListContext(&g_excludeProcessContext, ExcludeFile);
+	// exclude
+	status = InitializePsRuleListContext(&g_excludeProcessRules);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": exclude process list initialization failed with code:%08x\n", status);
+		DbgPrint("FsFilter1!" __FUNCTION__ ": exclude process rules initialization failed with code:%08x\n", status);
+		ExFreePool(normalized.Buffer);
 		return status;
 	}
 
@@ -254,20 +274,23 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 		RtlInitUnicodeString(&str, g_excludeProcesses[i]);
 
 		status = NormalizeDevicePath(&str, &normalized);
+		DbgPrint("FsFilter1!" __FUNCTION__ ": normalized exclude %wZ\n", &normalized);
 		if (!NT_SUCCESS(status))
 		{
 			DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, &str);
 			continue;
 		}
 
-		AddExcludeListFile(g_excludeProcessContext, &normalized, &id);
+		AddRuleToPsRuleList(g_excludeProcessRules, &normalized, PsRuleTypeWithoutInherit, &ruleId);
 	}
 
-	status = InitializeExcludeListContext(&g_protectProcessContext, ExcludeDirectory);
+	// protected
+
+	status = InitializePsRuleListContext(&g_protectProcessRules);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": protect process list initialization failed with code:%08x\n", status);
-		DestroyExcludeListContext(g_excludeProcessContext);
+		DbgPrint("FsFilter1!" __FUNCTION__ ": exclude process rules initialization failed with code:%08x\n", status);
+		DestroyPsRuleListContext(g_excludeProcessRules);
 		ExFreePool(normalized.Buffer);
 		return status;
 	}
@@ -277,20 +300,22 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 		RtlInitUnicodeString(&str, g_protectProcesses[i]);
 
 		status = NormalizeDevicePath(&str, &normalized);
+		DbgPrint("FsFilter1!" __FUNCTION__ ": normalized exclude %wZ\n", &normalized);
 		if (!NT_SUCCESS(status))
 		{
 			DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, &str);
 			continue;
 		}
 
-		AddExcludeListDirectory(g_protectProcessContext, &normalized, &id);
+		AddRuleToPsRuleList(g_protectProcessRules, &normalized, PsRuleTypeWithoutInherit, &ruleId);
 	}
 
 	status = InitializeProcessTable(CheckProcessFlags);
 	if (!NT_SUCCESS(status))
 	{
-		DestroyExcludeListContext(g_excludeProcessContext);
-		DestroyExcludeListContext(g_protectProcessContext);
+		DestroyPsRuleListContext(g_excludeProcessRules);
+		DestroyPsRuleListContext(g_protectProcessRules);
+		//DestroyExcludeListContext(g_protectProcessContext);
 		ExFreePool(normalized.Buffer);
 		return status;
 	}
@@ -346,8 +371,8 @@ NTSTATUS DestroyPsMonitor()
 
 	PsSetCreateProcessNotifyRoutineEx(CreateProcessNotifyCallback, TRUE);
 
-	DestroyExcludeListContext(g_excludeProcessContext);
-	DestroyExcludeListContext(g_protectProcessContext);
+	DestroyPsRuleListContext(g_excludeProcessRules);
+	DestroyPsRuleListContext(g_protectProcessRules);
 
 	DestroyProcessTable();
 

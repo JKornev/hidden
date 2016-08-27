@@ -1,11 +1,20 @@
 #pragma once
 
 #include <Ntddk.h>
+#include "PsTable.h"
 
 typedef struct _ProcessTableEntry{
 	HANDLE processId;
+
 	BOOLEAN excluded;
+	ULONG   inheritExclusion;
+
 	BOOLEAN protected;
+	ULONG   inheritProtection;
+	// bypassing 
+	BOOLEAN protectedFirstProcessRef;
+	BOOLEAN protectedFirstThreadRef;
+
 } ProcessTableEntry, *PProcessTableEntry;
 
 NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEntry, PCUNICODE_STRING, HANDLE));

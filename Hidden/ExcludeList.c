@@ -72,22 +72,6 @@ NTSTATUS InitializeExcludeListContext(PExcludeContext Context, UINT32 Type)
 VOID DestroyExcludeListContext(ExcludeContext Context)
 {
 	PEXCLUDE_FILE_CONTEXT cntx = (PEXCLUDE_FILE_CONTEXT)Context;
-	/*KLOCK_QUEUE_HANDLE lockHandle;
-	PEXCLUDE_FILE_LIST_ENTRY entry;
-
-	KeAcquireInStackQueuedSpinLock(&cntx->listLock, &lockHandle);
-
-	entry = (PEXCLUDE_FILE_LIST_ENTRY)cntx->listHead.Flink;
-	while (entry != (PEXCLUDE_FILE_LIST_ENTRY)&cntx->listHead)
-	{
-		PEXCLUDE_FILE_LIST_ENTRY remove = entry;
-		entry = (PEXCLUDE_FILE_LIST_ENTRY)entry->list.Flink;
-		RemoveEntryList((PLIST_ENTRY)remove);
-		ExFreePoolWithTag(remove, EXCLUDE_ALLOC_TAG);
-	}
-
-	KeReleaseInStackQueuedSpinLock(&lockHandle);*/
-
 	RemoveAllExcludeListEntries(Context);
 	ExFreePoolWithTag(cntx, EXCLUDE_ALLOC_TAG);
 }

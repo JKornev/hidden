@@ -135,6 +135,12 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 
 		processInfo = (PSYSTEM_PROCESS_INFORMATION)((SIZE_T)processInfo + offset);
 		
+		if (processInfo->ProcessId == 0)
+		{
+			offset = processInfo->NextEntryOffset;
+			continue;
+		}
+
 		InitializeObjectAttributes(&attribs, NULL, OBJ_KERNEL_HANDLE, NULL, NULL);
 		clientId.UniqueProcess = processInfo->ProcessId;
 		clientId.UniqueThread = 0;
@@ -167,6 +173,12 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 		InitProcessEntryCallback(&entry, procName, processInfo->InheritedFromProcessId);
 		if (!AddProcessToProcessTable(&entry))
 			DbgPrint("FsFilter1!" __FUNCTION__ ": can't add process(pid:%d) to process table\n", processInfo->ProcessId);
+
+		if (entry.excluded)
+			DbgPrint("FsFilter1!" __FUNCTION__ ": excluded process:%d\n", entry.processId);
+
+		if (entry.protected)
+			DbgPrint("FsFilter1!" __FUNCTION__ ": protected process:%d\n", entry.processId);
 
 		// Go to next
 

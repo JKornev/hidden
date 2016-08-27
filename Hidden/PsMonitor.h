@@ -7,3 +7,4 @@ NTSTATUS DestroyPsMonitor();
 
 BOOLEAN IsProcessExcluded(HANDLE ProcessId);
 BOOLEAN IsProcessProtected(HANDLE ProcessId);
+

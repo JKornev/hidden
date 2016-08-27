@@ -55,6 +55,7 @@
     <ClCompile Include="FsFilter.c" />
     <ClCompile Include="Helper.c" />
     <ClCompile Include="PsMonitor.c" />
+    <ClCompile Include="PsRules.c" />
     <ClCompile Include="PsTable.c" />
     <ClCompile Include="RegFilter.c" />
     <ResourceCompile Include="Hidden.rc" />
@@ -278,6 +279,7 @@
     <ClInclude Include="Driver.h" />
     <ClInclude Include="Helper.h" />
     <ClInclude Include="PsMonitor.h" />
+    <ClInclude Include="PsRules.h" />
     <ClInclude Include="PsTable.h" />
     <ClInclude Include="RegFilter.h" />
   </ItemGroup>

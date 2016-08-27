@@ -8,7 +8,7 @@ PDEVICE_OBJECT g_deviceObject = NULL;
 
 // =========================================================================================
 
-NTSTATUS DeviceDeviceCreate(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
+NTSTATUS DeviceDeviceCreate(PDEVICE_OBJECT  DeviceObject, PIRP  Irp) //TODO: DeviceDevice lolwhat?!
 {
 	UNREFERENCED_PARAMETER(DeviceObject);
 
@@ -21,7 +21,7 @@ NTSTATUS DeviceDeviceCreate(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 	return STATUS_SUCCESS;
 }
 
-NTSTATUS DeviceDeviceClose(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
+NTSTATUS DeviceDeviceClose(PDEVICE_OBJECT  DeviceObject, PIRP  Irp) //TODO: DeviceDevice lolwhat?!
 {
 	UNREFERENCED_PARAMETER(DeviceObject);
 
@@ -33,7 +33,7 @@ NTSTATUS DeviceDeviceClose(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 
 	return STATUS_SUCCESS;
 }
-NTSTATUS DeviceDeviceCleanup(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
+NTSTATUS DeviceDeviceCleanup(PDEVICE_OBJECT  DeviceObject, PIRP  Irp) //TODO: DeviceDevice lolwhat?!
 {
 	UNREFERENCED_PARAMETER(DeviceObject);
 
