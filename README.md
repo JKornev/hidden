@@ -8,4 +8,5 @@ Features:
 - protect specific processes using ObRegisterCallbacks
 - exclude specific processes from hidding and protection features
 - usermode interface (lib and cli) for working with driver
+
 and so on
