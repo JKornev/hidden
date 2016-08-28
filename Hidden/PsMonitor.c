@@ -14,7 +14,6 @@ OB_CALLBACK_REGISTRATION g_regCallback;
 
 PsRulesContext g_excludeProcessRules;
 PsRulesContext g_protectProcessRules;
-//ExcludeContext g_protectProcessContext;
 
 CONST PWCHAR g_excludeProcesses[] = {
 	//L"\\??\\C:\\Windows\\System32\\calc.exe",

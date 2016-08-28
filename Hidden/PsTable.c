@@ -70,15 +70,14 @@ BOOLEAN GetProcessInProcessTable(PProcessTableEntry entry)
 	PProcessTableEntry entry2;
 
 	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+
 	entry2 = (PProcessTableEntry)RtlLookupElementGenericTableAvl(&g_processTable, entry);
+	if (entry2)
+		RtlCopyMemory(entry, entry2, sizeof(ProcessTableEntry));
+
 	KeReleaseInStackQueuedSpinLock(&lockHandle);
 
-	if (!entry2)
-		return FALSE;
-
-	RtlCopyMemory(entry, entry2, sizeof(ProcessTableEntry));
-
-	return TRUE;
+	return (entry2 ? TRUE : FALSE);
 }
 
 BOOLEAN UpdateProcessInProcessTable(PProcessTableEntry entry)
@@ -87,15 +86,15 @@ BOOLEAN UpdateProcessInProcessTable(PProcessTableEntry entry)
 	PProcessTableEntry entry2;
 
 	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+
 	entry2 = (PProcessTableEntry)RtlLookupElementGenericTableAvl(&g_processTable, entry);
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
 
 	if (!entry2)
-		return FALSE;
+		RtlCopyMemory(entry2, entry, sizeof(ProcessTableEntry));
 
-	RtlCopyMemory(entry2, entry, sizeof(ProcessTableEntry));
+	KeReleaseInStackQueuedSpinLock(&lockHandle);
 
-	return TRUE;
+	return (entry2 ? TRUE : FALSE);
 }
 
 // Initialization

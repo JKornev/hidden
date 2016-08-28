@@ -2,10 +2,6 @@
 
 #define PSRULE_ALLOC_TAG 'lRsP'
 
-//RTL_AVL_TABLE g_psRulesTable;
-//ULONGLONG     g_psRulesIdCounter = 0;
-//KSPIN_LOCK    g_psRulesTableLock;
-
 typedef struct _PsRulesInternalContext {
 	RTL_AVL_TABLE table;
 	ULONGLONG     idCounter;

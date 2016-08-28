@@ -11,9 +11,6 @@ typedef struct _ProcessTableEntry{
 
 	BOOLEAN protected;
 	ULONG   inheritProtection;
-	// bypassing 
-	BOOLEAN protectedFirstProcessRef;
-	BOOLEAN protectedFirstThreadRef;
 
 } ProcessTableEntry, *PProcessTableEntry;
 
