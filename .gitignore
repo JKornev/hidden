@@ -1,0 +1,10 @@
+/Hidden Package/Win7Debug
+/Hidden Package/Win8.1Debug
+/Hidden/Win7Debug
+/Hidden/Win8.1Debug
+/Win7Debug/Hidden Package
+/Win8.1Debug/Hidden Package
+/Win7Debug
+/Win8.1Debug
+/*.suo
+/*.sdf

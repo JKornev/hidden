@@ -1,5 +1,6 @@
 #include "RegFilter.h"
 #include "FsFilter.h"
+#include "PsMonitor.h"
 #include "Device.h"
 #include "DeviceAPI.h"
 
@@ -8,7 +9,7 @@ PDEVICE_OBJECT g_deviceObject = NULL;
 
 // =========================================================================================
 
-NTSTATUS DeviceDeviceCreate(PDEVICE_OBJECT  DeviceObject, PIRP  Irp) //TODO: DeviceDevice lolwhat?!
+NTSTATUS IrpDeviceCreate(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 {
 	UNREFERENCED_PARAMETER(DeviceObject);
 
@@ -21,7 +22,7 @@ NTSTATUS DeviceDeviceCreate(PDEVICE_OBJECT  DeviceObject, PIRP  Irp) //TODO: Dev
 	return STATUS_SUCCESS;
 }
 
-NTSTATUS DeviceDeviceClose(PDEVICE_OBJECT  DeviceObject, PIRP  Irp) //TODO: DeviceDevice lolwhat?!
+NTSTATUS IrpDeviceClose(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 {
 	UNREFERENCED_PARAMETER(DeviceObject);
 
@@ -33,7 +34,7 @@ NTSTATUS DeviceDeviceClose(PDEVICE_OBJECT  DeviceObject, PIRP  Irp) //TODO: Devi
 
 	return STATUS_SUCCESS;
 }
-NTSTATUS DeviceDeviceCleanup(PDEVICE_OBJECT  DeviceObject, PIRP  Irp) //TODO: DeviceDevice lolwhat?!
+NTSTATUS IrpDeviceCleanup(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 {
 	UNREFERENCED_PARAMETER(DeviceObject);
 
@@ -153,7 +154,7 @@ NTSTATUS RemoveAllHiddenObjects(PHid_UnhideAllObjectsPacket packet, USHORT size)
 	return status;
 }
 
-NTSTATUS DeviceControlHandler(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
+NTSTATUS IrpDeviceControlHandler(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 {
 	PIO_STACK_LOCATION irpStack;
 	Hid_StatusPacket result;
@@ -238,10 +239,10 @@ NTSTATUS InitializeDevice(PDRIVER_OBJECT DriverObject)
 		return status;
 	}
 
-	DriverObject->MajorFunction[IRP_MJ_CREATE]         = DeviceDeviceCreate;
-	DriverObject->MajorFunction[IRP_MJ_CLOSE]          = DeviceDeviceClose;
-	DriverObject->MajorFunction[IRP_MJ_CLEANUP]        = DeviceDeviceCleanup;
-	DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = DeviceControlHandler;
+	DriverObject->MajorFunction[IRP_MJ_CREATE]         = IrpDeviceCreate;
+	DriverObject->MajorFunction[IRP_MJ_CLOSE]          = IrpDeviceClose;
+	DriverObject->MajorFunction[IRP_MJ_CLEANUP]        = IrpDeviceCleanup;
+	DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = IrpDeviceControlHandler;
 	g_deviceObject = deviceObject;
 
 	return status;

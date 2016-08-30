@@ -377,3 +377,111 @@ NTSTATUS DestroyPsMonitor()
 
 	return STATUS_SUCCESS;
 }
+
+NTSTATUS AddProtectedImage(PUNICODE_STRING ImagePath, ULONG InheritType, PULONGLONG ObjId)
+{
+	return AddRuleToPsRuleList(g_protectProcessRules, ImagePath, InheritType, ObjId);
+}
+
+NTSTATUS GetProtectedProcessState(HANDLE ProcessId, PULONG InheritType, PBOOLEAN Enable)
+{
+	ProcessTableEntry entry;
+
+	entry.processId = ProcessId;
+	if (!GetProcessInProcessTable(&entry))
+		return STATUS_NOT_FOUND;
+
+	*Enable = entry.protected;
+	*InheritType = entry.inheritProtection;
+
+	return STATUS_SUCCESS;
+}
+
+NTSTATUS SetProtectedProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN Enable)
+{
+	NTSTATUS status = STATUS_SUCCESS;
+	ProcessTableEntry entry;
+
+	entry.processId = ProcessId;
+	if (!GetProcessInProcessTable(&entry))
+		return STATUS_NOT_FOUND;
+
+	if (Enable)
+	{
+		entry.protected = TRUE;
+		entry.inheritProtection = InheritType;
+	}
+	else
+	{
+		entry.protected = FALSE;
+	}
+
+	if (!UpdateProcessInProcessTable(&entry))
+		return STATUS_NOT_FOUND;
+
+	return status;
+}
+
+NTSTATUS RemoveProtectedImage(ULONGLONG ObjId)
+{
+	return RemoveRuleFromPsRuleList(g_protectProcessRules, ObjId);
+}
+
+NTSTATUS RemoveAllProtectedImages()
+{
+	return RemoveAllRulesFromPsRuleList(g_protectProcessRules);
+}
+
+NTSTATUS AddExcludedImage(PUNICODE_STRING ImagePath, ULONG InheritType, PULONGLONG ObjId)
+{
+	return AddRuleToPsRuleList(g_excludeProcessRules, ImagePath, InheritType, ObjId);
+}
+
+NTSTATUS GetExcludedProcessState(HANDLE ProcessId, PULONG InheritType, PBOOLEAN Enable)
+{
+	ProcessTableEntry entry;
+
+	entry.processId = ProcessId;
+	if (!GetProcessInProcessTable(&entry))
+		return STATUS_NOT_FOUND;
+
+	*Enable = entry.excluded;
+	*InheritType = entry.inheritExclusion;
+
+	return STATUS_SUCCESS;
+}
+
+NTSTATUS SetExcludedProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN Enable)
+{
+	NTSTATUS status = STATUS_SUCCESS;
+	ProcessTableEntry entry;
+
+	entry.processId = ProcessId;
+	if (!GetProcessInProcessTable(&entry))
+		return STATUS_NOT_FOUND;
+
+	if (Enable)
+	{
+		entry.excluded = TRUE;
+		entry.inheritExclusion = InheritType;
+	}
+	else
+	{
+		entry.excluded = FALSE;
+	}
+
+	if (!UpdateProcessInProcessTable(&entry))
+		return STATUS_NOT_FOUND;
+
+	return status;
+}
+
+NTSTATUS RemoveExcludedImage(ULONGLONG ObjId)
+{
+	return RemoveRuleFromPsRuleList(g_excludeProcessRules, ObjId);
+}
+
+NTSTATUS RemoveAllExcludedImages()
+{
+	return RemoveAllRulesFromPsRuleList(g_excludeProcessRules);
+}
