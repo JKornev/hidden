@@ -79,7 +79,7 @@ NTSTATUS AddRuleToPsRuleList(PsRulesContext RuleContext, PUNICODE_STRING ImgPath
 	if (InheritType > PsRuleTypeMax)
 	{
 		DbgPrint("FsFilter1!" __FUNCTION__ ": invalid inherit type: %d\n", InheritType);
-		return STATUS_INVALID_PARAMETER_2;
+		return STATUS_INVALID_PARAMETER_3;
 	}
 
 	entryLen = sizeof(PsRuleEntry) + ImgPath->Length;

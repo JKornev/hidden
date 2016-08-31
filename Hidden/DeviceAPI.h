@@ -36,21 +36,45 @@ enum Hid_ObjectTypes {
 
 #pragma pack(push, 4)
 
+// Fs/Reg packets
+
 typedef struct _Hid_HideObjectPacket {
 	unsigned short objType;
 	unsigned short size;
-}  Hid_HideObjectPacket, *PHid_HideObjectPacket;
+} Hid_HideObjectPacket, *PHid_HideObjectPacket;
 
 typedef struct _Hid_UnhideObjectPacket {
 	unsigned short objType;
 	unsigned short reserved;
 	unsigned long long id;
-}  Hid_UnhideObjectPacket, *PHid_UnhideObjectPacket;
+} Hid_UnhideObjectPacket, *PHid_UnhideObjectPacket;
 
 typedef struct _Hid_UnhideAllObjectsPacket {
 	unsigned short objType;
 	unsigned short reserved;
-}  Hid_UnhideAllObjectsPacket, *PHid_UnhideAllObjectsPacket;
+} Hid_UnhideAllObjectsPacket, *PHid_UnhideAllObjectsPacket;
+
+// Ps packets
+
+typedef struct _Hid_AddPsObjectPacket {
+	unsigned short objType;
+	unsigned short size;
+	unsigned short inheritType;
+	unsigned short reserved;
+} Hid_AddPsObjectPacket, *PHid_AddPsObjectPacket;
+
+typedef struct _Hid_RemovePsObjectPacket {
+	unsigned short objType;
+	unsigned short reserved;
+	unsigned long long id;
+} Hid_RemovePsObjectPacket, *PHid_RemovePsObjectPacket;
+
+typedef struct _Hid_RemoveAllPsObjectsPacket {
+	unsigned short objType;
+	unsigned short reserved;
+} Hid_RemoveAllPsObjectsPacket, *PHid_RemoveAllPsObjectsPacket;
+
+// Result packet
 
 typedef struct _Hid_StatusPacket {
 	unsigned int status;
