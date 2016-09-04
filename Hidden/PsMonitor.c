@@ -15,18 +15,17 @@ OB_CALLBACK_REGISTRATION g_regCallback;
 PsRulesContext g_excludeProcessRules;
 PsRulesContext g_protectProcessRules;
 
+// Use this variable for hard code full path to applications that can see hidden objects
+// For instance: L"\\??\\C:\\Windows\\System32\\calc.exe",
+// Notice: this array should be NULL terminated
 CONST PWCHAR g_excludeProcesses[] = {
-	//L"\\??\\C:\\Windows\\System32\\calc.exe",
-	//L"\\??\\C:\\Windows\\System32\\cmd.exe",
-	//L"\\??\\C:\\Windows\\System32\\reg.exe",
 	NULL
 };
 
+// Use this variable for hard code full path to applications that will be protected 
+// For instance: L"\\??\\C:\\Windows\\System32\\cmd.exe",
+// Notice: this array should be NULL terminated
 CONST PWCHAR g_protectProcesses[] = {
-	//L"\\??\\C:\\Windows\\System32\\calc.exe",
-	//L"\\??\\C:\\Windows\\System32\\cmd.exe",
-	//L"\\??\\C:\\Windows\\System32\\csrss.exe",
-	//L"\\??\\C:\\Windows\\System32\\services.exe",
 	NULL
 };
 

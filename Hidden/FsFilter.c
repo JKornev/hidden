@@ -54,17 +54,17 @@ PFLT_FILTER gFilterHandle = NULL;
 ExcludeContext g_excludeFileContext;
 ExcludeContext g_excludeDirectoryContext;
 
+// Use this variable for hard code full file paths that you would like to hide
+// For instance: L"\\Device\\HarddiskVolume1\\Windows\\System32\\calc.exe"
+// Notice: this array should be NULL terminated
 CONST PWCHAR g_excludeFiles[] = {
-//	L"\\Device\\HarddiskVolume1\\Windows\\System32\\calc.exe",
-//	L"\\Device\\HarddiskVolume1\\test.txt",
-//	L"\\Device\\HarddiskVolume1\\abcd\\test.txt",
 	NULL
 };
 
+// Use this variable for hard code full directory paths that you would like to hide
+// For instance: L"\\Device\\HarddiskVolume1\\Windows\\System32\\mysecretdir"
+// Notice: this array should be NULL terminated
 CONST PWCHAR g_excludeDirs[] = {
-//	L"\\Device\\HarddiskVolume1\\abc",
-//	L"\\Device\\HarddiskVolume1\\abcd\\abc",
-//	L"\\Device\\HarddiskVolume1\\New folder",
 	NULL
 };
 
