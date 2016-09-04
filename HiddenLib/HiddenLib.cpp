@@ -7,7 +7,7 @@
 #include "..\\Hidden\DeviceAPI.h"
 
 #define NT_SUCCESS(Status) (((NTSTATUS)(Status)) >= 0)
-#define STATUS_SUCCESS                   ((NTSTATUS)0x00000000L)
+#define STATUS_SUCCESS     ((NTSTATUS)0x00000000L)
 
 typedef struct _HidContextInternal {
 	HANDLE hdevice;
@@ -66,7 +66,7 @@ HidStatus SendIoctlHideObjectPacket(PHidContextInternal context, wchar_t* path, 
 	total = (len + 1) * sizeof(wchar_t);
 	size = sizeof(Hid_HideObjectPacket) + total;
 	hide = (PHid_HideObjectPacket)_alloca(size);
-	hide->size = total;
+	hide->dataSize = total;
 	hide->objType = type;
 
 	memcpy((char*)hide + sizeof(Hid_HideObjectPacket), path, total);

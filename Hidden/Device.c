@@ -47,27 +47,27 @@ NTSTATUS IrpDeviceCleanup(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 	return STATUS_SUCCESS;
 }
 
-NTSTATUS AddHiddenObject(PHid_HideObjectPacket packet, USHORT size, PULONGLONG objId)
+NTSTATUS AddHiddenObject(PHid_HideObjectPacket Packet, USHORT Size, PULONGLONG ObjId)
 {
 	NTSTATUS status = STATUS_SUCCESS;
 	UNICODE_STRING path;
 	USHORT i, count;
 
 	// Check can we access to the packet
-	if (size < sizeof(Hid_HideObjectPacket))
+	if (Size < sizeof(Hid_HideObjectPacket))
 		return STATUS_INVALID_PARAMETER;
 
 	// Check packet data size overflow
-	if (size < packet->size + sizeof(Hid_HideObjectPacket))
+	if (Size < Packet->dataSize + sizeof(Hid_HideObjectPacket))
 		return STATUS_INVALID_PARAMETER;
 
 	// Unpack string to UNICODE_STRING
 
-	path.Buffer = (LPWSTR)((PCHAR)packet + sizeof(Hid_HideObjectPacket));
-	path.MaximumLength = size - sizeof(Hid_HideObjectPacket);
+	path.Buffer = (LPWSTR)((PCHAR)Packet + sizeof(Hid_HideObjectPacket));
+	path.MaximumLength = Size - sizeof(Hid_HideObjectPacket);
 
 	// Just checking for zero-end string ends in the middle
-	count = packet->size / sizeof(WCHAR);
+	count = Packet->dataSize / sizeof(WCHAR);
 	for (i = 0; i < count; i++)
 		if (path.Buffer[i] == L'\0')
 			break;
@@ -76,69 +76,69 @@ NTSTATUS AddHiddenObject(PHid_HideObjectPacket packet, USHORT size, PULONGLONG o
 
 	// Perform the packet
 
-	switch (packet->objType)
+	switch (Packet->objType)
 	{
 	case RegKeyObject:
-		status = AddHiddenRegKey(&path, objId);
+		status = AddHiddenRegKey(&path, ObjId);
 		break;
 	case RegValueObject:
-		status = AddHiddenRegValue(&path, objId);
+		status = AddHiddenRegValue(&path, ObjId);
 		break;
 	case FsFileObject:
-		status = AddHiddenFile(&path, objId);
+		status = AddHiddenFile(&path, ObjId);
 		break;
 	case FsDirObject:
-		status = AddHiddenDir(&path, objId);
+		status = AddHiddenDir(&path, ObjId);
 		break;
 	default:
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", packet->objType);
+		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
 	}
 
 	return status;
 }
 
-NTSTATUS RemoveHiddenObject(PHid_UnhideObjectPacket packet, USHORT size)
+NTSTATUS RemoveHiddenObject(PHid_UnhideObjectPacket Packet, USHORT Size)
 {
 	NTSTATUS status = STATUS_SUCCESS;
 
-	if (size != sizeof(Hid_UnhideObjectPacket))
+	if (Size != sizeof(Hid_UnhideObjectPacket))
 		return STATUS_INVALID_PARAMETER;
 
 	// Perform packet
 
-	switch (packet->objType)
+	switch (Packet->objType)
 	{
 	case RegKeyObject:
-		status = RemoveHiddenRegKey(packet->id);
+		status = RemoveHiddenRegKey(Packet->id);
 		break;
 	case RegValueObject:
-		status = RemoveHiddenRegValue(packet->id);
+		status = RemoveHiddenRegValue(Packet->id);
 		break;
 	case FsFileObject:
-		status = RemoveHiddenFile(packet->id);
+		status = RemoveHiddenFile(Packet->id);
 		break;
 	case FsDirObject:
-		status = RemoveHiddenDir(packet->id);
+		status = RemoveHiddenDir(Packet->id);
 		break;
 	default:
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", packet->objType);
+		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
 	}
 
 	return status;
 }
 
-NTSTATUS RemoveAllHiddenObjects(PHid_UnhideAllObjectsPacket packet, USHORT size)
+NTSTATUS RemoveAllHiddenObjects(PHid_UnhideAllObjectsPacket Packet, USHORT Size)
 {
 	NTSTATUS status = STATUS_SUCCESS;
 
-	if (size != sizeof(Hid_UnhideAllObjectsPacket))
+	if (Size != sizeof(Hid_UnhideAllObjectsPacket))
 		return STATUS_INVALID_PARAMETER;
 
 	// Perform packet
 
-	switch (packet->objType)
+	switch (Packet->objType)
 	{
 	case RegKeyObject:
 		status = RemoveAllHiddenRegKeys();
@@ -153,34 +153,34 @@ NTSTATUS RemoveAllHiddenObjects(PHid_UnhideAllObjectsPacket packet, USHORT size)
 		status = RemoveAllHiddenDirs();
 		break;
 	default:
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", packet->objType);
+		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
 	}
 
 	return status;
 }
 
-NTSTATUS AddPsObject(PHid_AddPsObjectPacket packet, USHORT size, PULONGLONG objId)
+NTSTATUS AddPsObject(PHid_AddPsObjectPacket Packet, USHORT Size, PULONGLONG ObjId)
 {
 	NTSTATUS status = STATUS_SUCCESS;
 	UNICODE_STRING path;
 	USHORT i, count;
 
 	// Check can we access to the packet
-	if (size < sizeof(Hid_AddPsObjectPacket))
+	if (Size < sizeof(Hid_AddPsObjectPacket))
 		return STATUS_INVALID_PARAMETER;
 
 	// Check packet data size overflow
-	if (size < packet->size + sizeof(Hid_AddPsObjectPacket))
+	if (Size < Packet->dataSize + sizeof(Hid_AddPsObjectPacket))
 		return STATUS_INVALID_PARAMETER;
 
 	// Unpack string to UNICODE_STRING
 
-	path.Buffer = (LPWSTR)((PCHAR)packet + sizeof(Hid_AddPsObjectPacket));
-	path.MaximumLength = size - sizeof(Hid_AddPsObjectPacket);
+	path.Buffer = (LPWSTR)((PCHAR)Packet + sizeof(Hid_AddPsObjectPacket));
+	path.MaximumLength = Size - sizeof(Hid_AddPsObjectPacket);
 
 	// Just checking for zero-end string ends in the middle
-	count = packet->size / sizeof(WCHAR);
+	count = Packet->dataSize / sizeof(WCHAR);
 	for (i = 0; i < count; i++)
 	if (path.Buffer[i] == L'\0')
 		break;
@@ -189,57 +189,121 @@ NTSTATUS AddPsObject(PHid_AddPsObjectPacket packet, USHORT size, PULONGLONG objI
 
 	// Perform the packet
 
-	switch (packet->objType)
+	switch (Packet->objType)
 	{
 	case PsExcludedObject:
-		status = AddExcludedImage(&path, packet->inheritType, objId);
+		status = AddExcludedImage(&path, Packet->inheritType, ObjId);
 		break;
 	case PsProtectedObject:
-		status = AddProtectedImage(&path, packet->inheritType, objId);
+		status = AddProtectedImage(&path, Packet->inheritType, ObjId);
 		break;
 	default:
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", packet->objType);
+		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
 	}
 
 	return status;
 }
 
-NTSTATUS RemovePsObject(PHid_RemovePsObjectPacket packet, USHORT size)
+NTSTATUS GetPsObjectInfo(PHid_GetPsObjectInfoPacket Packet, USHORT Size, PHid_GetPsObjectInfoPacket OutPacket, PULONG OutSize)
 {
 	NTSTATUS status = STATUS_SUCCESS;
+	ULONG inheritType, outSize;
+	BOOLEAN enable;
 
-	if (size != sizeof(Hid_RemovePsObjectPacket))
+	outSize = *OutSize;
+	*OutSize = 0;
+
+	if (Size < sizeof(Hid_GetPsObjectInfoPacket))
+		return STATUS_INVALID_PARAMETER;
+
+	if (outSize < sizeof(Hid_GetPsObjectInfoPacket))
 		return STATUS_INVALID_PARAMETER;
 
 	// Perform packet
 
-	switch (packet->objType)
+	switch (Packet->objType)
 	{
 	case PsExcludedObject:
-		status = RemoveExcludedImage(packet->id);
+		status = GetExcludedProcessState((HANDLE)Packet->procId, &inheritType, &enable);
 		break;
 	case PsProtectedObject:
-		status = RemoveProtectedImage(packet->id);
+		status = GetProtectedProcessState((HANDLE)Packet->procId, &inheritType, &enable);
 		break;
 	default:
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", packet->objType);
+		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", Packet->objType);
+		return STATUS_INVALID_PARAMETER;
+	}
+
+	Packet->enable = (USHORT)enable;
+	Packet->inheritType = (USHORT)inheritType;
+	
+	RtlCopyMemory(Packet, OutPacket, sizeof(Hid_GetPsObjectInfoPacket));
+	*OutSize = sizeof(Hid_GetPsObjectInfoPacket);
+
+	return status;
+}
+
+NTSTATUS SetPsObjectInfo(PHid_SetPsObjectInfoPacket Packet, USHORT Size)
+{
+	NTSTATUS status = STATUS_SUCCESS;
+
+	if (Size != sizeof(Hid_SetPsObjectInfoPacket))
+		return STATUS_INVALID_PARAMETER;
+
+	// Perform packet
+
+	switch (Packet->objType)
+	{
+	case PsExcludedObject:
+		status = SetExcludedProcessState((HANDLE)Packet->procId, Packet->inheritType, (Packet->enable ? TRUE : FALSE));
+		break;
+	case PsProtectedObject:
+		status = SetProtectedProcessState((HANDLE)Packet->procId, Packet->inheritType, (Packet->enable ? TRUE : FALSE));
+		break;
+	default:
+		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
 	}
 
 	return status;
 }
 
-NTSTATUS RemoveAllPsObjects(PHid_RemoveAllPsObjectsPacket packet, USHORT size)
+NTSTATUS RemovePsObject(PHid_RemovePsObjectPacket Packet, USHORT Size)
 {
 	NTSTATUS status = STATUS_SUCCESS;
 
-	if (size != sizeof(Hid_RemoveAllPsObjectsPacket))
+	if (Size != sizeof(Hid_RemovePsObjectPacket))
 		return STATUS_INVALID_PARAMETER;
 
 	// Perform packet
 
-	switch (packet->objType)
+	switch (Packet->objType)
+	{
+	case PsExcludedObject:
+		status = RemoveExcludedImage(Packet->id);
+		break;
+	case PsProtectedObject:
+		status = RemoveProtectedImage(Packet->id);
+		break;
+	default:
+		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", Packet->objType);
+		return STATUS_INVALID_PARAMETER;
+	}
+
+	return status;
+}
+
+NTSTATUS RemoveAllPsObjects(PHid_RemoveAllPsObjectsPacket Packet, USHORT Size)
+{
+	NTSTATUS status = STATUS_SUCCESS;
+
+	if (Size != sizeof(Hid_RemoveAllPsObjectsPacket))
+		return STATUS_INVALID_PARAMETER;
+
+	// Perform packet
+
+	switch (Packet->objType)
 	{
 	case PsExcludedObject:
 		status = RemoveAllExcludedImages();
@@ -248,7 +312,7 @@ NTSTATUS RemoveAllPsObjects(PHid_RemoveAllPsObjectsPacket packet, USHORT size)
 		status = RemoveAllProtectedImages();
 		break;
 	default:
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", packet->objType);
+		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
 	}
 
@@ -260,11 +324,12 @@ NTSTATUS IrpDeviceControlHandler(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 	PIO_STACK_LOCATION irpStack;
 	Hid_StatusPacket result;
 	NTSTATUS status = STATUS_SUCCESS;
-	PVOID inputBuffer, outputBuffer;
-	ULONG ioctl, inputBufferSize, outputBufferSize, outputBufferMaxSize;
+	PVOID inputBuffer, outputBuffer, outputData;
+	ULONG ioctl, inputBufferSize, outputBufferSize, outputBufferMaxSize, 
+		  outputDataMaxSize, outputDataSize;
 
 	UNREFERENCED_PARAMETER(DeviceObject);
-
+	
 	// Get irp information
 
 	irpStack = IoGetCurrentIrpStackLocation(Irp);
@@ -273,7 +338,9 @@ NTSTATUS IrpDeviceControlHandler(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 	inputBuffer = outputBuffer = Irp->AssociatedIrp.SystemBuffer;
 	inputBufferSize = irpStack->Parameters.DeviceIoControl.InputBufferLength;
 	outputBufferMaxSize = irpStack->Parameters.DeviceIoControl.OutputBufferLength;
-	outputBufferSize = 0;
+	outputBufferSize  = 0;
+	outputDataSize    = 0;
+	outputDataMaxSize = 0;
 
 	RtlZeroMemory(&result, sizeof(result));
 
@@ -285,6 +352,15 @@ NTSTATUS IrpDeviceControlHandler(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 		goto EndProc;
 	}
 
+	// Prepare additional buffer for output data 
+	outputData = (PVOID)((UINT_PTR)outputBuffer + sizeof(result));
+	outputDataMaxSize = outputBufferMaxSize - sizeof(result);
+
+	// Important Limitation:
+	// Because both input (inputBuffer) and output data (outputData) are located in the same buffer there is a limitation for the output
+	// buffer usage. When a ioctl handler is executing, it can use the input buffer only until first write to the output buffer, because
+	// when you put data to the output buffer you can overwrite data in input buffer. Therefore if you gonna use both an input and output 
+	// data in the same time you should make the copy of input data and work with it.
 	switch (ioctl)
 	{
 	// Reg/Fs 
@@ -302,10 +378,11 @@ NTSTATUS IrpDeviceControlHandler(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 		result.status = AddPsObject((PHid_AddPsObjectPacket)inputBuffer, (USHORT)inputBufferSize, &result.info.id);
 		break;
 	case HID_IOCTL_GET_OBJECT_STATE:
-		result.status = (ULONG)STATUS_NOT_IMPLEMENTED;
+		outputDataSize = outputDataMaxSize;
+		result.status = GetPsObjectInfo((PHid_SetPsObjectInfoPacket)inputBuffer, (USHORT)inputBufferSize, outputData, &outputDataSize);
 		break;
 	case HID_IOCTL_SET_OBJECT_STATE:
-		result.status = (ULONG)STATUS_NOT_IMPLEMENTED;
+		result.status = SetPsObjectInfo((PHid_SetPsObjectInfoPacket)inputBuffer, (USHORT)inputBufferSize);
 		break;
 	case HID_IOCTL_REMOVE_OBJECT:
 		result.status = RemovePsObject((PHid_RemovePsObjectPacket)inputBuffer, (USHORT)inputBufferSize);
@@ -313,7 +390,7 @@ NTSTATUS IrpDeviceControlHandler(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 	case HID_IOCTL_REMOVE_ALL_OBJECTS:
 		result.status = RemoveAllPsObjects((PHid_RemoveAllPsObjectsPacket)inputBuffer, (USHORT)inputBufferSize);
 		break;
-
+	// 
 	default:
 		DbgPrint("FsFilter1!" __FUNCTION__ ": unknown IOCTL code:%08x\n", ioctl);
 		status = STATUS_INVALID_PARAMETER;
@@ -322,6 +399,19 @@ NTSTATUS IrpDeviceControlHandler(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 
 EndProc:
 	
+	// If additional output data has been presented
+	if (NT_SUCCESS(status) && outputDataSize > 0)
+	{
+		if (outputDataSize > outputDataMaxSize)
+		{
+			DbgPrint("FsFilter1!" __FUNCTION__ ": An internal error that looks like stack corruption!\n");
+			outputDataSize = outputDataMaxSize;
+			result.status = (ULONG)STATUS_PARTIAL_COPY;
+		}
+
+		result.dataSize = outputDataSize;
+	}
+
 	// Copy result to output buffer
 	if (NT_SUCCESS(status)) 
 	{

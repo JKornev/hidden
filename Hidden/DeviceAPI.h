@@ -40,7 +40,7 @@ enum Hid_ObjectTypes {
 
 typedef struct _Hid_HideObjectPacket {
 	unsigned short objType;
-	unsigned short size;
+	unsigned short dataSize;
 } Hid_HideObjectPacket, *PHid_HideObjectPacket;
 
 typedef struct _Hid_UnhideObjectPacket {
@@ -58,10 +58,21 @@ typedef struct _Hid_UnhideAllObjectsPacket {
 
 typedef struct _Hid_AddPsObjectPacket {
 	unsigned short objType;
-	unsigned short size;
+	unsigned short dataSize;
 	unsigned short inheritType;
 	unsigned short reserved;
 } Hid_AddPsObjectPacket, *PHid_AddPsObjectPacket;
+
+typedef struct _Hid_GetPsObjectInfoPacket {
+	unsigned short objType;
+	unsigned short inheritType;
+	unsigned short enable;
+	unsigned short reserved;
+	unsigned long procId;
+} Hid_GetPsObjectInfoPacket, *PHid_GetPsObjectInfoPacket;
+
+typedef Hid_GetPsObjectInfoPacket Hid_SetPsObjectInfoPacket;
+typedef Hid_GetPsObjectInfoPacket* PHid_SetPsObjectInfoPacket;
 
 typedef struct _Hid_RemovePsObjectPacket {
 	unsigned short objType;
@@ -78,6 +89,7 @@ typedef struct _Hid_RemoveAllPsObjectsPacket {
 
 typedef struct _Hid_StatusPacket {
 	unsigned int status;
+	unsigned int dataSize;
 	union {
 		unsigned long long id;
 		unsigned long state;

@@ -61,7 +61,6 @@
     <ResourceCompile Include="Hidden.rc" />
     <ClCompile Include="ExcludeList.c" />
     <ClCompile Include="Driver.c" />
-    <Inf Include="Hidden.inf" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{3E4BBCD0-DC35-4825-9A8D-8686CDFAA6A8}</ProjectGuid>

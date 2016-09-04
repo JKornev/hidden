@@ -17,13 +17,13 @@ PsRulesContext g_protectProcessRules;
 
 CONST PWCHAR g_excludeProcesses[] = {
 	//L"\\??\\C:\\Windows\\System32\\calc.exe",
-	L"\\??\\C:\\Windows\\System32\\cmd.exe",
-	L"\\??\\C:\\Windows\\System32\\reg.exe",
+	//L"\\??\\C:\\Windows\\System32\\cmd.exe",
+	//L"\\??\\C:\\Windows\\System32\\reg.exe",
 	NULL
 };
 
 CONST PWCHAR g_protectProcesses[] = {
-	L"\\??\\C:\\Windows\\System32\\calc.exe",
+	//L"\\??\\C:\\Windows\\System32\\calc.exe",
 	//L"\\??\\C:\\Windows\\System32\\cmd.exe",
 	//L"\\??\\C:\\Windows\\System32\\csrss.exe",
 	//L"\\??\\C:\\Windows\\System32\\services.exe",

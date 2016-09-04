@@ -19,11 +19,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <Inf Include="FsFilter1.inf">
-      <Filter>Driver Files</Filter>
-    </Inf>
-  </ItemGroup>
-  <ItemGroup>
     <ClCompile Include="ExcludeList.c">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -48,9 +43,12 @@
     <ClCompile Include="PsTable.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PsRules.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="FsFilter1.rc">
+    <ResourceCompile Include="Hidden.rc">
       <Filter>Resource Files</Filter>
     </ResourceCompile>
   </ItemGroup>
@@ -86,5 +84,13 @@
     <ClInclude Include="PsTable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PsRules.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Inf Include="Hidden.inf">
+      <Filter>Driver Files</Filter>
+    </Inf>
   </ItemGroup>
 </Project>
