@@ -16,14 +16,14 @@ PsRulesContext g_excludeProcessRules;
 PsRulesContext g_protectProcessRules;
 
 // Use this variable for hard code full path to applications that can see hidden objects
-// For instance: L"\\??\\C:\\Windows\\System32\\calc.exe",
+// For instance: L"\\Device\\HarddiskVolume1\\Windows\\System32\\calc.exe",
 // Notice: this array should be NULL terminated
 CONST PWCHAR g_excludeProcesses[] = {
 	NULL
 };
 
 // Use this variable for hard code full path to applications that will be protected 
-// For instance: L"\\??\\C:\\Windows\\System32\\cmd.exe",
+// For instance: L"\\Device\\HarddiskVolume1\\Windows\\System32\\cmd.exe",
 // Notice: this array should be NULL terminated
 CONST PWCHAR g_protectProcesses[] = {
 	NULL
@@ -191,6 +191,7 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 		if (!NT_SUCCESS(status))
 		{
 			DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, CreateInfo->ImageFileName);
+			ExFreePool(normalized.Buffer);
 			return;
 		}
 

@@ -38,6 +38,15 @@ CONST PWCHAR g_excludeRegValues[] = {
 	L"\\Registry\\MACHINE\\SOFTWARE\\zz",
 };
 
+CONST PWCHAR g_protectProcesses[] = {
+	L"\\Device\\HarddiskVolume1\\Windows\\System32\\calc.exe",
+	L"\\Device\\HarddiskVolume1\\Windows\\System32\\calc2.exe",
+};
+
+CONST PWCHAR g_excludeProcesses[] = {
+	L"\\Device\\HarddiskVolume1\\Windows\\System32\\cmd.exe",
+	L"\\Device\\HarddiskVolume1\\Windows\\System32\\cmd2.exe",
+};
 
 int wmain(int argc, wchar_t *argv[])
 {
@@ -92,6 +101,26 @@ int wmain(int argc, wchar_t *argv[])
 		hid_status = Hid_AddHiddenDir(hid_context, g_excludeDirs[i], &objId);
 		if (!HID_STATUS_SUCCESSFUL(hid_status))
 			cout << "Error, Hid_AddHiddenDir failed with code: " << HID_STATUS_CODE(hid_status) << endl;
+	}
+
+	// Load excluded processes
+	count = _countof(g_excludeProcesses);
+	for (int i = 0; i < count; i++)
+	{
+		HidObjId objId;
+		hid_status = Hid_AddExcludedImage(hid_context, g_excludeProcesses[i], WithoutInherit, &objId);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+			cout << "Error, Hid_AddExcludedImage failed with code: " << HID_STATUS_CODE(hid_status) << endl;
+	}
+
+	// Load protected processes
+	count = _countof(g_protectProcesses);
+	for (int i = 0; i < count; i++)
+	{
+		HidObjId objId;
+		hid_status = Hid_AddProtectedImage(hid_context, g_protectProcesses[i], WithoutInherit, &objId);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+			cout << "Error, Hid_AddProtectedImage failed with code: " << HID_STATUS_CODE(hid_status) << endl;
 	}
 
 	Hid_Destroy(hid_context);
