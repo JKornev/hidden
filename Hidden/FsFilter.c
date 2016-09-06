@@ -303,7 +303,7 @@ NTSTATUS CleanFileFullDirectoryInformation(PFILE_FULL_DIR_INFORMATION info, PFLT
 					moveLength = 0;
 					while (nextInfo->NextEntryOffset != 0)
 					{
-						moveLength += FIELD_OFFSET(FILE_FULL_DIR_INFORMATION, FileName) + nextInfo->FileNameLength;
+						moveLength += nextInfo->NextEntryOffset;
 						nextInfo = (PFILE_FULL_DIR_INFORMATION)((PUCHAR)nextInfo + nextInfo->NextEntryOffset);
 					}
 
@@ -387,7 +387,7 @@ NTSTATUS CleanFileBothDirectoryInformation(PFILE_BOTH_DIR_INFORMATION info, PFLT
 					moveLength = 0;
 					while (nextInfo->NextEntryOffset != 0)
 					{
-						moveLength += FIELD_OFFSET(FILE_BOTH_DIR_INFORMATION, FileName) + nextInfo->FileNameLength;
+						moveLength += nextInfo->NextEntryOffset;
 						nextInfo = (PFILE_BOTH_DIR_INFORMATION)((PUCHAR)nextInfo + nextInfo->NextEntryOffset);
 					}
 
@@ -471,7 +471,7 @@ NTSTATUS CleanFileDirectoryInformation(PFILE_DIRECTORY_INFORMATION info, PFLT_FI
 					moveLength = 0;
 					while (nextInfo->NextEntryOffset != 0)
 					{
-						moveLength += FIELD_OFFSET(FILE_DIRECTORY_INFORMATION, FileName) + nextInfo->FileNameLength;
+						moveLength += nextInfo->NextEntryOffset;
 						nextInfo = (PFILE_DIRECTORY_INFORMATION)((PUCHAR)nextInfo + nextInfo->NextEntryOffset);
 					}
 
@@ -555,7 +555,7 @@ NTSTATUS CleanFileIdFullDirectoryInformation(PFILE_ID_FULL_DIR_INFORMATION info,
 					moveLength = 0;
 					while (nextInfo->NextEntryOffset != 0)
 					{
-						moveLength += FIELD_OFFSET(FILE_ID_FULL_DIR_INFORMATION, FileName) + nextInfo->FileNameLength;
+						moveLength += nextInfo->NextEntryOffset;
 						nextInfo = (PFILE_ID_FULL_DIR_INFORMATION)((PUCHAR)nextInfo + nextInfo->NextEntryOffset);
 					}
 
@@ -639,7 +639,7 @@ NTSTATUS CleanFileIdBothDirectoryInformation(PFILE_ID_BOTH_DIR_INFORMATION info,
 					moveLength = 0;
 					while (nextInfo->NextEntryOffset != 0)
 					{
-						moveLength += FIELD_OFFSET(FILE_ID_BOTH_DIR_INFORMATION, FileName) + nextInfo->FileNameLength;
+						moveLength += nextInfo->NextEntryOffset;
 						nextInfo = (PFILE_ID_BOTH_DIR_INFORMATION)((PUCHAR)nextInfo + nextInfo->NextEntryOffset);
 					}
 
@@ -719,7 +719,7 @@ NTSTATUS CleanFileNamesInformation(PFILE_NAMES_INFORMATION info, PFLT_FILE_NAME_
 					moveLength = 0;
 					while (nextInfo->NextEntryOffset != 0)
 					{
-						moveLength += FIELD_OFFSET(FILE_NAMES_INFORMATION, FileName) + nextInfo->FileNameLength;
+						moveLength += nextInfo->NextEntryOffset;
 						nextInfo = (PFILE_NAMES_INFORMATION)((PUCHAR)nextInfo + nextInfo->NextEntryOffset);
 					}
 

@@ -314,7 +314,6 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 	{
 		DestroyPsRuleListContext(g_excludeProcessRules);
 		DestroyPsRuleListContext(g_protectProcessRules);
-		//DestroyExcludeListContext(g_protectProcessContext);
 		ExFreePool(normalized.Buffer);
 		return status;
 	}
