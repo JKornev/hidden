@@ -13,10 +13,41 @@ typedef struct _HidContextInternal {
 	HANDLE hdevice;
 } HidContextInternal, *PHidContextInternal;
 
+typedef struct _LSA_UNICODE_STRING {
+	USHORT Length;
+	USHORT MaximumLength;
+	PWSTR  Buffer;
+} LSA_UNICODE_STRING, *PLSA_UNICODE_STRING, UNICODE_STRING, *PUNICODE_STRING;
+
+typedef struct _RTL_RELATIVE_NAME {
+	UNICODE_STRING RelativeName;
+	HANDLE         ContainingDirectory;
+	void*          CurDirRef;
+} RTL_RELATIVE_NAME, *PRTL_RELATIVE_NAME;
+
+typedef BOOLEAN(NTAPI*RtlDosPathNameToRelativeNtPathName_U_Prototype)(
+	_In_       PCWSTR DosFileName,
+	_Out_      PUNICODE_STRING NtFileName,
+	_Out_opt_  PWSTR* FilePath,
+	_Out_opt_  PRTL_RELATIVE_NAME RelativeName
+);
+
+RtlDosPathNameToRelativeNtPathName_U_Prototype RtlDosPathNameToRelativeNtPathName_U = nullptr;
+
 HidStatus Hid_Initialize(PHidContext pcontext)
 {
 	HANDLE hdevice = INVALID_HANDLE_VALUE;
 	PHidContextInternal context;
+
+	if (!RtlDosPathNameToRelativeNtPathName_U)
+	{
+		*(FARPROC*)&RtlDosPathNameToRelativeNtPathName_U = GetProcAddress(
+			GetModuleHandleW(L"ntdll.dll"), 
+			"RtlDosPathNameToRelativeNtPathName_U"
+		);
+		if (!RtlDosPathNameToRelativeNtPathName_U)
+			return HID_SET_STATUS(FALSE, GetLastError());
+	}
 
 	hdevice = CreateFileW(
 				DEVICE_WIN32_NAME,
@@ -50,7 +81,61 @@ void Hid_Destroy(HidContext context)
 	free(cntx);
 }
 
-HidStatus SendIoctl_HideObjectPacket(PHidContextInternal context, wchar_t* path, unsigned short type, HidObjId* objId)
+bool ConvertToNtPath(const wchar_t* path, wchar_t* normalized, size_t normalizedLen)
+{
+	UNICODE_STRING ntPath;
+	DWORD size;
+	bool result = false;
+
+	size = GetFullPathNameW(path, normalizedLen, normalized, NULL);
+	if (size == 0)
+		return false;
+
+	memset(&ntPath, 0, sizeof(ntPath));
+
+	if (RtlDosPathNameToRelativeNtPathName_U(normalized, &ntPath, NULL, NULL) == FALSE)
+		return false;
+
+	if (normalizedLen * sizeof(wchar_t) > ntPath.Length)
+	{
+		memcpy(normalized, ntPath.Buffer, ntPath.Length);
+		normalized[ntPath.Length / sizeof(wchar_t)] = L'\0';
+		result = true;
+	}
+
+	HeapFree(GetProcessHeap(), 0, ntPath.Buffer);
+
+	return result;
+}
+
+HidStatus AllocNormalizedPath(const wchar_t* path, wchar_t** normalized)
+{
+	enum { NORMALIZATION_OVERHEAD = 32 };
+	wchar_t* buf;
+	size_t len;
+
+	len = wcslen(path) + NORMALIZATION_OVERHEAD;
+
+	buf = (wchar_t*)malloc(len * sizeof(wchar_t));
+	if (!buf)
+		return HID_SET_STATUS(FALSE, ERROR_NOT_ENOUGH_MEMORY);
+
+	if (!ConvertToNtPath(path, buf, len))
+	{
+		free(buf);
+		return HID_SET_STATUS(FALSE, ERROR_INVALID_DATA);
+	}
+
+	*normalized = buf;
+	return HID_SET_STATUS(TRUE, 0);
+}
+
+void FreeNormalizedPath(wchar_t* normalized)
+{
+	free(normalized);
+}
+
+HidStatus SendIoctl_HideObjectPacket(PHidContextInternal context, const wchar_t* path, unsigned short type, HidObjId* objId)
 {
 	PHid_HideObjectPacket hide;
 	Hid_StatusPacket result;
@@ -139,7 +224,7 @@ HidStatus SendIoctl_UnhideAllObjectsPacket(PHidContextInternal context, unsigned
 	return HID_SET_STATUS(TRUE, 0);
 }
 
-HidStatus SendIoctl_AddPsObjectPacket(PHidContextInternal context, wchar_t* path, unsigned short type, HidPsInheritTypes inheritType, HidObjId* objId)
+HidStatus SendIoctl_AddPsObjectPacket(PHidContextInternal context, const wchar_t* path, unsigned short type, HidPsInheritTypes inheritType, HidObjId* objId)
 {
 	PHid_AddPsObjectPacket hide;
 	Hid_StatusPacket result;
@@ -245,7 +330,7 @@ HidStatus Hid_GetState(HidContext context, HidActiveState* pstate)
 
 // Registry hiding interface
 
-HidStatus Hid_AddHiddenRegKey(HidContext context, wchar_t* regKey, HidObjId* objId)
+HidStatus Hid_AddHiddenRegKey(HidContext context, const wchar_t* regKey, HidObjId* objId)
 {
 	return SendIoctl_HideObjectPacket((PHidContextInternal)context, regKey, RegKeyObject, objId);
 }
@@ -260,7 +345,7 @@ HidStatus Hid_RemoveAllHiddenRegKeys(HidContext context)
 	return SendIoctl_UnhideAllObjectsPacket((PHidContextInternal)context, RegKeyObject);
 }
 
-HidStatus Hid_AddHiddenRegValue(HidContext context, wchar_t* regValue, HidObjId* objId)
+HidStatus Hid_AddHiddenRegValue(HidContext context, const wchar_t* regValue, HidObjId* objId)
 {
 	return SendIoctl_HideObjectPacket((PHidContextInternal)context, regValue, RegValueObject, objId);
 }
@@ -277,9 +362,19 @@ HidStatus Hid_RemoveAllHiddenRegValues(HidContext context)
 
 // File system hiding interface
 
-HidStatus Hid_AddHiddenFile(HidContext context, wchar_t* filePath, HidObjId* objId)
+HidStatus Hid_AddHiddenFile(HidContext context, const wchar_t* filePath, HidObjId* objId)
 {
-	return SendIoctl_HideObjectPacket((PHidContextInternal)context, filePath, FsFileObject, objId);
+	HidStatus status;
+	wchar_t* normalized;
+
+	status = AllocNormalizedPath(filePath, &normalized);
+	if (!HID_STATUS_SUCCESSFUL(status))
+		return status;
+
+	status = SendIoctl_HideObjectPacket((PHidContextInternal)context, normalized, FsFileObject, objId);
+	FreeNormalizedPath(normalized);
+
+	return status;
 }
 
 HidStatus Hid_RemoveHiddenFile(HidContext context, HidObjId objId)
@@ -292,9 +387,19 @@ HidStatus Hid_RemoveAllHiddenFiles(HidContext context)
 	return SendIoctl_UnhideAllObjectsPacket((PHidContextInternal)context, FsFileObject);
 }
 
-HidStatus Hid_AddHiddenDir(HidContext context, wchar_t* dirPath, HidObjId* objId)
+HidStatus Hid_AddHiddenDir(HidContext context, const wchar_t* dirPath, HidObjId* objId)
 {
-	return SendIoctl_HideObjectPacket((PHidContextInternal)context, dirPath, FsDirObject, objId);
+	HidStatus status;
+	wchar_t* normalized;
+
+	status = AllocNormalizedPath(dirPath, &normalized);
+	if (!HID_STATUS_SUCCESSFUL(status))
+		return status;
+
+	status = SendIoctl_HideObjectPacket((PHidContextInternal)context, normalized, FsDirObject, objId);
+	FreeNormalizedPath(normalized);
+
+	return status;
 }
 
 HidStatus Hid_RemoveHiddenDir(HidContext context, HidObjId objId)
@@ -309,7 +414,7 @@ HidStatus Hid_RemoveAllHiddenDirs(HidContext context)
 
 // Process exclude interface
 
-HidStatus Hid_AddExcludedImage(HidContext context, wchar_t* imagePath, HidPsInheritTypes inheritType, HidObjId* objId)
+HidStatus Hid_AddExcludedImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, HidObjId* objId)
 {
 	return SendIoctl_AddPsObjectPacket((PHidContextInternal)context, imagePath, PsExcludedObject, inheritType, objId);
 }
@@ -341,7 +446,7 @@ HidStatus Hid_RemoveExcludedState(HidContext context, HidProcId procId)
 
 // Process protect interface
 
-HidStatus Hid_AddProtectedImage(HidContext context, wchar_t* imagePath, HidPsInheritTypes inheritType, HidObjId* objId)
+HidStatus Hid_AddProtectedImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, HidObjId* objId)
 {
 	return SendIoctl_AddPsObjectPacket((PHidContextInternal)context, imagePath, PsProtectedObject, inheritType, objId);
 }

@@ -356,7 +356,7 @@ NTSTATUS IrpDeviceControlHandler(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 	outputData = (PVOID)((UINT_PTR)outputBuffer + sizeof(result));
 	outputDataMaxSize = outputBufferMaxSize - sizeof(result);
 
-	// Important Limitation:
+	// Important limitation:
 	// Because both input (inputBuffer) and output data (outputData) are located in the same buffer there is a limitation for the output
 	// buffer usage. When a ioctl handler is executing, it can use the input buffer only until first write to the output buffer, because
 	// when you put data to the output buffer you can overwrite data in input buffer. Therefore if you gonna use both an input and output 
@@ -390,7 +390,7 @@ NTSTATUS IrpDeviceControlHandler(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 	case HID_IOCTL_REMOVE_ALL_OBJECTS:
 		result.status = RemoveAllPsObjects((PHid_RemoveAllPsObjectsPacket)inputBuffer, (USHORT)inputBufferSize);
 		break;
-	// 
+	// Other
 	default:
 		DbgPrint("FsFilter1!" __FUNCTION__ ": unknown IOCTL code:%08x\n", ioctl);
 		status = STATUS_INVALID_PARAMETER;
