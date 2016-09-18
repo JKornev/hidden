@@ -28,6 +28,13 @@ enum HidPsInheritTypes
 	InheritMax
 };
 
+enum HidRegRootTypes
+{
+	RegHKCU,
+	RegHKLM,
+	RegHKU
+};
+
 HidStatus Hid_Initialize(PHidContext pcontext);
 void Hid_Destroy(HidContext context);
 
@@ -36,11 +43,11 @@ HidStatus Hid_GetState(HidContext context, HidActiveState* pstate);
 
 // Fs\Reg
 
-HidStatus Hid_AddHiddenRegKey(HidContext context, const wchar_t* regKey, HidObjId* objId);
+HidStatus Hid_AddHiddenRegKey(HidContext context, HidRegRootTypes root, const wchar_t* regKey, HidObjId* objId);
 HidStatus Hid_RemoveHiddenRegKey(HidContext context, HidObjId objId);
 HidStatus Hid_RemoveAllHiddenRegKeys(HidContext context);
 
-HidStatus Hid_AddHiddenRegValue(HidContext context, const wchar_t* regValue, HidObjId* objId);
+HidStatus Hid_AddHiddenRegValue(HidContext context, HidRegRootTypes root, const wchar_t* regValue, HidObjId* objId);
 HidStatus Hid_RemoveHiddenRegValue(HidContext context, HidObjId objId);
 HidStatus Hid_RemoveAllHiddenRegValues(HidContext context);
 

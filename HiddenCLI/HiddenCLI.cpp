@@ -25,17 +25,17 @@ CONST PWCHAR g_excludeDirs[] = {
 };
 
 CONST PWCHAR g_excludeRegKeys[] = {
-	L"\\REGISTRY\\MACHINE\\SOFTWARE\\test",
-	L"\\Registry\\MACHINE\\SOFTWARE\\test2",
+	L"SOFTWARE\\test",
+	L"SOFTWARE\\test2",
 };
 
 CONST PWCHAR g_excludeRegValues[] = {
-	L"\\REGISTRY\\MACHINE\\SOFTWARE\\aaa",
-	L"\\Registry\\MACHINE\\SOFTWARE\\xxx",
-	L"\\Registry\\MACHINE\\SOFTWARE\\aa",
-	L"\\Registry\\MACHINE\\SOFTWARE\\aaa",
-	L"\\Registry\\MACHINE\\SOFTWARE\\aaaa",
-	L"\\Registry\\MACHINE\\SOFTWARE\\zz",
+	L"SOFTWARE\\aaa",
+	L"SOFTWARE\\xxx",
+	L"SOFTWARE\\aa",
+	L"SOFTWARE\\aaa",
+	L"SOFTWARE\\aaaa",
+	L"SOFTWARE\\zz",
 };
 
 CONST PWCHAR g_protectProcesses[] = {
@@ -68,7 +68,7 @@ int wmain(int argc, wchar_t *argv[])
 	for (int i = 0; i < count; i++)
 	{
 		HidObjId objId;
-		hid_status = Hid_AddHiddenRegKey(hid_context, g_excludeRegKeys[i], &objId);
+		hid_status = Hid_AddHiddenRegKey(hid_context, RegHKLM, g_excludeRegKeys[i], &objId);
 		if (!HID_STATUS_SUCCESSFUL(hid_status))
 			cout << "Error, Hid_AddHiddenRegKey failed with code: " << HID_STATUS_CODE(hid_status) << endl;
 	}
@@ -78,7 +78,7 @@ int wmain(int argc, wchar_t *argv[])
 	for (int i = 0; i < count; i++)
 	{
 		HidObjId objId;
-		hid_status = Hid_AddHiddenRegValue(hid_context, g_excludeRegValues[i], &objId);
+		hid_status = Hid_AddHiddenRegValue(hid_context, RegHKLM, g_excludeRegValues[i], &objId);
 		if (!HID_STATUS_SUCCESSFUL(hid_status))
 			cout << "Error, Hid_AddHiddenRegValue failed with code: " << HID_STATUS_CODE(hid_status) << endl;
 	}

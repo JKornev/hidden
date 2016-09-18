@@ -32,7 +32,17 @@ typedef BOOLEAN(NTAPI*RtlDosPathNameToRelativeNtPathName_U_Prototype)(
 	_Out_opt_  PRTL_RELATIVE_NAME RelativeName
 );
 
-RtlDosPathNameToRelativeNtPathName_U_Prototype RtlDosPathNameToRelativeNtPathName_U = nullptr;
+typedef NTSTATUS(WINAPI*RtlFormatCurrentUserKeyPath_Prototype)(
+	PUNICODE_STRING CurrentUserKeyPath
+);
+
+typedef VOID(WINAPI*RtlFreeUnicodeString_Prototype)(
+	PUNICODE_STRING UnicodeString
+);
+
+static RtlDosPathNameToRelativeNtPathName_U_Prototype RtlDosPathNameToRelativeNtPathName_U = nullptr;
+static RtlFormatCurrentUserKeyPath_Prototype RtlFormatCurrentUserKeyPath = nullptr;
+static RtlFreeUnicodeString_Prototype RtlFreeUnicodeString = nullptr;
 
 HidStatus Hid_Initialize(PHidContext pcontext)
 {
@@ -42,10 +52,30 @@ HidStatus Hid_Initialize(PHidContext pcontext)
 	if (!RtlDosPathNameToRelativeNtPathName_U)
 	{
 		*(FARPROC*)&RtlDosPathNameToRelativeNtPathName_U = GetProcAddress(
-			GetModuleHandleW(L"ntdll.dll"), 
+			GetModuleHandleW(L"ntdll.dll"),
 			"RtlDosPathNameToRelativeNtPathName_U"
-		);
+			);
 		if (!RtlDosPathNameToRelativeNtPathName_U)
+			return HID_SET_STATUS(FALSE, GetLastError());
+	}
+
+	if (!RtlFormatCurrentUserKeyPath)
+	{
+		*(FARPROC*)&RtlFormatCurrentUserKeyPath = GetProcAddress(
+			GetModuleHandleW(L"ntdll.dll"),
+			"RtlFormatCurrentUserKeyPath"
+			);
+		if (!RtlFormatCurrentUserKeyPath)
+			return HID_SET_STATUS(FALSE, GetLastError());
+	}
+
+	if (!RtlFreeUnicodeString)
+	{
+		*(FARPROC*)&RtlFreeUnicodeString = GetProcAddress(
+			GetModuleHandleW(L"ntdll.dll"),
+			"RtlFreeUnicodeString"
+			);
+		if (!RtlFreeUnicodeString)
 			return HID_SET_STATUS(FALSE, GetLastError());
 	}
 
@@ -108,6 +138,65 @@ bool ConvertToNtPath(const wchar_t* path, wchar_t* normalized, size_t normalized
 	return result;
 }
 
+bool NormalizeRegistryPath(HidRegRootTypes root, const wchar_t* key, wchar_t* normalized, size_t normalizedLen)
+{
+	static const wchar_t* hklm = L"\\Registry\\Machine\\";
+	static const wchar_t* hku = L"\\Registry\\User\\";
+	size_t keyLen, rootLen;
+
+	keyLen = wcslen(key);
+
+	if (root == RegHKCU)
+	{
+		UNICODE_STRING currUser;
+
+		RtlFormatCurrentUserKeyPath(&currUser);
+
+		rootLen = currUser.Length / sizeof(wchar_t);
+
+		if (normalizedLen < rootLen + keyLen + 2)
+		{
+			RtlFreeUnicodeString(&currUser);
+			return false;
+		}
+
+		memcpy(normalized, currUser.Buffer, rootLen * sizeof(wchar_t));
+		normalized[rootLen] = L'\\';
+		memcpy(normalized + rootLen + 1, key, keyLen * sizeof(wchar_t));
+		normalized[rootLen + keyLen + 1] = L'\0';
+
+		RtlFreeUnicodeString(&currUser);
+	}
+	else if (root == RegHKLM)
+	{
+		rootLen = wcslen(hklm);
+
+		if (normalizedLen < rootLen + keyLen + 1)
+			return false;
+
+		memcpy(normalized, hklm, rootLen * sizeof(wchar_t));
+		memcpy(normalized + rootLen, key, keyLen * sizeof(wchar_t));
+		normalized[rootLen + keyLen] = L'\0';
+	}
+	else if (root == RegHKU)
+	{
+		rootLen = wcslen(hku);
+
+		if (normalizedLen < rootLen + keyLen + 1)
+			return false;
+
+		memcpy(normalized, hku, rootLen * sizeof(wchar_t));
+		memcpy(normalized + rootLen, key, keyLen * sizeof(wchar_t));
+		normalized[rootLen + keyLen] = L'\0';
+	}
+	else
+	{
+		return false;
+	}
+
+	return true;
+}
+
 HidStatus AllocNormalizedPath(const wchar_t* path, wchar_t** normalized)
 {
 	enum { NORMALIZATION_OVERHEAD = 32 };
@@ -121,6 +210,28 @@ HidStatus AllocNormalizedPath(const wchar_t* path, wchar_t** normalized)
 		return HID_SET_STATUS(FALSE, ERROR_NOT_ENOUGH_MEMORY);
 
 	if (!ConvertToNtPath(path, buf, len))
+	{
+		free(buf);
+		return HID_SET_STATUS(FALSE, ERROR_INVALID_DATA);
+	}
+
+	*normalized = buf;
+	return HID_SET_STATUS(TRUE, 0);
+}
+
+HidStatus AllocNormalizedRegistryPath(HidRegRootTypes root, const wchar_t* key, wchar_t** normalized)
+{
+	enum { NORMALIZATION_OVERHEAD = 96 };
+	wchar_t* buf;
+	size_t len;
+
+	len = wcslen(key) + NORMALIZATION_OVERHEAD;
+
+	buf = (wchar_t*)malloc(len * sizeof(wchar_t));
+	if (!buf)
+		return HID_SET_STATUS(FALSE, ERROR_NOT_ENOUGH_MEMORY);
+
+	if (!NormalizeRegistryPath(root, key, buf, len))
 	{
 		free(buf);
 		return HID_SET_STATUS(FALSE, ERROR_INVALID_DATA);
@@ -330,9 +441,20 @@ HidStatus Hid_GetState(HidContext context, HidActiveState* pstate)
 
 // Registry hiding interface
 
-HidStatus Hid_AddHiddenRegKey(HidContext context, const wchar_t* regKey, HidObjId* objId)
+HidStatus Hid_AddHiddenRegKey(HidContext context, HidRegRootTypes root, const wchar_t* regKey, HidObjId* objId)
 {
-	return SendIoctl_HideObjectPacket((PHidContextInternal)context, regKey, RegKeyObject, objId);
+	HidStatus status;
+	wchar_t* normalized;
+
+	status = AllocNormalizedRegistryPath(root, regKey, &normalized);
+	if (!HID_STATUS_SUCCESSFUL(status))
+		return status;
+
+	status = SendIoctl_HideObjectPacket((PHidContextInternal)context, normalized, RegKeyObject, objId);
+	FreeNormalizedPath(normalized);
+
+	return status;
+	//return SendIoctl_HideObjectPacket((PHidContextInternal)context, regKey, RegKeyObject, objId);
 }
 
 HidStatus Hid_RemoveHiddenRegKey(HidContext context, HidObjId objId)
@@ -345,9 +467,20 @@ HidStatus Hid_RemoveAllHiddenRegKeys(HidContext context)
 	return SendIoctl_UnhideAllObjectsPacket((PHidContextInternal)context, RegKeyObject);
 }
 
-HidStatus Hid_AddHiddenRegValue(HidContext context, const wchar_t* regValue, HidObjId* objId)
+HidStatus Hid_AddHiddenRegValue(HidContext context, HidRegRootTypes root, const wchar_t* regValue, HidObjId* objId)
 {
-	return SendIoctl_HideObjectPacket((PHidContextInternal)context, regValue, RegValueObject, objId);
+	HidStatus status;
+	wchar_t* normalized;
+
+	status = AllocNormalizedRegistryPath(root, regValue, &normalized);
+	if (!HID_STATUS_SUCCESSFUL(status))
+		return status;
+
+	status = SendIoctl_HideObjectPacket((PHidContextInternal)context, normalized, RegValueObject, objId);
+	FreeNormalizedPath(normalized);
+
+	return status;
+	//return SendIoctl_HideObjectPacket((PHidContextInternal)context, regValue, RegValueObject, objId);
 }
 
 HidStatus Hid_RemoveHiddenRegValue(HidContext context, HidObjId objId)
