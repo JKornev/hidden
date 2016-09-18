@@ -21,6 +21,11 @@
 		+ FS monitor
 		- Reg filter
 		- Ps filter
+- Добавить в Reg filter поддержку всех возможных операций над value
+	- set value
+	- delete value
+	- query value
+	- query multiple value
 - Почистить Exclude List
 	+ Добавить в Exclude List поддержку case insensetive crc32 (если возможно, например русские буквы) (*Нет необхлжимости)
 	- Добавить в Exclude List для файлов такую же лексическую сортировку как и в реестру, возможно обьеденить ф-и

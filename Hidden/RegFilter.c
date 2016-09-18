@@ -381,6 +381,133 @@ NTSTATUS RegPostEnumValue(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 	return STATUS_SUCCESS;
 }
 
+NTSTATUS RegPreSetValue(PVOID context, PREG_SET_VALUE_KEY_INFORMATION info)
+{
+	NTSTATUS status;
+	PCUNICODE_STRING regPath;
+	UINT32 incIndex;
+
+	UNREFERENCED_PARAMETER(context);
+
+	if (IsProcessExcluded(PsGetCurrentProcessId()))
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
+		return STATUS_SUCCESS;
+	}
+
+	status = CmCallbackGetKeyObjectID(&g_regCookie, info->Object, NULL, &regPath);
+	if (!NT_SUCCESS(status))
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": Registry name query failed with code:%08x\n", status);
+		return STATUS_SUCCESS;
+	}
+
+	incIndex = 0;
+	if (CheckExcludeListRegKeyValueName(g_excludeRegValueContext, (PUNICODE_STRING)regPath, info->ValueName, &incIndex))
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! found %wZ\\%wZ (inc: %d)\n", regPath, info->ValueName, incIndex);
+		return STATUS_NOT_FOUND;
+	}
+
+	return STATUS_SUCCESS;
+}
+
+NTSTATUS RegPreDeleteValue(PVOID context, PREG_DELETE_VALUE_KEY_INFORMATION info)
+{
+	NTSTATUS status;
+	PCUNICODE_STRING regPath;
+	UINT32 incIndex;
+
+	UNREFERENCED_PARAMETER(context);
+
+	if (IsProcessExcluded(PsGetCurrentProcessId()))
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
+		return STATUS_SUCCESS;
+	}
+
+	status = CmCallbackGetKeyObjectID(&g_regCookie, info->Object, NULL, &regPath);
+	if (!NT_SUCCESS(status))
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": Registry name query failed with code:%08x\n", status);
+		return STATUS_SUCCESS;
+	}
+
+	incIndex = 0;
+	if (CheckExcludeListRegKeyValueName(g_excludeRegValueContext, (PUNICODE_STRING)regPath, info->ValueName, &incIndex))
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! found %wZ\\%wZ (inc: %d)\n", regPath, info->ValueName, incIndex);
+		return STATUS_NOT_FOUND;
+	}
+
+	return STATUS_SUCCESS;
+}
+
+NTSTATUS RegPreQueryValue(PVOID context, PREG_QUERY_VALUE_KEY_INFORMATION info)
+{
+	NTSTATUS status;
+	PCUNICODE_STRING regPath;
+	UINT32 incIndex;
+
+	UNREFERENCED_PARAMETER(context);
+
+	if (IsProcessExcluded(PsGetCurrentProcessId()))
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
+		return STATUS_SUCCESS;
+	}
+
+	status = CmCallbackGetKeyObjectID(&g_regCookie, info->Object, NULL, &regPath);
+	if (!NT_SUCCESS(status))
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": Registry name query failed with code:%08x\n", status);
+		return STATUS_SUCCESS;
+	}
+
+	incIndex = 0;
+	if (CheckExcludeListRegKeyValueName(g_excludeRegValueContext, (PUNICODE_STRING)regPath, info->ValueName, &incIndex))
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! found %wZ\\%wZ (inc: %d)\n", regPath, info->ValueName, incIndex);
+		return STATUS_NOT_FOUND;
+	}
+
+	return STATUS_SUCCESS;
+}
+
+NTSTATUS RegPreQueryMultipleValue(PVOID context, PREG_QUERY_MULTIPLE_VALUE_KEY_INFORMATION info)
+{
+	NTSTATUS status;
+	PCUNICODE_STRING regPath;
+	UINT32 incIndex, i;
+
+	UNREFERENCED_PARAMETER(context);
+
+	if (IsProcessExcluded(PsGetCurrentProcessId()))
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
+		return STATUS_SUCCESS;
+	}
+
+	status = CmCallbackGetKeyObjectID(&g_regCookie, info->Object, NULL, &regPath);
+	if (!NT_SUCCESS(status))
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": Registry name query failed with code:%08x\n", status);
+		return STATUS_SUCCESS;
+	}
+
+	for (i = 0; i < info->EntryCount; i++)
+	{
+		incIndex = 0;
+		if (CheckExcludeListRegKeyValueName(g_excludeRegValueContext, (PUNICODE_STRING)regPath, info->ValueEntries[i].ValueName, &incIndex))
+		{
+			DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! found %wZ\\%wZ (inc: %d)\n", regPath, info->ValueEntries[i].ValueName, incIndex);
+			return STATUS_NOT_FOUND;
+		}
+	}
+
+	return STATUS_SUCCESS;
+}
+
 NTSTATUS RegistryFilterCallback(PVOID CallbackContext, PVOID Argument1, PVOID Argument2)
 {
 	REG_NOTIFY_CLASS notifyClass = (REG_NOTIFY_CLASS)(ULONG_PTR)Argument1;
@@ -405,6 +532,18 @@ NTSTATUS RegistryFilterCallback(PVOID CallbackContext, PVOID Argument1, PVOID Ar
 		break;
 	case RegNtPostEnumerateValueKey:
 		status = RegPostEnumValue(CallbackContext, (PREG_POST_OPERATION_INFORMATION)Argument2);
+		break;
+	case RegNtSetValueKey:
+		status = RegPreSetValue(CallbackContext, (PREG_SET_VALUE_KEY_INFORMATION)Argument2);
+		break;
+	case RegNtPreDeleteValueKey:
+		status = RegPreDeleteValue(CallbackContext, (PREG_DELETE_VALUE_KEY_INFORMATION)Argument2);
+		break;
+	case RegNtPreQueryValueKey:
+		status = RegPreQueryValue(CallbackContext, (PREG_QUERY_VALUE_KEY_INFORMATION)Argument2);
+		break;
+	case RegNtPreQueryMultipleValueKey:
+		status = RegPreQueryMultipleValue(CallbackContext, (PREG_QUERY_MULTIPLE_VALUE_KEY_INFORMATION)Argument2);
 		break;
 	default:
 		status = STATUS_SUCCESS;
