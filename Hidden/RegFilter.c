@@ -618,13 +618,7 @@ NTSTATUS DestroyRegistryFilter()
 
 NTSTATUS AddHiddenRegKey(PUNICODE_STRING KeyPath, PULONGLONG ObjId)
 {
-	NTSTATUS status;
-
-	// TODO: normalize registry key path
-
-	status = AddExcludeListRegistryKey(g_excludeRegKeyContext, KeyPath, ObjId);
-	
-	return status;
+	return AddExcludeListRegistryKey(g_excludeRegKeyContext, KeyPath, ObjId);
 }
 
 NTSTATUS RemoveHiddenRegKey(ULONGLONG ObjId)
@@ -639,13 +633,7 @@ NTSTATUS RemoveAllHiddenRegKeys()
 
 NTSTATUS AddHiddenRegValue(PUNICODE_STRING ValuePath, PULONGLONG ObjId)
 {
-	NTSTATUS status;
-
-	// TODO: normalize registry value path
-
-	status = AddExcludeListRegistryValue(g_excludeRegValueContext, ValuePath, ObjId);
-
-	return status;
+	return AddExcludeListRegistryValue(g_excludeRegValueContext, ValuePath, ObjId);
 }
 
 NTSTATUS RemoveHiddenRegValue(ULONGLONG ObjId)

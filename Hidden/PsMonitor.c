@@ -35,15 +35,15 @@ OB_PREOP_CALLBACK_STATUS ProcessPreCallback(PVOID RegistrationContext, POB_PRE_O
 
 	if (OperationInformation->KernelHandle)
 		return OB_PREOP_SUCCESS;
+	
+	if (!IsProcessProtected(PsGetProcessId(OperationInformation->Object)))
+		return OB_PREOP_SUCCESS;
 
-	DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! Process: %d(%d:%d), Oper: %s, Space: %s\n", 
+	DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! Process: %d(%d:%d), Oper: %s, Space: %s\n",
 		PsGetProcessId(OperationInformation->Object), PsGetCurrentProcessId(), PsGetCurrentThreadId(),
 		(OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE ? "create" : "dup"),
 		(OperationInformation->KernelHandle ? "kernel" : "user")
 	);
-	
-	if (!IsProcessProtected(PsGetProcessId(OperationInformation->Object)))
-		return OB_PREOP_SUCCESS;
 
 	if (IsProcessProtected(PsGetCurrentProcessId()))
 	{
@@ -68,14 +68,14 @@ OB_PREOP_CALLBACK_STATUS ThreadPreCallback(PVOID RegistrationContext, POB_PRE_OP
 	if (OperationInformation->KernelHandle)
 		return OB_PREOP_SUCCESS;
 
-	DbgPrint("FsFilter1!" __FUNCTION__ ": Thread: %d(%d:%d), Oper: %s, Space: %s\n", 
+	if (!IsProcessProtected(PsGetProcessId(OperationInformation->Object)))
+		return OB_PREOP_SUCCESS;
+
+	DbgPrint("FsFilter1!" __FUNCTION__ ": Thread: %d(%d:%d), Oper: %s, Space: %s\n",
 		PsGetThreadId(OperationInformation->Object), PsGetCurrentProcessId(), PsGetCurrentThreadId(),
 		(OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE ? "create" : "dup"),
 		(OperationInformation->KernelHandle ? "kernel" : "user")
 	);
-
-	if (!IsProcessProtected(PsGetProcessId(OperationInformation->Object)))
-		return OB_PREOP_SUCCESS;
 
 	if (IsProcessProtected(PsGetCurrentProcessId()))
 	{
@@ -379,7 +379,36 @@ NTSTATUS DestroyPsMonitor()
 
 NTSTATUS AddProtectedImage(PUNICODE_STRING ImagePath, ULONG InheritType, PULONGLONG ObjId)
 {
-	return AddRuleToPsRuleList(g_protectProcessRules, ImagePath, InheritType, ObjId);
+	const USHORT maxBufSize = ImagePath->Length + NORMALIZE_INCREAMENT;
+	UNICODE_STRING normalized;
+	NTSTATUS status;
+
+	normalized.Buffer = (PWCH)ExAllocatePool(PagedPool, maxBufSize);
+	normalized.Length = 0;
+	normalized.MaximumLength = maxBufSize;
+
+	if (!normalized.Buffer)
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": error, can't allocate buffer\n");
+		return STATUS_MEMORY_NOT_ALLOCATED;
+	}
+
+	status = NormalizeDevicePath(ImagePath, &normalized);
+	if (!NT_SUCCESS(status))
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, ImagePath);
+		ExFreePool(normalized.Buffer);
+		return status;
+	}
+
+	DbgPrint("FsFilter1!" __FUNCTION__ ": protect image: %wZ\n", &normalized);
+	status = AddRuleToPsRuleList(g_protectProcessRules, &normalized, InheritType, ObjId);
+
+	ExFreePool(normalized.Buffer);
+
+	return status;
+	//DbgPrint("FsFilter1!" __FUNCTION__ ": protect image: %wZ\n", ImagePath);
+	//return AddRuleToPsRuleList(g_protectProcessRules, ImagePath, InheritType, ObjId);
 }
 
 NTSTATUS GetProtectedProcessState(HANDLE ProcessId, PULONG InheritType, PBOOLEAN Enable)
@@ -433,7 +462,34 @@ NTSTATUS RemoveAllProtectedImages()
 
 NTSTATUS AddExcludedImage(PUNICODE_STRING ImagePath, ULONG InheritType, PULONGLONG ObjId)
 {
-	return AddRuleToPsRuleList(g_excludeProcessRules, ImagePath, InheritType, ObjId);
+	const USHORT maxBufSize = ImagePath->Length + NORMALIZE_INCREAMENT;
+	UNICODE_STRING normalized;
+	NTSTATUS status;
+
+	normalized.Buffer = (PWCH)ExAllocatePool(PagedPool, maxBufSize);
+	normalized.Length = 0;
+	normalized.MaximumLength = maxBufSize;
+
+	if (!normalized.Buffer)
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": error, can't allocate buffer\n");
+		return STATUS_MEMORY_NOT_ALLOCATED;
+	}
+
+	status = NormalizeDevicePath(ImagePath, &normalized);
+	if (!NT_SUCCESS(status))
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, ImagePath);
+		ExFreePool(normalized.Buffer);
+		return status;
+	}
+
+	DbgPrint("FsFilter1!" __FUNCTION__ ": exclude image: %wZ\n", &normalized);
+	status = AddRuleToPsRuleList(g_excludeProcessRules, &normalized, InheritType, ObjId);
+
+	ExFreePool(normalized.Buffer);
+
+	return status;
 }
 
 NTSTATUS GetExcludedProcessState(HANDLE ProcessId, PULONG InheritType, PBOOLEAN Enable)

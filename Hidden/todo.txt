@@ -19,22 +19,25 @@
 	+ Добавить проект HiddenTest
 	- Реализовать тесты в проекте HiddenTest
 		+ FS monitor
-		- Reg filter
+		+ Reg filter
 		- Ps filter
-- Добавить в Reg filter поддержку всех возможных операций над value
-	- set value
-	- delete value
-	- query value
-	- query multiple value
++ Добавить в Reg filter поддержку всех возможных операций над value
+	+ set value
+	+ delete value
+	+ query value
+	+ query multiple value
 - Почистить Exclude List
 	+ Добавить в Exclude List поддержку case insensetive crc32 (если возможно, например русские буквы) (*Нет необхлжимости)
 	- Добавить в Exclude List для файлов такую же лексическую сортировку как и в реестру, возможно обьеденить ф-и
 	- Переписать всё на основе AVL или других buildin generic trees
-- Реализовать конвертирование пути в пути драйвера
-	- Ps monitor
++ Реализовать конвертирование пути в пути драйвера
+	+ Ps monitor
 	+ FS filter
-	- Reg filter
+	+ Reg filter
 + Реализовать RemoveAllExcludeListEntries
+- Реализовать все ф-и Ps monitor
+	- Добавить в библиотеку поддержку get\set state
+	- Решить проблему с protected (возможно разрешить создавать такие процессы только из protected\system)
 - Реализовать IOCTL протокол управления
 	+ Реализовать usermode библиотеку для работы с IOCTL API
 	- Реализовать программу управления драйвером, средствами IOCTL API
