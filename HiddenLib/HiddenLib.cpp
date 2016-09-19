@@ -549,7 +549,17 @@ HidStatus Hid_RemoveAllHiddenDirs(HidContext context)
 
 HidStatus Hid_AddExcludedImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, HidObjId* objId)
 {
-	return SendIoctl_AddPsObjectPacket((PHidContextInternal)context, imagePath, PsExcludedObject, inheritType, objId);
+	HidStatus status;
+	wchar_t* normalized;
+
+	status = AllocNormalizedPath(imagePath, &normalized);
+	if (!HID_STATUS_SUCCESSFUL(status))
+		return status;
+
+	status = SendIoctl_AddPsObjectPacket((PHidContextInternal)context, normalized, PsExcludedObject, inheritType, objId);
+	FreeNormalizedPath(normalized);
+
+	return status;
 }
 
 HidStatus Hid_RemoveExcludedImage(HidContext context, HidObjId objId)
@@ -581,7 +591,17 @@ HidStatus Hid_RemoveExcludedState(HidContext context, HidProcId procId)
 
 HidStatus Hid_AddProtectedImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, HidObjId* objId)
 {
-	return SendIoctl_AddPsObjectPacket((PHidContextInternal)context, imagePath, PsProtectedObject, inheritType, objId);
+	HidStatus status;
+	wchar_t* normalized;
+
+	status = AllocNormalizedPath(imagePath, &normalized);
+	if (!HID_STATUS_SUCCESSFUL(status))
+		return status;
+
+	status = SendIoctl_AddPsObjectPacket((PHidContextInternal)context, normalized, PsProtectedObject, inheritType, objId);
+	FreeNormalizedPath(normalized);
+
+	return status;
 }
 
 HidStatus Hid_RemoveProtectedImage(HidContext context, HidObjId objId)
