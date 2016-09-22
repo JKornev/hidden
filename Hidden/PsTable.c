@@ -89,7 +89,7 @@ BOOLEAN UpdateProcessInProcessTable(PProcessTableEntry entry)
 
 	entry2 = (PProcessTableEntry)RtlLookupElementGenericTableAvl(&g_processTable, entry);
 
-	if (!entry2)
+	if (entry2)
 		RtlCopyMemory(entry2, entry, sizeof(ProcessTableEntry));
 
 	KeReleaseInStackQueuedSpinLock(&lockHandle);

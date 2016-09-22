@@ -98,8 +98,9 @@ NTSTATUS AddRuleToPsRuleList(PsRulesContext RuleContext, PUNICODE_STRING ImgPath
 	RtlCopyUnicodeString(&entry->imagePath, ImgPath);
 
 	KeAcquireInStackQueuedSpinLock(&context->tableLock, &lockHandle);
-	buf = RtlInsertElementGenericTableAvl(&context->table, entry, entryLen, &newElem);
 	guid = context->idCounter++;
+	entry->guid = guid;
+	buf = RtlInsertElementGenericTableAvl(&context->table, entry, entryLen, &newElem);
 	KeReleaseInStackQueuedSpinLock(&lockHandle);
 
 	if (!buf)

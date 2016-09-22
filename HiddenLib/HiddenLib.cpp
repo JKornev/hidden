@@ -425,6 +425,71 @@ HidStatus SendIoctl_RemoveAllPsObjectsPacket(PHidContextInternal context, unsign
 	return HID_SET_STATUS(TRUE, 0);
 }
 
+HidStatus SendIoctl_GetPsStatePacket(PHidContextInternal context, HidProcId procId, unsigned short type, HidActiveState* state, HidPsInheritTypes* inheritType)
+{
+	char buffer[sizeof(Hid_StatusPacket) + sizeof(Hid_GetPsObjectInfoPacket)];
+	PHid_GetPsObjectInfoPacket info;
+	PHid_StatusPacket result;
+	DWORD returned;
+
+	memset(buffer, 0, sizeof(buffer));
+
+	info = (PHid_GetPsObjectInfoPacket)buffer;
+	info->objType = type;
+	info->procId = procId;
+
+	// Send IOCTL to device
+
+	if (!DeviceIoControl(context->hdevice, HID_IOCTL_GET_OBJECT_STATE, info, sizeof(Hid_GetPsObjectInfoPacket), &buffer, sizeof(buffer), &returned, NULL))
+		return HID_SET_STATUS(FALSE, GetLastError());
+
+	// Check result
+
+	if (returned < sizeof(Hid_StatusPacket))
+		return HID_SET_STATUS(FALSE, ERROR_INVALID_BLOCK_LENGTH);
+
+	result = (PHid_StatusPacket)buffer;
+	info = (PHid_GetPsObjectInfoPacket)(buffer + sizeof(Hid_StatusPacket));
+
+	if (!NT_SUCCESS(result->status))
+		return HID_SET_STATUS(FALSE, result->status);
+
+	if (returned != sizeof(Hid_StatusPacket) + sizeof(Hid_GetPsObjectInfoPacket))
+		return HID_SET_STATUS(FALSE, ERROR_INVALID_BLOCK_LENGTH);
+
+	*state = (info->enable ? HidActiveState::StateEnabled : HidActiveState::StateDisabled);
+	*inheritType = (HidPsInheritTypes)info->inheritType;
+
+	return HID_SET_STATUS(TRUE, 0);
+}
+
+HidStatus SendIoctl_SetPsStatePacket(PHidContextInternal context, HidProcId procId, unsigned short type, HidActiveState state, HidPsInheritTypes inheritType)
+{
+	Hid_SetPsObjectInfoPacket info;
+	Hid_StatusPacket result;
+	DWORD returned;
+
+	info.objType = type;
+	info.procId = procId;
+	info.enable = (state == HidActiveState::StateEnabled);
+	info.inheritType = inheritType;
+
+	// Send IOCTL to device
+
+	if (!DeviceIoControl(context->hdevice, HID_IOCTL_SET_OBJECT_STATE, &info, sizeof(info), &result, sizeof(result), &returned, NULL))
+		return HID_SET_STATUS(FALSE, GetLastError());
+
+	// Check result
+
+	if (returned != sizeof(result))
+		return HID_SET_STATUS(FALSE, ERROR_INVALID_PARAMETER);
+
+	if (!NT_SUCCESS(result.status))
+		return HID_SET_STATUS(FALSE, result.status);
+
+	return HID_SET_STATUS(TRUE, 0);
+}
+
 // Control interface
 
 HidStatus Hid_SetState(HidContext context, HidActiveState state)
@@ -454,7 +519,6 @@ HidStatus Hid_AddHiddenRegKey(HidContext context, HidRegRootTypes root, const wc
 	FreeNormalizedPath(normalized);
 
 	return status;
-	//return SendIoctl_HideObjectPacket((PHidContextInternal)context, regKey, RegKeyObject, objId);
 }
 
 HidStatus Hid_RemoveHiddenRegKey(HidContext context, HidObjId objId)
@@ -480,7 +544,6 @@ HidStatus Hid_AddHiddenRegValue(HidContext context, HidRegRootTypes root, const 
 	FreeNormalizedPath(normalized);
 
 	return status;
-	//return SendIoctl_HideObjectPacket((PHidContextInternal)context, regValue, RegValueObject, objId);
 }
 
 HidStatus Hid_RemoveHiddenRegValue(HidContext context, HidObjId objId)
@@ -574,17 +637,17 @@ HidStatus Hid_RemoveAllExcludedImages(HidContext context)
 
 HidStatus Hid_GetExcludedState(HidContext context, HidProcId procId, HidActiveState* state, HidPsInheritTypes* inheritType)
 {
-	return HID_SET_STATUS(FALSE, ERROR_CALL_NOT_IMPLEMENTED);
+	return SendIoctl_GetPsStatePacket((PHidContextInternal)context, procId, PsExcludedObject, state, inheritType);
 }
 
 HidStatus Hid_AttachExcludedState(HidContext context, HidProcId procId, HidPsInheritTypes inheritType)
 {
-	return HID_SET_STATUS(FALSE, ERROR_CALL_NOT_IMPLEMENTED);
+	return SendIoctl_SetPsStatePacket((PHidContextInternal)context, procId, PsExcludedObject, HidActiveState::StateEnabled, inheritType);
 }
 
 HidStatus Hid_RemoveExcludedState(HidContext context, HidProcId procId)
 {
-	return HID_SET_STATUS(FALSE, ERROR_CALL_NOT_IMPLEMENTED);
+	return SendIoctl_SetPsStatePacket((PHidContextInternal)context, procId, PsExcludedObject, HidActiveState::StateDisabled, HidPsInheritTypes::WithoutInherit);
 }
 
 // Process protect interface
@@ -616,15 +679,15 @@ HidStatus Hid_RemoveAllProtectedImages(HidContext context)
 
 HidStatus Hid_GetProtectedState(HidContext context, HidProcId procId, HidActiveState* state, HidPsInheritTypes* inheritType)
 {
-	return HID_SET_STATUS(FALSE, ERROR_CALL_NOT_IMPLEMENTED);
+	return SendIoctl_GetPsStatePacket((PHidContextInternal)context, procId, PsProtectedObject, state, inheritType);
 }
 
 HidStatus Hid_AttachProtectedState(HidContext context, HidProcId procId, HidPsInheritTypes inheritType)
 {
-	return HID_SET_STATUS(FALSE, ERROR_CALL_NOT_IMPLEMENTED);
+	return SendIoctl_SetPsStatePacket((PHidContextInternal)context, procId, PsProtectedObject, HidActiveState::StateEnabled, inheritType);
 }
 
 HidStatus Hid_RemoveProtectedState(HidContext context, HidProcId procId)
 {
-	return HID_SET_STATUS(FALSE, ERROR_CALL_NOT_IMPLEMENTED);
+	return SendIoctl_SetPsStatePacket((PHidContextInternal)context, procId, PsProtectedObject, HidActiveState::StateDisabled, HidPsInheritTypes::WithoutInherit);
 }

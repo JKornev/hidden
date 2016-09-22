@@ -238,7 +238,7 @@ NTSTATUS GetPsObjectInfo(PHid_GetPsObjectInfoPacket Packet, USHORT Size, PHid_Ge
 	Packet->enable = (USHORT)enable;
 	Packet->inheritType = (USHORT)inheritType;
 	
-	RtlCopyMemory(Packet, OutPacket, sizeof(Hid_GetPsObjectInfoPacket));
+	RtlCopyMemory(OutPacket, Packet, sizeof(Hid_GetPsObjectInfoPacket));
 	*OutSize = sizeof(Hid_GetPsObjectInfoPacket);
 
 	return status;
@@ -404,7 +404,7 @@ EndProc:
 	{
 		if (outputDataSize > outputDataMaxSize)
 		{
-			DbgPrint("FsFilter1!" __FUNCTION__ ": An internal error that looks like stack corruption!\n");
+			DbgPrint("FsFilter1!" __FUNCTION__ ": An internal error that looks like a stack corruption!\n");
 			outputDataSize = outputDataMaxSize;
 			result.status = (ULONG)STATUS_PARTIAL_COPY;
 		}
@@ -415,7 +415,7 @@ EndProc:
 	// Copy result to output buffer
 	if (NT_SUCCESS(status)) 
 	{
-		outputBufferSize = sizeof(result);
+		outputBufferSize = sizeof(result) + outputDataSize;
 		RtlCopyMemory(outputBuffer, &result, sizeof(result));
 	}
 

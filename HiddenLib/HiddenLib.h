@@ -5,7 +5,7 @@ typedef unsigned long long HidStatus;
 #define HID_STATUS_SUCCESSFUL(status)                     (status & 1)
 #define HID_STATUS_CODE(status)             (unsigned int)(status >> 1)
 
-#define HID_SET_STATUS(state, code)   (unsigned long long)(code << 1 | (state ? 1 : 0))
+#define HID_SET_STATUS(state, code)   (unsigned long long)((unsigned long long)code << 1 | (state ? 1 : 0))
 
 typedef void*       HidContext;
 typedef HidContext* PHidContext;
@@ -20,6 +20,8 @@ enum HidActiveState
 	StateEnabled
 };
 
+// Important note:
+// This enum should be equal to PsRuleInheritTypes (PsRules.h)
 enum HidPsInheritTypes
 {
 	WithoutInherit = 0,
