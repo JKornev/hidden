@@ -400,7 +400,7 @@ void do_regmon_tests(HidContext context)
 		hid_status = Hid_RemoveHiddenRegValue(context, objId[1]);
 		if (!HID_STATUS_SUCCESSFUL(hid_status))
 		{
-			wcout << L"Error, unhidden reg value hasn't been found, code: " << error_code << endl;
+			wcout << L"Error, unhidden reg value hasn't been found, code: " << HID_STATUS_CODE(hid_status) << endl;
 			throw exception();
 		}
 
@@ -440,12 +440,195 @@ void do_regmon_tests(HidContext context)
 	Hid_RemoveAllHiddenRegValues(context);
 }
 
-void do_psmon_tests(HidContext context)
+void do_psmon_prot_tests(HidContext context)
+{
+	HidStatus  hid_status;
+	unsigned int error_code;
+	STARTUPINFOW si;
+	PROCESS_INFORMATION pi;
+	wchar_t path[] = L"c:\\windows\\system32\\calc.exe";
+	HidObjId objId[3];
+	HANDLE hproc = 0;
+	HidActiveState state;
+	HidPsInheritTypes inheritType;
+
+	wcout << L"--------------------------------" << endl;
+	wcout << L"Process monitor prot tests result:" << endl;
+	wcout << L"--------------------------------" << endl;
+
+	try
+	{
+		//TODO:
+		// test 1: create proc, protect, check, unprotect
+
+		wcout << L"Test 1: create process, protect, check, unprotect" << endl;
+
+		memset(&si, 0, sizeof(si));
+		memset(&pi, 0, sizeof(pi));
+		si.cb = sizeof(si);
+
+		wcout << L"step" << 1 << endl;
+
+		hid_status = Hid_GetProtectedState(context, GetCurrentProcessId(), &state, &inheritType);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't get self state, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		if (state != HidActiveState::StateDisabled)
+		{
+			wcout << L"Error, state isn't StateDisabled, state: " << state << " " << inheritType << endl;
+			throw exception();
+		}
+
+		wcout << L"step" << 2 << endl;
+		hid_status = Hid_AttachProtectedState(context, GetCurrentProcessId(), HidPsInheritTypes::WithoutInherit);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't protect self image, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		hid_status = Hid_GetProtectedState(context, GetCurrentProcessId(), &state, &inheritType);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't get self status, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		if (state != HidActiveState::StateEnabled || inheritType != HidPsInheritTypes::WithoutInherit)
+		{
+			wcout << L"Error, state isn't StateEnabled, state: " << state << " " << inheritType << endl;
+			throw exception();
+		}
+
+		wcout << L"step" << 3 << endl;
+		hid_status = Hid_AddProtectedImage(context, path, HidPsInheritTypes::WithoutInherit, &objId[1]);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't protect image, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		wcout << L"step" << 3 << endl;
+		//hid_status = Hid_AttachProtectedState(context,  420, HidPsInheritTypes::WithoutInherit);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't protect csrss image, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+
+		wcout << L"step" << 4 << endl;
+		if (!CreateProcessW(NULL, path, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
+		{
+			error_code = GetLastError();
+			wcout << L"Error, CreateProcessW() failed with code: " << error_code << endl;
+			throw exception();
+		}
+
+		wcout << L"step" << 5 << endl;
+		CloseHandle(pi.hThread);
+
+		hid_status = Hid_RemoveProtectedState(context, GetCurrentProcessId());
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't can't remove self protection, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		wcout << L"step" << 6 << endl;
+		hproc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pi.dwProcessId);
+		if (!hproc)
+		{
+			error_code = GetLastError();
+			wcout << L"Error, OpenProcess() failed with code: " << error_code << endl;
+			throw exception();
+		}
+
+		wcout << L"step" << 7 << endl;
+		if (VirtualAllocEx(hproc, 0, 0x1000, MEM_COMMIT, PAGE_EXECUTE_READWRITE))
+		{
+			wcout << L"Error, process protection doesn't work" << endl;
+			throw exception();
+		}
+
+		CloseHandle(hproc);
+		hproc = 0;
+
+		wcout << L"step" << 8 << endl;
+		hid_status = Hid_RemoveProtectedImage(context, objId[1]);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't remove protected rule, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		hid_status = Hid_RemoveProtectedState(context, pi.dwProcessId);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't unprotect image, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		hproc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pi.dwProcessId);
+		if (!hproc)
+		{
+			error_code = GetLastError();
+			wcout << L"Error, OpenProcess() failed with code " << error_code << endl;
+			throw exception();
+		}
+
+		if (!VirtualAllocEx(hproc, 0, 0x1000, MEM_COMMIT, PAGE_EXECUTE_READWRITE))
+		{
+			error_code = GetLastError();
+			wcout << L"Error, VirtualAllocEx() failed with code: " << error_code << endl;
+			throw exception();
+		}
+
+		CloseHandle(hproc);
+		hproc = 0;
+
+		wcout << L" successful!" << endl;
+
+
+	}
+	catch (exception&)
+	{
+		wcout << L" failed!" << endl;
+	}
+
+	if (hproc)
+		CloseHandle(hproc);
+
+	if (pi.hProcess)
+	{
+		CloseHandle(hproc);
+		TerminateProcess(pi.hProcess, 0);
+	}
+
+	Hid_RemoveAllProtectedImages(context);
+}
+
+void do_psmon_excl_tests(HidContext context)
 {
 	//HidStatus  hid_status;
+
 	wcout << L"--------------------------------" << endl;
-	wcout << L"Process monitor tests result:" << endl;
+	wcout << L"Process monitor excl tests result:" << endl;
 	wcout << L"--------------------------------" << endl;
+
+	try
+	{
+
+	}
+	catch (exception&)
+	{
+		wcout << L" failed!" << endl;
+	}
+
+
 }
 
 int wmain(int argc, wchar_t* argv[])
@@ -464,7 +647,8 @@ int wmain(int argc, wchar_t* argv[])
 
 	do_fsmon_tests(hid_context);
 	do_regmon_tests(hid_context);
-	do_psmon_tests(hid_context);
+	do_psmon_prot_tests(hid_context);
+	do_psmon_excl_tests(hid_context);
 
 	//Hid_Destroy(hid_context);
 

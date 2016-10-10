@@ -1,9 +1,8 @@
 #pragma once
 
 #include <Ntddk.h>
-#include "PsTable.h"
 
-typedef struct _ProcessTableEntry{
+typedef struct _ProcessTableEntry {
 	HANDLE processId;
 
 	BOOLEAN excluded;
@@ -11,6 +10,9 @@ typedef struct _ProcessTableEntry{
 
 	BOOLEAN protected;
 	ULONG   inheritProtection;
+
+	BOOLEAN subsystem;
+	BOOLEAN inited;
 
 } ProcessTableEntry, *PProcessTableEntry;
 

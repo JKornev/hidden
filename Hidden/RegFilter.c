@@ -8,6 +8,8 @@
 
 #define FILTER_ALLOC_TAG 'FRlF'
 
+BOOLEAN g_regFilterInited = FALSE;
+
 ExcludeContext g_excludeRegKeyContext;
 ExcludeContext g_excludeRegValueContext;
 
@@ -602,6 +604,7 @@ NTSTATUS InitializeRegistryFilter(PDRIVER_OBJECT DriverObject)
 		return status;
 	}
 
+	g_regFilterInited = TRUE;
 	return status;
 }
 
@@ -609,9 +612,17 @@ NTSTATUS DestroyRegistryFilter()
 {
 	NTSTATUS status;
 
+	if (!g_regFilterInited)
+		return STATUS_NOT_FOUND;
+
 	status = CmUnRegisterCallback(g_regCookie);
 	if (!NT_SUCCESS(status))
 		DbgPrint("FsFilter1!" __FUNCTION__ ": Registry filter unregistration failed with code:%08x\n", status);
+
+	DestroyExcludeListContext(g_excludeRegKeyContext);
+	DestroyExcludeListContext(g_excludeRegValueContext);
+
+	g_regFilterInited = FALSE;
 
 	return status;
 }

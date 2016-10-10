@@ -39,13 +39,13 @@ CONST PWCHAR g_excludeRegValues[] = {
 };
 
 CONST PWCHAR g_protectProcesses[] = {
-	L"\\Device\\HarddiskVolume1\\Windows\\System32\\calc.exe",
-	L"\\Device\\HarddiskVolume1\\Windows\\System32\\calc2.exe",
+	L"c:\\Windows\\System32\\calc.exe",
+	L"c:\\Windows\\System32\\calc2.exe",
 };
 
 CONST PWCHAR g_excludeProcesses[] = {
-	L"\\Device\\HarddiskVolume1\\Windows\\System32\\cmd.exe",
-	L"\\Device\\HarddiskVolume1\\Windows\\System32\\cmd2.exe",
+	L"c:\\Windows\\System32\\cmd.exe",
+	L"c:\\Windows\\System32\\cmd2.exe",
 };
 
 int wmain(int argc, wchar_t *argv[])

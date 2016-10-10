@@ -3,8 +3,8 @@
 
 #define PSTREE_ALLOC_TAG 'rTsP'
 
-RTL_AVL_TABLE g_processTable;
-KSPIN_LOCK    g_processTableLock;
+RTL_AVL_TABLE  g_processTable;
+KSPIN_LOCK     g_processTableLock;
 
 RTL_GENERIC_COMPARE_RESULTS CompareProcessTableEntry(struct _RTL_AVL_TABLE  *Table, PVOID  FirstStruct, PVOID  SecondStruct)
 {
@@ -178,6 +178,9 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 
 		if (entry.protected)
 			DbgPrint("FsFilter1!" __FUNCTION__ ": protected process:%d\n", entry.processId);
+
+		if (entry.subsystem)
+			DbgPrint("FsFilter1!" __FUNCTION__ ": subsystem process:%d\n", entry.processId);
 
 		// Go to next
 

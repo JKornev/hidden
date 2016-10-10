@@ -49,6 +49,7 @@ CONST FLT_REGISTRATION FilterRegistration = {
 	NULL                      //  NormalizeNameComponent
 };
 
+BOOLEAN g_fsMonitorInited = FALSE;
 PFLT_FILTER gFilterHandle = NULL;
 
 ExcludeContext g_excludeFileContext;
@@ -67,19 +68,6 @@ CONST PWCHAR g_excludeFiles[] = {
 CONST PWCHAR g_excludeDirs[] = {
 	NULL
 };
-
-NTSTATUS DestroyFSMiniFilter()
-{
-	DbgPrint("FsFilter1!" __FUNCTION__ ": Entered %d\n", (UINT32)KeGetCurrentIrql());
-
-	FltUnregisterFilter(gFilterHandle);
-	gFilterHandle = NULL;
-
-	DestroyExcludeListContext(g_excludeFileContext);
-	DestroyExcludeListContext(g_excludeDirectoryContext);
-
-	return STATUS_SUCCESS;
-}
 
 NTSTATUS FilterSetup(PCFLT_RELATED_OBJECTS FltObjects, FLT_INSTANCE_SETUP_FLAGS Flags, DEVICE_TYPE VolumeDeviceType, FLT_FILESYSTEM_TYPE VolumeFilesystemType)
 {
@@ -799,13 +787,38 @@ NTSTATUS InitializeFSMiniFilter(PDRIVER_OBJECT DriverObject)
 		status = FltStartFiltering(gFilterHandle);
 		if (!NT_SUCCESS(status))
 		{
+			DbgPrint("FsFilter1!" __FUNCTION__ ": can't start filtering, code:%08x\n", status);
 			FltUnregisterFilter(gFilterHandle);
 		}
 	}
 
-	DbgPrint("FsFilter1!" __FUNCTION__ ": Completed status:%08x\n", status);
+	if (!NT_SUCCESS(status))
+	{
+		DestroyExcludeListContext(g_excludeFileContext);
+		DestroyExcludeListContext(g_excludeDirectoryContext);
+		return status;
+	}
+
+	g_fsMonitorInited = TRUE;
 
 	return status;
+}
+
+NTSTATUS DestroyFSMiniFilter()
+{
+	DbgPrint("FsFilter1!" __FUNCTION__ ": Entered %d\n", (UINT32)KeGetCurrentIrql());
+
+	if (!g_fsMonitorInited)
+		return STATUS_NOT_FOUND;
+
+	FltUnregisterFilter(gFilterHandle);
+	gFilterHandle = NULL;
+
+	DestroyExcludeListContext(g_excludeFileContext);
+	DestroyExcludeListContext(g_excludeDirectoryContext);
+	g_fsMonitorInited = FALSE;
+
+	return STATUS_SUCCESS;
 }
 
 NTSTATUS AddHiddenFile(PUNICODE_STRING FilePath, PULONGLONG ObjId)

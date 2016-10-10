@@ -4,7 +4,7 @@
 #include "Device.h"
 #include "DeviceAPI.h"
 
-
+BOOLEAN g_deviceInited = FALSE;
 PDEVICE_OBJECT g_deviceObject = NULL;
 
 // =========================================================================================
@@ -453,6 +453,7 @@ NTSTATUS InitializeDevice(PDRIVER_OBJECT DriverObject)
 	DriverObject->MajorFunction[IRP_MJ_CLEANUP]        = IrpDeviceCleanup;
 	DriverObject->MajorFunction[IRP_MJ_DEVICE_CONTROL] = IrpDeviceControlHandler;
 	g_deviceObject = deviceObject;
+	g_deviceInited = TRUE;
 
 	return status;
 }
@@ -462,11 +463,16 @@ NTSTATUS DestroyDevice()
 	NTSTATUS status = STATUS_SUCCESS;
 	UNICODE_STRING dosDeviceName = RTL_CONSTANT_STRING(DOS_DEVICES_LINK_NAME);
 
+	if (!g_deviceInited)
+		return STATUS_NOT_FOUND;
+
 	status = IoDeleteSymbolicLink(&dosDeviceName);
 	if (!NT_SUCCESS(status))
 		DbgPrint("FsFilter1!" __FUNCTION__ ": symbolic link deletion failed with code:%08x\n", status);
 
 	IoDeleteDevice(g_deviceObject);
+
+	g_deviceInited = FALSE;
 
 	return status;
 }

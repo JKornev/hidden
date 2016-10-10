@@ -53,6 +53,6 @@ NTSTATUS QuerySystemInformation(SYSTEM_INFORMATION_CLASS Class, PVOID* InfoBuffe
 NTSTATUS QueryProcessInformation(PROCESSINFOCLASS Class, HANDLE ProcessId, PVOID* InfoBuffer, PSIZE_T InfoSize);
 VOID FreeInformation(PVOID Buffer);
 
-#define NORMALIZE_INCREAMENT (USHORT)64
+#define NORMALIZE_INCREAMENT (USHORT)128
 
 NTSTATUS NormalizeDevicePath(PCUNICODE_STRING Path, PUNICODE_STRING Normalized);

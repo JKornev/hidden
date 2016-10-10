@@ -7,6 +7,7 @@
 #define PROCESS_QUERY_LIMITED_INFORMATION      0x1000
 #define SYSTEM_PROCESS_ID (HANDLE)4
 
+BOOLEAN g_psMonitorInited = FALSE;
 PVOID g_obRegCallback = NULL;
 
 OB_OPERATION_REGISTRATION g_regOperation[2];
@@ -15,19 +16,70 @@ OB_CALLBACK_REGISTRATION g_regCallback;
 PsRulesContext g_excludeProcessRules;
 PsRulesContext g_protectProcessRules;
 
+typedef struct _ProcessListEntry {
+	LPCWSTR path;
+	ULONG inherit;
+} ProcessListEntry, *PProcessListEntry;
+
 // Use this variable for hard code full path to applications that can see hidden objects
 // For instance: L"\\Device\\HarddiskVolume1\\Windows\\System32\\calc.exe",
 // Notice: this array should be NULL terminated
-CONST PWCHAR g_excludeProcesses[] = {
-	NULL
+CONST ProcessListEntry g_excludeProcesses[] = {
+	{ NULL, 0 }
 };
 
 // Use this variable for hard code full path to applications that will be protected 
 // For instance: L"\\Device\\HarddiskVolume1\\Windows\\System32\\cmd.exe",
 // Notice: this array should be NULL terminated
-CONST PWCHAR g_protectProcesses[] = {
-	NULL
+CONST ProcessListEntry g_protectProcesses[] = {
+	{ NULL, 0 }
 };
+
+#define CSRSS_PAHT_BUFFER_SIZE 256
+
+UNICODE_STRING g_csrssPath;
+WCHAR          g_csrssPathBuffer[CSRSS_PAHT_BUFFER_SIZE];
+
+BOOLEAN CheckProtectedOperation(HANDLE Source, HANDLE Destination)
+{
+	ProcessTableEntry srcInfo, destInfo;
+
+	if (Source == Destination)
+		return FALSE;
+
+	destInfo.processId = Destination;
+	if (!GetProcessInProcessTable(&destInfo))
+		return FALSE;
+
+	srcInfo.processId = Source;
+	if (!GetProcessInProcessTable(&srcInfo))
+		return FALSE;
+
+	// Not-inited process can open any process (parent, csrss, etc)
+	if (!destInfo.inited)
+	{
+		// Update if source is subsystem and destination isn't inited
+		if (srcInfo.subsystem)
+		{
+			destInfo.inited = TRUE;
+			if (!UpdateProcessInProcessTable(&destInfo))
+				DbgPrint("FsFilter1!" __FUNCTION__ ": can't update initial state for process: %d\n", destInfo.processId);
+		}
+
+		return FALSE;
+	}
+
+	if (!destInfo.protected)
+		return FALSE;
+
+	if (srcInfo.protected)
+		return FALSE;
+
+	if (srcInfo.subsystem)
+		return FALSE;
+	
+	return TRUE;
+}
 
 OB_PREOP_CALLBACK_STATUS ProcessPreCallback(PVOID RegistrationContext, POB_PRE_OPERATION_INFORMATION OperationInformation)
 {
@@ -36,16 +88,13 @@ OB_PREOP_CALLBACK_STATUS ProcessPreCallback(PVOID RegistrationContext, POB_PRE_O
 	if (OperationInformation->KernelHandle)
 		return OB_PREOP_SUCCESS;
 	
-	if (!IsProcessProtected(PsGetProcessId(OperationInformation->Object)))
-		return OB_PREOP_SUCCESS;
+	//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! Process: %d(%d:%d), Oper: %s, Space: %s\n",
+	//	PsGetProcessId(OperationInformation->Object), PsGetCurrentProcessId(), PsGetCurrentThreadId(),
+	//	(OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE ? "create" : "dup"),
+	//	(OperationInformation->KernelHandle ? "kernel" : "user")
+	//);
 
-	DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! Process: %d(%d:%d), Oper: %s, Space: %s\n",
-		PsGetProcessId(OperationInformation->Object), PsGetCurrentProcessId(), PsGetCurrentThreadId(),
-		(OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE ? "create" : "dup"),
-		(OperationInformation->KernelHandle ? "kernel" : "user")
-	);
-
-	if (IsProcessProtected(PsGetCurrentProcessId()))
+	if (!CheckProtectedOperation(PsGetCurrentProcessId(), PsGetProcessId(OperationInformation->Object)))
 	{
 		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! allow protected process %d\n", PsGetCurrentProcessId());
 		return OB_PREOP_SUCCESS;
@@ -68,16 +117,13 @@ OB_PREOP_CALLBACK_STATUS ThreadPreCallback(PVOID RegistrationContext, POB_PRE_OP
 	if (OperationInformation->KernelHandle)
 		return OB_PREOP_SUCCESS;
 
-	if (!IsProcessProtected(PsGetProcessId(OperationInformation->Object)))
-		return OB_PREOP_SUCCESS;
+	//DbgPrint("FsFilter1!" __FUNCTION__ ": Thread: %d(%d:%d), Oper: %s, Space: %s\n",
+	//	PsGetThreadId(OperationInformation->Object), PsGetCurrentProcessId(), PsGetCurrentThreadId(),
+	//	(OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE ? "create" : "dup"),
+	//	(OperationInformation->KernelHandle ? "kernel" : "user")
+	//);
 
-	DbgPrint("FsFilter1!" __FUNCTION__ ": Thread: %d(%d:%d), Oper: %s, Space: %s\n",
-		PsGetThreadId(OperationInformation->Object), PsGetCurrentProcessId(), PsGetCurrentThreadId(),
-		(OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE ? "create" : "dup"),
-		(OperationInformation->KernelHandle ? "kernel" : "user")
-	);
-
-	if (IsProcessProtected(PsGetCurrentProcessId()))
+	if (!CheckProtectedOperation(PsGetCurrentProcessId(), PsGetProcessId(OperationInformation->Object)))
 	{
 		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! allow protected thread %d\n", PsGetCurrentProcessId());
 		return OB_PREOP_SUCCESS;
@@ -99,6 +145,9 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 	ULONG inheritType;
 
 	RtlZeroMemory(&lookup, sizeof(lookup));
+
+	Entry->inited = (!g_psMonitorInited ? TRUE : FALSE);
+	Entry->subsystem = RtlEqualUnicodeString(&g_csrssPath, ImgPath, TRUE);
 
 	// Check exclude flag
 
@@ -242,11 +291,30 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 {
 	const USHORT maxBufSize = 512;
 	NTSTATUS status;
-	UNICODE_STRING str, normalized;
+	UNICODE_STRING str, normalized, csrss;
 	UINT32 i;
 	PsRuleEntryId ruleId;
 
 	UNREFERENCED_PARAMETER(DriverObject);
+
+	// Set csrss path
+
+	RtlZeroMemory(g_csrssPathBuffer, sizeof(g_csrssPathBuffer));
+	g_csrssPath.Buffer = g_csrssPathBuffer;
+	g_csrssPath.Length = 0;
+	g_csrssPath.MaximumLength = sizeof(g_csrssPathBuffer);
+
+	RtlInitUnicodeString(&csrss, L"\\SystemRoot\\System32\\csrss.exe");
+	status = NormalizeDevicePath(&csrss, &g_csrssPath);
+	if (!NT_SUCCESS(status))
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": subsystem path normalization failed with code:%08x\n", status);
+		return status;
+	}
+
+	DbgPrint("FsFilter1!" __FUNCTION__ ": subsystem path: %wZ\n", &g_csrssPath);
+
+	// Init normalization buffer
 
 	normalized.Buffer = (PWCH)ExAllocatePool(NonPagedPool, maxBufSize);
 	normalized.Length = 0;
@@ -260,27 +328,28 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 	// Initialize and fill exclude file\dir lists 
 
 	// exclude
+
 	status = InitializePsRuleListContext(&g_excludeProcessRules);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": exclude process rules initialization failed with code:%08x\n", status);
+		DbgPrint("FsFilter1!" __FUNCTION__ ": excluded process rules initialization failed with code:%08x\n", status);
 		ExFreePool(normalized.Buffer);
 		return status;
 	}
 
-	for (i = 0; g_excludeProcesses[i]; i++)
+	for (i = 0; g_excludeProcesses[i].path; i++)
 	{
-		RtlInitUnicodeString(&str, g_excludeProcesses[i]);
+		RtlInitUnicodeString(&str, g_excludeProcesses[i].path);
 
 		status = NormalizeDevicePath(&str, &normalized);
-		DbgPrint("FsFilter1!" __FUNCTION__ ": normalized exclude %wZ\n", &normalized);
+		DbgPrint("FsFilter1!" __FUNCTION__ ": normalized excluded %wZ\n", &normalized);
 		if (!NT_SUCCESS(status))
 		{
 			DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, &str);
 			continue;
 		}
 
-		AddRuleToPsRuleList(g_excludeProcessRules, &normalized, PsRuleTypeWithoutInherit, &ruleId);
+		AddRuleToPsRuleList(g_excludeProcessRules, &normalized, g_excludeProcesses[i].inherit, &ruleId);
 	}
 
 	// protected
@@ -288,25 +357,25 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 	status = InitializePsRuleListContext(&g_protectProcessRules);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": exclude process rules initialization failed with code:%08x\n", status);
+		DbgPrint("FsFilter1!" __FUNCTION__ ": protected process rules initialization failed with code:%08x\n", status);
 		DestroyPsRuleListContext(g_excludeProcessRules);
 		ExFreePool(normalized.Buffer);
 		return status;
 	}
 
-	for (i = 0; g_protectProcesses[i]; i++)
+	for (i = 0; g_protectProcesses[i].path; i++)
 	{
-		RtlInitUnicodeString(&str, g_protectProcesses[i]);
+		RtlInitUnicodeString(&str, g_protectProcesses[i].path);
 
 		status = NormalizeDevicePath(&str, &normalized);
-		DbgPrint("FsFilter1!" __FUNCTION__ ": normalized exclude %wZ\n", &normalized);
+		DbgPrint("FsFilter1!" __FUNCTION__ ": normalized protected %wZ\n", &normalized);
 		if (!NT_SUCCESS(status))
 		{
 			DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, &str);
 			continue;
 		}
 
-		AddRuleToPsRuleList(g_protectProcessRules, &normalized, PsRuleTypeWithoutInherit, &ruleId);
+		AddRuleToPsRuleList(g_protectProcessRules, &normalized, g_protectProcesses[i].inherit, &ruleId);
 	}
 
 	status = InitializeProcessTable(CheckProcessFlags);
@@ -319,6 +388,8 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 	}
 
 	ExFreePool(normalized.Buffer);
+
+	g_psMonitorInited = TRUE;
 
 	// Register ps\thr pre create\duplicate object callback
 
@@ -361,6 +432,9 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 
 NTSTATUS DestroyPsMonitor()
 {
+	if (!g_psMonitorInited)
+		return STATUS_ALREADY_DISCONNECTED;
+
 	if (g_obRegCallback)
 	{
 		ObUnRegisterCallbacks(g_obRegCallback);
@@ -373,6 +447,7 @@ NTSTATUS DestroyPsMonitor()
 	DestroyPsRuleListContext(g_protectProcessRules);
 
 	DestroyProcessTable();
+	g_psMonitorInited = FALSE;
 
 	return STATUS_SUCCESS;
 }
@@ -407,8 +482,6 @@ NTSTATUS AddProtectedImage(PUNICODE_STRING ImagePath, ULONG InheritType, PULONGL
 	ExFreePool(normalized.Buffer);
 
 	return status;
-	//DbgPrint("FsFilter1!" __FUNCTION__ ": protect image: %wZ\n", ImagePath);
-	//return AddRuleToPsRuleList(g_protectProcessRules, ImagePath, InheritType, ObjId);
 }
 
 NTSTATUS GetProtectedProcessState(HANDLE ProcessId, PULONG InheritType, PBOOLEAN Enable)
