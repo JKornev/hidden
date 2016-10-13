@@ -461,13 +461,11 @@ void do_psmon_prot_tests(HidContext context)
 		//TODO:
 		// test 1: create proc, protect, check, unprotect
 
-		wcout << L"Test 1: create process, protect, check, unprotect" << endl;
+		wcout << L"Test 1: attach, test, detach protection" << endl;
 
 		memset(&si, 0, sizeof(si));
 		memset(&pi, 0, sizeof(pi));
 		si.cb = sizeof(si);
-
-		wcout << L"step" << 1 << endl;
 
 		hid_status = Hid_GetProtectedState(context, GetCurrentProcessId(), &state, &inheritType);
 		if (!HID_STATUS_SUCCESSFUL(hid_status))
@@ -482,7 +480,6 @@ void do_psmon_prot_tests(HidContext context)
 			throw exception();
 		}
 
-		wcout << L"step" << 2 << endl;
 		hid_status = Hid_AttachProtectedState(context, GetCurrentProcessId(), HidPsInheritTypes::WithoutInherit);
 		if (!HID_STATUS_SUCCESSFUL(hid_status))
 		{
@@ -503,34 +500,6 @@ void do_psmon_prot_tests(HidContext context)
 			throw exception();
 		}
 
-		wcout << L"step" << 3 << endl;
-		hid_status = Hid_AddProtectedImage(context, path, HidPsInheritTypes::WithoutInherit, &objId[1]);
-		if (!HID_STATUS_SUCCESSFUL(hid_status))
-		{
-			wcout << L"Error, can't protect image, code: " << HID_STATUS_CODE(hid_status) << endl;
-			throw exception();
-		}
-
-		wcout << L"step" << 3 << endl;
-		//hid_status = Hid_AttachProtectedState(context,  420, HidPsInheritTypes::WithoutInherit);
-		if (!HID_STATUS_SUCCESSFUL(hid_status))
-		{
-			wcout << L"Error, can't protect csrss image, code: " << HID_STATUS_CODE(hid_status) << endl;
-			throw exception();
-		}
-
-
-		wcout << L"step" << 4 << endl;
-		if (!CreateProcessW(NULL, path, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
-		{
-			error_code = GetLastError();
-			wcout << L"Error, CreateProcessW() failed with code: " << error_code << endl;
-			throw exception();
-		}
-
-		wcout << L"step" << 5 << endl;
-		CloseHandle(pi.hThread);
-
 		hid_status = Hid_RemoveProtectedState(context, GetCurrentProcessId());
 		if (!HID_STATUS_SUCCESSFUL(hid_status))
 		{
@@ -538,7 +507,46 @@ void do_psmon_prot_tests(HidContext context)
 			throw exception();
 		}
 
-		wcout << L"step" << 6 << endl;
+		hid_status = Hid_GetProtectedState(context, GetCurrentProcessId(), &state, &inheritType);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't get self state, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		if (state != HidActiveState::StateDisabled)
+		{
+			wcout << L"Error, state isn't StateDisabled, state: " << state << " " << inheritType << endl;
+			throw exception();
+		}
+
+		wcout << L" successful!" << endl;
+
+		wcout << L"Test 2: create process, protect, check, unprotect" << endl;
+
+		hid_status = Hid_AddProtectedImage(context, path, HidPsInheritTypes::WithoutInherit, &objId[1]);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't protect image, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		if (!CreateProcessW(NULL, path, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
+		{
+			error_code = GetLastError();
+			wcout << L"Error, CreateProcessW() failed with code: " << error_code << endl;
+			throw exception();
+		}
+
+		CloseHandle(pi.hThread);
+
+		if (!VirtualAllocEx(pi.hProcess, 0, 0x1000, MEM_COMMIT, PAGE_EXECUTE_READWRITE))
+		{
+			error_code = GetLastError();
+			wcout << L"Error, VirtualAllocEx() failed with code: " << error_code << endl;
+			throw exception();
+		}
+
 		hproc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pi.dwProcessId);
 		if (!hproc)
 		{
@@ -547,7 +555,6 @@ void do_psmon_prot_tests(HidContext context)
 			throw exception();
 		}
 
-		wcout << L"step" << 7 << endl;
 		if (VirtualAllocEx(hproc, 0, 0x1000, MEM_COMMIT, PAGE_EXECUTE_READWRITE))
 		{
 			wcout << L"Error, process protection doesn't work" << endl;
@@ -557,7 +564,31 @@ void do_psmon_prot_tests(HidContext context)
 		CloseHandle(hproc);
 		hproc = 0;
 
-		wcout << L"step" << 8 << endl;
+		hid_status = Hid_AttachProtectedState(context, GetCurrentProcessId(), HidPsInheritTypes::WithoutInherit);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't protect self image, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		hproc = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pi.dwProcessId);
+		if (!hproc)
+		{
+			error_code = GetLastError();
+			wcout << L"Error, OpenProcess() failed with code: " << error_code << endl;
+			throw exception();
+		}
+
+		if (!VirtualAllocEx(hproc, 0, 0x1000, MEM_COMMIT, PAGE_EXECUTE_READWRITE))
+		{
+			error_code = GetLastError();
+			wcout << L"Error, VirtualAllocEx() failed with code: " << error_code << endl;
+			throw exception();
+		}
+
+		CloseHandle(hproc);
+		hproc = 0;
+
 		hid_status = Hid_RemoveProtectedImage(context, objId[1]);
 		if (!HID_STATUS_SUCCESSFUL(hid_status))
 		{
@@ -592,7 +623,6 @@ void do_psmon_prot_tests(HidContext context)
 
 		wcout << L" successful!" << endl;
 
-
 	}
 	catch (exception&)
 	{
@@ -608,12 +638,17 @@ void do_psmon_prot_tests(HidContext context)
 		TerminateProcess(pi.hProcess, 0);
 	}
 
+	Hid_RemoveProtectedState(context, GetCurrentProcessId());
 	Hid_RemoveAllProtectedImages(context);
 }
 
 void do_psmon_excl_tests(HidContext context)
 {
-	//HidStatus  hid_status;
+	HidStatus  hid_status;
+	wstring file_path;
+	HidObjId objId[3];
+	HidActiveState state;
+	HidPsInheritTypes inheritType;
 
 	wcout << L"--------------------------------" << endl;
 	wcout << L"Process monitor excl tests result:" << endl;
@@ -621,14 +656,103 @@ void do_psmon_excl_tests(HidContext context)
 
 	try
 	{
+		wcout << L"Test 1: hide file, add excluded process, check file" << endl;
 
+		gen_temp_path(file_path);
+
+		CHandle hfile(
+			::CreateFileW(
+			file_path.c_str(),
+			FILE_READ_ACCESS | FILE_WRITE_ACCESS,
+			FILE_SHARE_READ | FILE_SHARE_WRITE,
+			NULL,
+			CREATE_ALWAYS,
+			FILE_FLAG_DELETE_ON_CLOSE,
+			NULL
+			)
+		);
+		if (hfile.get() == INVALID_HANDLE_VALUE)
+		{
+			wcout << L"Error, CreateFileW() failed with code: " << hfile.error() << endl;
+			throw exception();
+		}
+
+		hid_status = Hid_AddHiddenFile(context, file_path.c_str(), &objId[0]);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, Hid_AddHiddenFile() failed with code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		if (::GetFileAttributesW(file_path.c_str()) != INVALID_FILE_ATTRIBUTES)
+		{
+			wcout << L"Error, hidden file has been found" << endl;
+			throw exception();
+		}
+
+		hid_status = Hid_GetExcludedState(context, GetCurrentProcessId(), &state, &inheritType);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't get self state, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		if (state != HidActiveState::StateDisabled)
+		{
+			wcout << L"Error, state isn't StateDisabled, state: " << state << " " << inheritType << endl;
+			throw exception();
+		}
+
+		hid_status = Hid_AttachExcludedState(context, GetCurrentProcessId(), HidPsInheritTypes::WithoutInherit);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't exclude self image, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		hid_status = Hid_GetExcludedState(context, GetCurrentProcessId(), &state, &inheritType);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't get self state, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		if (state != HidActiveState::StateEnabled)
+		{
+			wcout << L"Error, state isn't StateEnabled, state: " << state << " " << inheritType << endl;
+			throw exception();
+		}
+
+		if (::GetFileAttributesW(file_path.c_str()) == INVALID_FILE_ATTRIBUTES)
+		{
+			wcout << L"Error, can't find hidden file" << endl;
+			throw exception();
+		}
+
+		hid_status = Hid_RemoveExcludedState(context, GetCurrentProcessId());
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't remove exclude state from self image, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		if (::GetFileAttributesW(file_path.c_str()) != INVALID_FILE_ATTRIBUTES)
+		{
+			wcout << L"Error, hidden file has been found" << endl;
+			throw exception();
+		}
+
+		wcout << L" successful!" << endl;
+
+		//TODO: add tests for other API
 	}
 	catch (exception&)
 	{
 		wcout << L" failed!" << endl;
 	}
 
-
+	Hid_RemoveAllHiddenFiles(context);
+	Hid_RemoveAllExcludedImages(context);
 }
 
 int wmain(int argc, wchar_t* argv[])
@@ -642,7 +766,7 @@ int wmain(int argc, wchar_t* argv[])
 	if (!HID_STATUS_SUCCESSFUL(hid_status))
 	{
 		cout << "Error, HiddenLib initialization failed with code: " << HID_STATUS_CODE(hid_status) << endl;
-	//	return 1;
+		return 1;
 	}
 
 	do_fsmon_tests(hid_context);
@@ -650,7 +774,7 @@ int wmain(int argc, wchar_t* argv[])
 	do_psmon_prot_tests(hid_context);
 	do_psmon_excl_tests(hid_context);
 
-	//Hid_Destroy(hid_context);
+	Hid_Destroy(hid_context);
 
 	return 0;
 }
