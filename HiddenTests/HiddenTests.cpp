@@ -634,8 +634,8 @@ void do_psmon_prot_tests(HidContext context)
 
 	if (pi.hProcess)
 	{
-		CloseHandle(hproc);
 		TerminateProcess(pi.hProcess, 0);
+		CloseHandle(pi.hProcess);
 	}
 
 	Hid_RemoveProtectedState(context, GetCurrentProcessId());
@@ -649,10 +649,19 @@ void do_psmon_excl_tests(HidContext context)
 	HidObjId objId[3];
 	HidActiveState state;
 	HidPsInheritTypes inheritType;
+	STARTUPINFOW si;
+	PROCESS_INFORMATION pi;
+	wstring exepath;
+	HANDLE hproc = 0;
+	DWORD error_code, exit_code;
 
 	wcout << L"--------------------------------" << endl;
 	wcout << L"Process monitor excl tests result:" << endl;
 	wcout << L"--------------------------------" << endl;
+
+	memset(&si, 0, sizeof(si));
+	memset(&pi, 0, sizeof(pi));
+	si.cb = sizeof(si);
 
 	try
 	{
@@ -663,11 +672,11 @@ void do_psmon_excl_tests(HidContext context)
 		CHandle hfile(
 			::CreateFileW(
 			file_path.c_str(),
-			FILE_READ_ACCESS | FILE_WRITE_ACCESS,
+			GENERIC_READ | GENERIC_WRITE,
 			FILE_SHARE_READ | FILE_SHARE_WRITE,
 			NULL,
 			CREATE_ALWAYS,
-			FILE_FLAG_DELETE_ON_CLOSE,
+			0,
 			NULL
 			)
 		);
@@ -744,15 +753,93 @@ void do_psmon_excl_tests(HidContext context)
 
 		wcout << L" successful!" << endl;
 
-		//TODO: add tests for other API
+		wcout << L"Test 2: " << endl;
+
+		exepath = L"c:\\windows\\system32\\cmd.exe /c type \"";
+		exepath += file_path.c_str();
+		exepath += L"\"";
+		if (!CreateProcessW(NULL, (LPWSTR)exepath.c_str(), NULL, NULL, FALSE, CREATE_NEW_CONSOLE /*| CREATE_SUSPENDED*/, NULL, NULL, &si, &pi))
+		{
+			error_code = GetLastError();
+			wcout << L"Error, CreateProcessW() failed with code: " << error_code << endl;
+			throw exception();
+		}
+
+		CloseHandle(pi.hThread);
+
+		WaitForSingleObject(pi.hProcess, INFINITE);
+
+		exit_code = 0;
+		if (!GetExitCodeProcess(pi.hProcess, &exit_code))
+		{
+			error_code = GetLastError();
+			wcout << L"Error, GetExitCodeProcess() failed with code: " << error_code << endl;
+			throw exception();
+		}
+
+		if (exit_code == 0)
+		{
+			wcout << L"Error, hidden file has been found" << endl;
+			throw exception();
+		}
+
+		CloseHandle(pi.hProcess);
+		memset(&pi, 0, sizeof(pi));
+
+		hid_status = Hid_AddExcludedImage(context, L"c:\\windows\\system32\\cmd.exe", HidPsInheritTypes::InheritOnce, &objId[1]);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't add excluded image, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		exepath = L"c:\\windows\\system32\\cmd.exe /c type \"";
+		exepath += file_path.c_str();
+		exepath += L"\"";
+		if (!CreateProcessW(NULL, (LPWSTR)exepath.c_str(), NULL, NULL, FALSE, CREATE_NEW_CONSOLE, NULL, NULL, &si, &pi))
+		{
+			error_code = GetLastError();
+			wcout << L"Error, CreateProcessW() failed with code: " << error_code << endl;
+			throw exception();
+		}
+
+		CloseHandle(pi.hThread);
+
+		WaitForSingleObject(pi.hProcess, INFINITE);
+
+		if (!GetExitCodeProcess(pi.hProcess, &exit_code))
+		{
+			error_code = GetLastError();
+			wcout << L"Error, GetExitCodeProcess() failed with code: " << error_code << endl;
+			throw exception();
+		}
+
+		if (exit_code != 0)
+		{
+			wcout << L"Error, process exclusion doesn't work, termination code: " << exit_code << endl;
+			throw exception();
+		}
+
+		CloseHandle(pi.hProcess);
+		memset(&pi, 0, sizeof(pi));
+
+		wcout << L" successful!" << endl;
 	}
 	catch (exception&)
 	{
 		wcout << L" failed!" << endl;
 	}
 
+	if (pi.hProcess)
+	{
+		TerminateProcess(pi.hProcess, 0);
+		CloseHandle(pi.hProcess);
+	}
+
 	Hid_RemoveAllHiddenFiles(context);
 	Hid_RemoveAllExcludedImages(context);
+
+	DeleteFileW(file_path.c_str());
 }
 
 int wmain(int argc, wchar_t* argv[])
