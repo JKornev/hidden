@@ -14,10 +14,10 @@
 	+ Реализовать интерфейс для File & Reg мониторов
 	+ Вынести Process Table в отдельный файл
 		+ Переименовать Process Tree в Process Table
-- Протестировать интерфейсы
++ Протестировать интерфейсы
 	+ Добавить в HiddenCLI загрузку excluded и protected процессов
 	+ Добавить проект HiddenTest
-	- Реализовать тесты в проекте HiddenTest
+	+ Реализовать тесты в проекте HiddenTest
 		+ FS monitor
 		+ Reg filter
 		+ Ps filter
@@ -27,10 +27,9 @@
 	+ delete value
 	+ query value
 	+ query multiple value
-- Почистить Exclude List
-	+ Добавить в Exclude List поддержку case insensetive crc32 (если возможно, например русские буквы) (*Нет необхлжимости)
-	- Добавить в Exclude List для файлов такую же лексическую сортировку как и в реестру, возможно обьеденить ф-и
-	- Переписать всё на основе AVL или других buildin generic trees
+- Переписать Exclude List на основе AVL или других buildin generic trees
+	- FS monitor
+	- Reg monitor
 + Реализовать конвертирование пути в пути драйвера
 	+ Ps monitor
 	+ FS filter
@@ -43,7 +42,7 @@
 	+ Реализовать usermode библиотеку для работы с IOCTL API
 		+ Слинковать с IOCTL API lib
 - Реализовать HiddenCLI
-- Портировать драйвер под архитектуру x64
++ Портировать драйвер под архитектуру x64
 - Залить проект на Git
 	+ Переименовать проект драйвера в Hidden
 	- Привести в порядок все версии билда Release, Debug, ...

@@ -6,6 +6,24 @@
 /Win8.1Debug/Hidden Package
 /Win7Debug
 /Win8.1Debug
+/x64
+/Debug
+/Release
 /*.suo
 /*.sdf
 /*.opensdf
+*.user
+/Hidden Package/Win8.1Release
+/Hidden/Win8.1Release
+/Hidden/x64/Win7Debug
+/Hidden Package/x64/Win7Debug
+/HiddenCLI/Debug
+/HiddenCLI/Release
+/HiddenLib/Debug
+/HiddenLib/Release
+/HiddenLib/x64/Debug
+/HiddenTests/Debug
+/HiddenTests/Release
+/HiddenTests/x64/Debug
+/Win8.1Release
+/HiddenTests/*.idc

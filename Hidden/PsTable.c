@@ -103,7 +103,7 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 {
 	PSYSTEM_PROCESS_INFORMATION processInfo = NULL, first;
 	NTSTATUS status;
-	ULONG size = 0, offset;
+	SIZE_T size = 0, offset;
 
 	// Init process table 
 
