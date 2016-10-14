@@ -842,6 +842,19 @@ void do_psmon_excl_tests(HidContext context)
 	DeleteFileW(file_path.c_str());
 }
 
+void disable_wow64_redirection()
+{
+#ifndef _AMD64
+	BOOL wow64 = FALSE;
+	PVOID value;
+
+	IsWow64Process(GetCurrentProcess(), &wow64);
+
+	if (wow64)
+		Wow64DisableWow64FsRedirection(&value);
+#endif
+}
+
 int wmain(int argc, wchar_t* argv[])
 {
 	HidContext hid_context;
@@ -855,6 +868,8 @@ int wmain(int argc, wchar_t* argv[])
 		cout << "Error, HiddenLib initialization failed with code: " << HID_STATUS_CODE(hid_status) << endl;
 		return 1;
 	}
+
+	disable_wow64_redirection();
 
 	do_fsmon_tests(hid_context);
 	do_regmon_tests(hid_context);
