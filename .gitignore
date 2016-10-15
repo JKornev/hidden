@@ -1,5 +1,5 @@
-/Hidden Package/Win7Debug
-/Hidden Package/Win8.1Debug
+/Hidden Package/*/
+/Hidden Package/&/
 /Hidden/Win7Debug
 /Hidden/Win8.1Debug
 /Win7Debug/Hidden Package
@@ -27,3 +27,5 @@
 /HiddenTests/x64/Debug
 /Win8.1Release
 /HiddenTests/*.idc
+/Hidden/Release
+/Hidden/x64/Release
