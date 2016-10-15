@@ -29,3 +29,7 @@
 /HiddenTests/*.idc
 /Hidden/Release
 /Hidden/x64/Release
+/HiddenCLI/x64/Release
+/HiddenLib/x64/Release
+/HiddenTests/x64/Release/HiddenTests.tlog
+/HiddenTests/x64/Release

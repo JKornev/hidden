@@ -7,6 +7,8 @@ typedef unsigned long long HidStatus;
 
 #define HID_SET_STATUS(state, code)   (unsigned long long)((unsigned long long)code << 1 | (state ? 1 : 0))
 
+#define _API __cdecl
+
 typedef void*       HidContext;
 typedef HidContext* PHidContext;
 
@@ -37,42 +39,42 @@ enum HidRegRootTypes
 	RegHKU
 };
 
-HidStatus Hid_Initialize(PHidContext pcontext);
-void Hid_Destroy(HidContext context);
+HidStatus _API Hid_Initialize(PHidContext pcontext, const wchar_t* deviceName = 0);
+void _API Hid_Destroy(HidContext context);
 
-HidStatus Hid_SetState(HidContext context, HidActiveState state);
-HidStatus Hid_GetState(HidContext context, HidActiveState* pstate);
+HidStatus _API Hid_SetState(HidContext context, HidActiveState state);
+HidStatus _API Hid_GetState(HidContext context, HidActiveState* pstate);
 
 // Fs\Reg
 
-HidStatus Hid_AddHiddenRegKey(HidContext context, HidRegRootTypes root, const wchar_t* regKey, HidObjId* objId);
-HidStatus Hid_RemoveHiddenRegKey(HidContext context, HidObjId objId);
-HidStatus Hid_RemoveAllHiddenRegKeys(HidContext context);
+HidStatus _API Hid_AddHiddenRegKey(HidContext context, HidRegRootTypes root, const wchar_t* regKey, HidObjId* objId);
+HidStatus _API Hid_RemoveHiddenRegKey(HidContext context, HidObjId objId);
+HidStatus _API Hid_RemoveAllHiddenRegKeys(HidContext context);
 
-HidStatus Hid_AddHiddenRegValue(HidContext context, HidRegRootTypes root, const wchar_t* regValue, HidObjId* objId);
-HidStatus Hid_RemoveHiddenRegValue(HidContext context, HidObjId objId);
-HidStatus Hid_RemoveAllHiddenRegValues(HidContext context);
+HidStatus _API Hid_AddHiddenRegValue(HidContext context, HidRegRootTypes root, const wchar_t* regValue, HidObjId* objId);
+HidStatus _API Hid_RemoveHiddenRegValue(HidContext context, HidObjId objId);
+HidStatus _API Hid_RemoveAllHiddenRegValues(HidContext context);
 
-HidStatus Hid_AddHiddenFile(HidContext context, const wchar_t* filePath, HidObjId* objId);
-HidStatus Hid_RemoveHiddenFile(HidContext context, HidObjId objId);
-HidStatus Hid_RemoveAllHiddenFiles(HidContext context);
+HidStatus _API Hid_AddHiddenFile(HidContext context, const wchar_t* filePath, HidObjId* objId);
+HidStatus _API Hid_RemoveHiddenFile(HidContext context, HidObjId objId);
+HidStatus _API Hid_RemoveAllHiddenFiles(HidContext context);
 
-HidStatus Hid_AddHiddenDir(HidContext context, const wchar_t* dirPath, HidObjId* objId);
-HidStatus Hid_RemoveHiddenDir(HidContext context, HidObjId objId);
-HidStatus Hid_RemoveAllHiddenDirs(HidContext context);
+HidStatus _API Hid_AddHiddenDir(HidContext context, const wchar_t* dirPath, HidObjId* objId);
+HidStatus _API Hid_RemoveHiddenDir(HidContext context, HidObjId objId);
+HidStatus _API Hid_RemoveAllHiddenDirs(HidContext context);
 
 // Ps
 
-HidStatus Hid_AddExcludedImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, HidObjId* objId);
-HidStatus Hid_RemoveExcludedImage(HidContext context, HidObjId objId);
-HidStatus Hid_RemoveAllExcludedImages(HidContext context);
-HidStatus Hid_GetExcludedState(HidContext context, HidProcId procId, HidActiveState* state, HidPsInheritTypes* inheritType);
-HidStatus Hid_AttachExcludedState(HidContext context, HidProcId procId, HidPsInheritTypes inheritType);
-HidStatus Hid_RemoveExcludedState(HidContext context, HidProcId procId);
+HidStatus _API Hid_AddExcludedImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, HidObjId* objId);
+HidStatus _API Hid_RemoveExcludedImage(HidContext context, HidObjId objId);
+HidStatus _API Hid_RemoveAllExcludedImages(HidContext context);
+HidStatus _API Hid_GetExcludedState(HidContext context, HidProcId procId, HidActiveState* state, HidPsInheritTypes* inheritType);
+HidStatus _API Hid_AttachExcludedState(HidContext context, HidProcId procId, HidPsInheritTypes inheritType);
+HidStatus _API Hid_RemoveExcludedState(HidContext context, HidProcId procId);
 
-HidStatus Hid_AddProtectedImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, HidObjId* objId);
-HidStatus Hid_RemoveProtectedImage(HidContext context, HidObjId objId);
-HidStatus Hid_RemoveAllProtectedImages(HidContext context);
-HidStatus Hid_GetProtectedState(HidContext context, HidProcId procId, HidActiveState* state, HidPsInheritTypes* inheritType);
-HidStatus Hid_AttachProtectedState(HidContext context, HidProcId procId, HidPsInheritTypes inheritType);
-HidStatus Hid_RemoveProtectedState(HidContext context, HidProcId procId);
+HidStatus _API Hid_AddProtectedImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, HidObjId* objId);
+HidStatus _API Hid_RemoveProtectedImage(HidContext context, HidObjId objId);
+HidStatus _API Hid_RemoveAllProtectedImages(HidContext context);
+HidStatus _API Hid_GetProtectedState(HidContext context, HidProcId procId, HidActiveState* state, HidPsInheritTypes* inheritType);
+HidStatus _API Hid_AttachProtectedState(HidContext context, HidProcId procId, HidPsInheritTypes inheritType);
+HidStatus _API Hid_RemoveProtectedState(HidContext context, HidProcId procId);

@@ -860,7 +860,7 @@ int wmain(int argc, wchar_t* argv[])
 	HidContext hid_context;
 	HidStatus  hid_status;
 
-	srand(time(0));
+	srand((int)time(0));
 
 	hid_status = Hid_Initialize(&hid_context);
 	if (!HID_STATUS_SUCCESSFUL(hid_status))
