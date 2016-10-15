@@ -13,23 +13,18 @@ typedef struct _EXCLUDE_FILE_LIST_ENTRY {
 	LIST_ENTRY       list;
 	ULONGLONG        guid;
 	EXCULE_FILE_PATH path;
-	//UINT32           dirCrc32;
-	//UINT32           type;
 } EXCLUDE_FILE_LIST_ENTRY, *PEXCLUDE_FILE_LIST_ENTRY;
 
 typedef struct _EXCLUDE_FILE_CONTEXT {
 	LIST_ENTRY       listHead;
 	KSPIN_LOCK       listLock;
 	ULONGLONG        guidCounter;
-	//UINT32           IVector;
 	UINT32           type;
 } EXCLUDE_FILE_CONTEXT, *PEXCLUDE_FILE_CONTEXT;
 
 NTSTATUS AddExcludeListEntry(ExcludeContext Context, PUNICODE_STRING FilePath, UINT32 Type, PExcludeEntryId EntryId);
 
-BOOLEAN InitFilePathByString(PEXCULE_FILE_PATH path, PUNICODE_STRING FilePath, PUINT32 DirCrc32, UINT32 iv);
 BOOLEAN FillDirectoryFromPath(PEXCULE_FILE_PATH path, PUNICODE_STRING filePath);
-//BOOLEAN InitFilePathByDirectory(PEXCULE_FILE_PATH path, PUNICODE_STRING filePath, PUINT32 DirCrc32, UINT32 iv);
 
 unsigned int GetCrc32(void* buf, unsigned int size, unsigned int ivect);
 
@@ -62,7 +57,6 @@ NTSTATUS InitializeExcludeListContext(PExcludeContext Context, UINT32 Type)
 	KeInitializeSpinLock(&cntx->listLock);
 	cntx->guidCounter = 0;
 	cntx->type = Type;
-	//cntx->IVector = (UINT32)&InitializeExcludeListContext;
 
 	*Context = cntx;
 
@@ -103,7 +97,6 @@ NTSTATUS AddExcludeListEntry(ExcludeContext Context, PUNICODE_STRING FilePath, U
 	KLOCK_QUEUE_HANDLE lockHandle;
 	PEXCLUDE_FILE_LIST_ENTRY entry, head;
 	UNICODE_STRING temp;
-	//NTSTATUS status;
 	SIZE_T size;
 
 	UNREFERENCED_PARAMETER(Type);
@@ -136,18 +129,14 @@ NTSTATUS AddExcludeListEntry(ExcludeContext Context, PUNICODE_STRING FilePath, U
 	temp.Length = 0;
 	temp.MaximumLength = FilePath->Length;
 
-	//status = RtlDowncaseUnicodeString(&temp, FilePath, FALSE);
 	RtlCopyUnicodeString(&temp, FilePath);
 
-	//if (!InitFilePathByString(&entry->path, &temp, &entry->dirCrc32, cntx->IVector))
 	if (!FillDirectoryFromPath(&entry->path, &temp))
 	{
 		ExFreePoolWithTag(entry, EXCLUDE_ALLOC_TAG);
 		DbgPrint("FsFilter1!" __FUNCTION__ ": warning, exclude file list is not NULL : %p\n", cntx);
 		return STATUS_ACCESS_DENIED;
 	}
-
-	//entry->type = Type;
 
 	// Push new list entry to context
 
@@ -157,7 +146,6 @@ NTSTATUS AddExcludeListEntry(ExcludeContext Context, PUNICODE_STRING FilePath, U
 		head = (PEXCLUDE_FILE_LIST_ENTRY)cntx->listHead.Flink;
 		while (head != (PEXCLUDE_FILE_LIST_ENTRY)&cntx->listHead)
 		{
-			//INT res = StrCmpW(&entry->path.fullPath, &head->path.fullPath);
 			INT res = RtlCompareUnicodeString(&entry->path.fullPath, &head->path.fullPath, TRUE);
 			if (res <= 0)
 				break;
@@ -236,18 +224,13 @@ BOOLEAN CheckExcludeListFile(ExcludeContext Context, PCUNICODE_STRING Path)
 	KLOCK_QUEUE_HANDLE lockHandle;
 	PEXCLUDE_FILE_LIST_ENTRY entry;
 	BOOLEAN result = FALSE;
-	//UINT32 crc32;
-
-	//crc32 = GetCrc32(Path->Buffer, Path->Length, cntx->IVector);
 
 	KeAcquireInStackQueuedSpinLock(&cntx->listLock, &lockHandle);
 
 	entry = (PEXCLUDE_FILE_LIST_ENTRY)cntx->listHead.Flink;
 	while (entry != (PEXCLUDE_FILE_LIST_ENTRY)&cntx->listHead)
 	{
-		if (/*entry->type == ExcludeFile
-		 && entry->dirCrc32 == crc32 // TEMPORARY DISABLED, because checksum isn't support case-insensetive string
-		 &&*/ RtlCompareUnicodeString(&entry->path.fullPath, Path, TRUE) == 0)
+		if (RtlCompareUnicodeString(&entry->path.fullPath, Path, TRUE) == 0)
 		{
 			result = TRUE;
 			break;
@@ -423,17 +406,6 @@ BOOLEAN FillDirectoryFromPath(PEXCULE_FILE_PATH path, PUNICODE_STRING filePath)
 	}
 
 	return FALSE;
-}
-
-BOOLEAN InitFilePathByString(PEXCULE_FILE_PATH path, PUNICODE_STRING FilePath, PUINT32 DirCrc32, UINT32 iv)
-{
-	if (!FillDirectoryFromPath(path, FilePath))
-		return FALSE;
-
-	if (DirCrc32) 
-		*DirCrc32 = GetCrc32(path->dirName.Buffer, path->dirName.Length, iv);
-
-	return TRUE;
 }
 
 // code from wikipedia.org
