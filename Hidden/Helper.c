@@ -9,7 +9,7 @@ NTSTATUS QuerySystemInformation(SYSTEM_INFORMATION_CLASS Class, PVOID* InfoBuffe
 	ULONG size = 0, written = 0;
 
 	// Query required size
-	status = NtQuerySystemInformation(Class, 0, 0, &size);
+	status = ZwQuerySystemInformation(Class, 0, 0, &size);
 	if (status != STATUS_INFO_LENGTH_MISMATCH)
 		return status;
 
@@ -24,7 +24,7 @@ NTSTATUS QuerySystemInformation(SYSTEM_INFORMATION_CLASS Class, PVOID* InfoBuffe
 		if (!info)
 			break;
 
-		status = NtQuerySystemInformation(Class, info, size, &written);
+		status = ZwQuerySystemInformation(Class, info, size, &written);
 	}
 
 	if (!info)
@@ -49,7 +49,7 @@ NTSTATUS QueryProcessInformation(PROCESSINFOCLASS Class, HANDLE Process, PVOID* 
 	ULONG size = 0, written = 0;
 
 	// Query required size
-	status = NtQueryInformationProcess(Process, Class, 0, 0, &size);
+	status = ZwQueryInformationProcess(Process, Class, 0, 0, &size);
 	if (status != STATUS_INFO_LENGTH_MISMATCH)
 		return status;
 
@@ -64,7 +64,7 @@ NTSTATUS QueryProcessInformation(PROCESSINFOCLASS Class, HANDLE Process, PVOID* 
 		if (!info)
 			break;
 
-		status = NtQueryInformationProcess(Process, Class, info, size, &written);
+		status = ZwQueryInformationProcess(Process, Class, info, size, &written);
 	}
 
 	if (!info)

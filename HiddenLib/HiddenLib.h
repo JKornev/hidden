@@ -65,14 +65,14 @@ HidStatus _API Hid_RemoveAllHiddenDirs(HidContext context);
 
 // Ps
 
-HidStatus _API Hid_AddExcludedImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, HidObjId* objId);
+HidStatus _API Hid_AddExcludedImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, bool applyForProcess, HidObjId* objId);
 HidStatus _API Hid_RemoveExcludedImage(HidContext context, HidObjId objId);
 HidStatus _API Hid_RemoveAllExcludedImages(HidContext context);
 HidStatus _API Hid_GetExcludedState(HidContext context, HidProcId procId, HidActiveState* state, HidPsInheritTypes* inheritType);
 HidStatus _API Hid_AttachExcludedState(HidContext context, HidProcId procId, HidPsInheritTypes inheritType);
 HidStatus _API Hid_RemoveExcludedState(HidContext context, HidProcId procId);
 
-HidStatus _API Hid_AddProtectedImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, HidObjId* objId);
+HidStatus _API Hid_AddProtectedImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, bool applyForProcess, HidObjId* objId);
 HidStatus _API Hid_RemoveProtectedImage(HidContext context, HidObjId objId);
 HidStatus _API Hid_RemoveAllProtectedImages(HidContext context);
 HidStatus _API Hid_GetProtectedState(HidContext context, HidProcId procId, HidActiveState* state, HidPsInheritTypes* inheritType);

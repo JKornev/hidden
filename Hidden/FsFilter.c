@@ -106,7 +106,7 @@ FLT_PREOP_CALLBACK_STATUS FltCreatePreOperation(
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
+		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return FLT_PREOP_SUCCESS_NO_CALLBACK;
 	}
 
@@ -137,7 +137,7 @@ FLT_PREOP_CALLBACK_STATUS FltCreatePreOperation(
 
 	if (neededPrevent)
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Create file\\dir operation canceled for: %wZ\n", &Data->Iopb->TargetFileObject->FileName);
+		DbgPrint("FsFilter1!" __FUNCTION__ ": Create file\\dir operation canceled for: %wZ, %d\n", &Data->Iopb->TargetFileObject->FileName, PsGetCurrentProcessId());
 		Data->IoStatus.Status = STATUS_NO_SUCH_FILE;
 		return FLT_PREOP_COMPLETE;
 	}

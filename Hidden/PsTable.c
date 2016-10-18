@@ -4,7 +4,6 @@
 #define PSTREE_ALLOC_TAG 'rTsP'
 
 RTL_AVL_TABLE  g_processTable;
-KSPIN_LOCK     g_processTableLock;
 
 RTL_GENERIC_COMPARE_RESULTS CompareProcessTableEntry(struct _RTL_AVL_TABLE  *Table, PVOID  FirstStruct, PVOID  SecondStruct)
 {
@@ -38,15 +37,9 @@ VOID FreeProcessTableEntry(struct _RTL_AVL_TABLE  *Table, PVOID  Buffer)
 
 BOOLEAN AddProcessToProcessTable(PProcessTableEntry entry)
 {
-	KLOCK_QUEUE_HANDLE lockHandle;
 	BOOLEAN result = FALSE;
-	PVOID buf;
-
-	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
-	buf = RtlInsertElementGenericTableAvl(&g_processTable, entry, sizeof(ProcessTableEntry), &result);
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
-
-	if (buf == NULL)
+	
+	if (RtlInsertElementGenericTableAvl(&g_processTable, entry, sizeof(ProcessTableEntry), &result) == NULL)
 		return FALSE;
 
 	return result;
@@ -54,45 +47,28 @@ BOOLEAN AddProcessToProcessTable(PProcessTableEntry entry)
 
 BOOLEAN RemoveProcessFromProcessTable(PProcessTableEntry entry)
 {
-	KLOCK_QUEUE_HANDLE lockHandle;
-	BOOLEAN result;
-
-	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
-	result = RtlDeleteElementGenericTableAvl(&g_processTable, entry);
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
-
-	return result;
+	return RtlDeleteElementGenericTableAvl(&g_processTable, entry);
 }
 
 BOOLEAN GetProcessInProcessTable(PProcessTableEntry entry)
 {
-	KLOCK_QUEUE_HANDLE lockHandle;
 	PProcessTableEntry entry2;
-
-	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
 
 	entry2 = (PProcessTableEntry)RtlLookupElementGenericTableAvl(&g_processTable, entry);
 	if (entry2)
 		RtlCopyMemory(entry, entry2, sizeof(ProcessTableEntry));
-
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
 
 	return (entry2 ? TRUE : FALSE);
 }
 
 BOOLEAN UpdateProcessInProcessTable(PProcessTableEntry entry)
 {
-	KLOCK_QUEUE_HANDLE lockHandle;
 	PProcessTableEntry entry2;
-
-	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
 
 	entry2 = (PProcessTableEntry)RtlLookupElementGenericTableAvl(&g_processTable, entry);
 
 	if (entry2)
 		RtlCopyMemory(entry2, entry, sizeof(ProcessTableEntry));
-
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
 
 	return (entry2 ? TRUE : FALSE);
 }
@@ -107,7 +83,6 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 
 	// Init process table 
 
-	KeInitializeSpinLock(&g_processTableLock);
 	RtlInitializeGenericTableAvl(&g_processTable, CompareProcessTableEntry, AllocateProcessTableEntry, FreeProcessTableEntry, NULL);
 
 	// We should query processes information for creation process table for existing processes
@@ -144,7 +119,7 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 		clientId.UniqueProcess = processInfo->ProcessId;
 		clientId.UniqueThread = 0;
 
-		status = NtOpenProcess(&hProcess, 0x1000/*PROCESS_QUERY_LIMITED_INFORMATION*/, &attribs, &clientId);
+		status = ZwOpenProcess(&hProcess, 0x1000/*PROCESS_QUERY_LIMITED_INFORMATION*/, &attribs, &clientId);
 		if (!NT_SUCCESS(status))
 		{
 			DbgPrint("FsFilter1!" __FUNCTION__ ": can't open process (pid:%d) failed with code:%08x\n", processInfo->ProcessId, status);
@@ -195,11 +170,8 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 
 VOID DestroyProcessTable()
 {
-	KLOCK_QUEUE_HANDLE lockHandle;
 	PProcessTableEntry entry;
 	PVOID restartKey = NULL;
-
-	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
 
 	for (entry = RtlEnumerateGenericTableWithoutSplayingAvl(&g_processTable, &restartKey);
 		entry != NULL;
@@ -210,6 +182,4 @@ VOID DestroyProcessTable()
 
 		restartKey = NULL; // reset enum
 	}
-
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
 }

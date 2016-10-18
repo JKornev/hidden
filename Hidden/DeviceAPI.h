@@ -60,7 +60,7 @@ typedef struct _Hid_AddPsObjectPacket {
 	unsigned short objType;
 	unsigned short dataSize;
 	unsigned short inheritType;
-	unsigned short reserved;
+	unsigned short applyForProcesses;
 } Hid_AddPsObjectPacket, *PHid_AddPsObjectPacket;
 
 typedef struct _Hid_GetPsObjectInfoPacket {

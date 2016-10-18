@@ -338,7 +338,7 @@ HidStatus SendIoctl_UnhideAllObjectsPacket(PHidContextInternal context, unsigned
 	return HID_SET_STATUS(TRUE, 0);
 }
 
-HidStatus SendIoctl_AddPsObjectPacket(PHidContextInternal context, const wchar_t* path, unsigned short type, HidPsInheritTypes inheritType, HidObjId* objId)
+HidStatus SendIoctl_AddPsObjectPacket(PHidContextInternal context, const wchar_t* path, unsigned short type, HidPsInheritTypes inheritType, bool applyForProcess, HidObjId* objId)
 {
 	PHid_AddPsObjectPacket hide;
 	Hid_StatusPacket result;
@@ -357,6 +357,7 @@ HidStatus SendIoctl_AddPsObjectPacket(PHidContextInternal context, const wchar_t
 	hide->dataSize = (unsigned short)total;
 	hide->objType = type;
 	hide->inheritType = inheritType;
+	hide->applyForProcesses = applyForProcess;
 
 	memcpy((char*)hide + sizeof(Hid_AddPsObjectPacket), path, total);
 
@@ -613,7 +614,7 @@ HidStatus _API Hid_RemoveAllHiddenDirs(HidContext context)
 
 // Process exclude interface
 
-HidStatus _API Hid_AddExcludedImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, HidObjId* objId)
+HidStatus _API Hid_AddExcludedImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, bool applyForProcess, HidObjId* objId)
 {
 	HidStatus status;
 	wchar_t* normalized;
@@ -622,7 +623,7 @@ HidStatus _API Hid_AddExcludedImage(HidContext context, const wchar_t* imagePath
 	if (!HID_STATUS_SUCCESSFUL(status))
 		return status;
 
-	status = SendIoctl_AddPsObjectPacket((PHidContextInternal)context, normalized, PsExcludedObject, inheritType, objId);
+	status = SendIoctl_AddPsObjectPacket((PHidContextInternal)context, normalized, PsExcludedObject, inheritType, applyForProcess, objId);
 	FreeNormalizedPath(normalized);
 
 	return status;
@@ -655,7 +656,7 @@ HidStatus _API Hid_RemoveExcludedState(HidContext context, HidProcId procId)
 
 // Process protect interface
 
-HidStatus _API Hid_AddProtectedImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, HidObjId* objId)
+HidStatus _API Hid_AddProtectedImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, bool applyForProcess, HidObjId* objId)
 {
 	HidStatus status;
 	wchar_t* normalized;
@@ -664,7 +665,7 @@ HidStatus _API Hid_AddProtectedImage(HidContext context, const wchar_t* imagePat
 	if (!HID_STATUS_SUCCESSFUL(status))
 		return status;
 
-	status = SendIoctl_AddPsObjectPacket((PHidContextInternal)context, normalized, PsProtectedObject, inheritType, objId);
+	status = SendIoctl_AddPsObjectPacket((PHidContextInternal)context, normalized, PsProtectedObject, inheritType, applyForProcess, objId);
 	FreeNormalizedPath(normalized);
 
 	return status;

@@ -114,7 +114,7 @@ NTSTATUS RegPreCreateKey(PVOID context, PREG_PRE_CREATE_KEY_INFORMATION info)
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
+		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
 	}
 
@@ -135,7 +135,7 @@ NTSTATUS RegPreCreateKeyEx(PVOID context, PREG_CREATE_KEY_INFORMATION info)
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
+		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
 	}
 
@@ -154,7 +154,7 @@ NTSTATUS RegPreOpenKey(PVOID context, PREG_PRE_OPEN_KEY_INFORMATION info)
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
+		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
 	}
 
@@ -175,7 +175,7 @@ NTSTATUS RegPreOpenKeyEx(PVOID context, PREG_OPEN_KEY_INFORMATION info)
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
+		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
 	}
 
@@ -228,7 +228,7 @@ NTSTATUS RegPostEnumKey(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
+		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
 	}
 
@@ -326,7 +326,7 @@ NTSTATUS RegPostEnumValue(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
+		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
 	}
 
@@ -393,7 +393,7 @@ NTSTATUS RegPreSetValue(PVOID context, PREG_SET_VALUE_KEY_INFORMATION info)
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
+		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
 	}
 
@@ -424,7 +424,7 @@ NTSTATUS RegPreDeleteValue(PVOID context, PREG_DELETE_VALUE_KEY_INFORMATION info
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
+		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
 	}
 
@@ -455,7 +455,7 @@ NTSTATUS RegPreQueryValue(PVOID context, PREG_QUERY_VALUE_KEY_INFORMATION info)
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
+		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
 	}
 
@@ -486,7 +486,7 @@ NTSTATUS RegPreQueryMultipleValue(PVOID context, PREG_QUERY_MULTIPLE_VALUE_KEY_I
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
+		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
 	}
 

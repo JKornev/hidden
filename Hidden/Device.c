@@ -192,10 +192,10 @@ NTSTATUS AddPsObject(PHid_AddPsObjectPacket Packet, USHORT Size, PULONGLONG ObjI
 	switch (Packet->objType)
 	{
 	case PsExcludedObject:
-		status = AddExcludedImage(&path, Packet->inheritType, ObjId);
+		status = AddExcludedImage(&path, Packet->inheritType, (Packet->applyForProcesses ? TRUE : FALSE), ObjId);
 		break;
 	case PsProtectedObject:
-		status = AddProtectedImage(&path, Packet->inheritType, ObjId);
+		status = AddProtectedImage(&path, Packet->inheritType, (Packet->applyForProcesses ? TRUE : FALSE), ObjId);
 		break;
 	default:
 		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", Packet->objType);

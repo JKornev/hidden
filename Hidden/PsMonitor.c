@@ -16,6 +16,8 @@ OB_CALLBACK_REGISTRATION g_regCallback;
 PsRulesContext g_excludeProcessRules;
 PsRulesContext g_protectProcessRules;
 
+KSPIN_LOCK     g_processTableLock;
+
 typedef struct _ProcessListEntry {
 	LPCWSTR path;
 	ULONG inherit;
@@ -43,31 +45,56 @@ WCHAR          g_csrssPathBuffer[CSRSS_PAHT_BUFFER_SIZE];
 BOOLEAN CheckProtectedOperation(HANDLE Source, HANDLE Destination)
 {
 	ProcessTableEntry srcInfo, destInfo;
+	KLOCK_QUEUE_HANDLE lockHandle;
+	BOOLEAN result;
 
 	if (Source == Destination)
 		return FALSE;
 
-	destInfo.processId = Destination;
-	if (!GetProcessInProcessTable(&destInfo))
+	srcInfo.processId = Source;
+	
+	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	result = GetProcessInProcessTable(&srcInfo);
+	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	
+	if (!result)
 		return FALSE;
 
-	srcInfo.processId = Source;
-	if (!GetProcessInProcessTable(&srcInfo))
+	destInfo.processId = Destination;
+
+	// Spinlock is locked once for both Get\Update process table functions
+	// because we want to prevent situations when another thread can change 
+	// any state of process beetwen get and update functions on this place
+	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+
+	if (!GetProcessInProcessTable(&destInfo))
+	{
+		KeReleaseInStackQueuedSpinLock(&lockHandle);
 		return FALSE;
+	}
 
 	// Not-inited process can open any process (parent, csrss, etc)
 	if (!destInfo.inited)
 	{
+		result = TRUE;
+
 		// Update if source is subsystem and destination isn't inited
 		if (srcInfo.subsystem)
 		{
 			destInfo.inited = TRUE;
 			if (!UpdateProcessInProcessTable(&destInfo))
-				DbgPrint("FsFilter1!" __FUNCTION__ ": can't update initial state for process: %d\n", destInfo.processId);
+				result = FALSE;
 		}
+
+		KeReleaseInStackQueuedSpinLock(&lockHandle);
+
+		if (!result)
+			DbgPrint("FsFilter1!" __FUNCTION__ ": can't update initial state for process: %d\n", destInfo.processId);
 
 		return FALSE;
 	}
+
+	KeReleaseInStackQueuedSpinLock(&lockHandle);
 
 	if (!destInfo.protected)
 		return FALSE;
@@ -143,6 +170,8 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 {
 	ProcessTableEntry lookup;
 	ULONG inheritType;
+	KLOCK_QUEUE_HANDLE lockHandle;
+	BOOLEAN result;
 
 	RtlZeroMemory(&lookup, sizeof(lookup));
 
@@ -162,7 +191,12 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 	else if (ParentId != 0)
 	{
 		lookup.processId = ParentId;
-		if (GetProcessInProcessTable(&lookup))
+
+		KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+		result = GetProcessInProcessTable(&lookup);
+		KeReleaseInStackQueuedSpinLock(&lockHandle);
+
+		if (result)
 		{
 			if (lookup.inheritExclusion == PsRuleTypeInherit)
 			{
@@ -190,7 +224,12 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 	else if (ParentId != 0)
 	{
 		lookup.processId = ParentId;
-		if (GetProcessInProcessTable(&lookup))
+
+		KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+		result = GetProcessInProcessTable(&lookup);
+		KeReleaseInStackQueuedSpinLock(&lockHandle);
+
+		if (result)
 		{
 			if (lookup.inheritProtection == PsRuleTypeInherit)
 			{
@@ -209,6 +248,8 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE_NOTIFY_INFO CreateInfo)
 {
 	ProcessTableEntry entry;
+	KLOCK_QUEUE_HANDLE lockHandle;
+	BOOLEAN result;
 
 	UNREFERENCED_PARAMETER(Process);
 
@@ -252,14 +293,22 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 		if (entry.protected)
 			DbgPrint("FsFilter1!" __FUNCTION__ ": protected process:%d\n", ProcessId);
 
-		if (!AddProcessToProcessTable(&entry))
+		KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+		result = AddProcessToProcessTable(&entry);
+		KeReleaseInStackQueuedSpinLock(&lockHandle);
+
+		if (!result)
 			DbgPrint("FsFilter1!" __FUNCTION__ ": can't add process(pid:%d) to process table\n", ProcessId);
 
 		ExFreePool(normalized.Buffer);
 	}
 	else
 	{
-		if (!RemoveProcessFromProcessTable(&entry))
+		KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+		result = RemoveProcessFromProcessTable(&entry);
+		KeReleaseInStackQueuedSpinLock(&lockHandle);
+
+		if (!result)
 			DbgPrint("FsFilter1!" __FUNCTION__ ": can't remove process(pid:%d) from process table\n", ProcessId);
 	}
 
@@ -268,9 +317,16 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 BOOLEAN IsProcessExcluded(HANDLE ProcessId)
 {
 	ProcessTableEntry entry;
+	KLOCK_QUEUE_HANDLE lockHandle;
+	BOOLEAN result;
 
 	entry.processId = ProcessId;
-	if (!GetProcessInProcessTable(&entry))
+
+	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	result = GetProcessInProcessTable(&entry);
+	KeReleaseInStackQueuedSpinLock(&lockHandle);
+
+	if (!result)
 		return FALSE;
 
 	return entry.excluded;
@@ -279,9 +335,16 @@ BOOLEAN IsProcessExcluded(HANDLE ProcessId)
 BOOLEAN IsProcessProtected(HANDLE ProcessId)
 {
 	ProcessTableEntry entry;
+	KLOCK_QUEUE_HANDLE lockHandle;
+	BOOLEAN result;
 
 	entry.processId = ProcessId;
-	if (!GetProcessInProcessTable(&entry))
+
+	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	result = GetProcessInProcessTable(&entry);
+	KeReleaseInStackQueuedSpinLock(&lockHandle);
+
+	if (!result)
 		return FALSE;
 
 	return entry.protected;
@@ -378,6 +441,10 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 		AddRuleToPsRuleList(g_protectProcessRules, &normalized, g_protectProcesses[i].inherit, &ruleId);
 	}
 
+	// Process table
+
+	KeInitializeSpinLock(&g_processTableLock);
+
 	status = InitializeProcessTable(CheckProcessFlags);
 	if (!NT_SUCCESS(status))
 	{
@@ -432,6 +499,8 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 
 NTSTATUS DestroyPsMonitor()
 {
+	KLOCK_QUEUE_HANDLE lockHandle;
+
 	if (!g_psMonitorInited)
 		return STATUS_ALREADY_DISCONNECTED;
 
@@ -446,13 +515,112 @@ NTSTATUS DestroyPsMonitor()
 	DestroyPsRuleListContext(g_excludeProcessRules);
 	DestroyPsRuleListContext(g_protectProcessRules);
 
+	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
 	DestroyProcessTable();
+	KeReleaseInStackQueuedSpinLock(&lockHandle);
+
 	g_psMonitorInited = FALSE;
 
 	return STATUS_SUCCESS;
 }
 
-NTSTATUS AddProtectedImage(PUNICODE_STRING ImagePath, ULONG InheritType, PULONGLONG ObjId)
+NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Excluded, BOOLEAN Protected)
+{
+	PSYSTEM_PROCESS_INFORMATION processInfo = NULL, first;
+	SIZE_T size = 0, offset;
+	NTSTATUS status;
+
+	status = QuerySystemInformation(SystemProcessInformation, &processInfo, &size);
+	if (!NT_SUCCESS(status))
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": query system information(pslist) failed with code:%08x\n", status);
+		return status;
+	}
+
+	offset = 0;
+	first = processInfo;
+	do
+	{
+		HANDLE hProcess;
+		CLIENT_ID clientId;
+		OBJECT_ATTRIBUTES attribs;
+		PUNICODE_STRING procName;
+		ProcessTableEntry entry;
+		KLOCK_QUEUE_HANDLE lockHandle;
+
+		processInfo = (PSYSTEM_PROCESS_INFORMATION)((SIZE_T)processInfo + offset);
+
+		if (processInfo->ProcessId == 0)
+		{
+			offset = processInfo->NextEntryOffset;
+			continue;
+		}
+
+		InitializeObjectAttributes(&attribs, NULL, OBJ_KERNEL_HANDLE, NULL, NULL);
+		clientId.UniqueProcess = processInfo->ProcessId;
+		clientId.UniqueThread = 0;
+
+		status = ZwOpenProcess(&hProcess, 0x1000/*PROCESS_QUERY_LIMITED_INFORMATION*/, &attribs, &clientId);
+		if (!NT_SUCCESS(status))
+		{
+			DbgPrint("FsFilter1!" __FUNCTION__ ": can't open process (pid:%d) failed with code:%08x\n", processInfo->ProcessId, status);
+			offset = processInfo->NextEntryOffset;
+			continue;
+		}
+
+		status = QueryProcessInformation(ProcessImageFileName, hProcess, &procName, &size);
+		ZwClose(hProcess);
+
+		if (!NT_SUCCESS(status))
+		{
+			DbgPrint("FsFilter1!" __FUNCTION__ ": query process information(pid:%d) failed with code:%08x\n", processInfo->ProcessId, status);
+			offset = processInfo->NextEntryOffset;
+			continue;
+		}
+
+		entry.processId = processInfo->ProcessId;
+		if (RtlCompareUnicodeString(procName, ImagePath, TRUE) == 0)
+		{
+			BOOLEAN result = TRUE;
+
+			// Spinlock is locked once for both Get\Update process table functions
+			// because we want to prevent situations when another thread can change 
+			// any state of process beetwen get and update functions on this place
+			KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+			
+			if (GetProcessInProcessTable(&entry))
+			{
+				if (Excluded)
+				{
+					entry.excluded = TRUE;
+					entry.inheritExclusion = PsRuleTypeWithoutInherit;
+				}
+
+				if (Protected)
+				{
+					entry.protected = TRUE;
+					entry.inheritProtection = PsRuleTypeWithoutInherit;
+				}
+
+				if (!UpdateProcessInProcessTable(&entry))
+					result = FALSE;
+			}
+
+			KeReleaseInStackQueuedSpinLock(&lockHandle);
+
+			if (!result)
+				DbgPrint("FsFilter1!" __FUNCTION__ ": can't update process %d\n", processInfo->ProcessId);
+		}
+
+		FreeInformation(procName);
+		offset = processInfo->NextEntryOffset;
+	} while (offset);
+
+	FreeInformation(first);
+	return STATUS_SUCCESS;
+}
+
+NTSTATUS AddProtectedImage(PUNICODE_STRING ImagePath, ULONG InheritType, BOOLEAN ApplyForProcesses, PULONGLONG ObjId)
 {
 	const USHORT maxBufSize = ImagePath->Length + NORMALIZE_INCREAMENT;
 	UNICODE_STRING normalized;
@@ -479,6 +647,9 @@ NTSTATUS AddProtectedImage(PUNICODE_STRING ImagePath, ULONG InheritType, PULONGL
 	DbgPrint("FsFilter1!" __FUNCTION__ ": protect image: %wZ\n", &normalized);
 	status = AddRuleToPsRuleList(g_protectProcessRules, &normalized, InheritType, ObjId);
 
+	if (ApplyForProcesses)
+		SetStateForProcessesByImage(&normalized, FALSE, TRUE);
+
 	ExFreePool(normalized.Buffer);
 
 	return status;
@@ -487,9 +658,16 @@ NTSTATUS AddProtectedImage(PUNICODE_STRING ImagePath, ULONG InheritType, PULONGL
 NTSTATUS GetProtectedProcessState(HANDLE ProcessId, PULONG InheritType, PBOOLEAN Enable)
 {
 	ProcessTableEntry entry;
+	KLOCK_QUEUE_HANDLE lockHandle;
+	BOOLEAN result;
 
 	entry.processId = ProcessId;
-	if (!GetProcessInProcessTable(&entry))
+
+	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	result = GetProcessInProcessTable(&entry);
+	KeReleaseInStackQueuedSpinLock(&lockHandle);
+
+	if (!result)
 		return STATUS_NOT_FOUND;
 
 	*Enable = entry.protected;
@@ -502,9 +680,16 @@ NTSTATUS SetProtectedProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN E
 {
 	NTSTATUS status = STATUS_SUCCESS;
 	ProcessTableEntry entry;
+	KLOCK_QUEUE_HANDLE lockHandle;
+	BOOLEAN result;
 
 	entry.processId = ProcessId;
-	if (!GetProcessInProcessTable(&entry))
+
+	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	result = GetProcessInProcessTable(&entry);
+	KeReleaseInStackQueuedSpinLock(&lockHandle);
+
+	if (!result)
 		return STATUS_NOT_FOUND;
 
 	if (Enable)
@@ -517,7 +702,11 @@ NTSTATUS SetProtectedProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN E
 		entry.protected = FALSE;
 	}
 
-	if (!UpdateProcessInProcessTable(&entry))
+	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	result = UpdateProcessInProcessTable(&entry);
+	KeReleaseInStackQueuedSpinLock(&lockHandle);
+
+	if (!result)
 		return STATUS_NOT_FOUND;
 
 	return status;
@@ -533,7 +722,7 @@ NTSTATUS RemoveAllProtectedImages()
 	return RemoveAllRulesFromPsRuleList(g_protectProcessRules);
 }
 
-NTSTATUS AddExcludedImage(PUNICODE_STRING ImagePath, ULONG InheritType, PULONGLONG ObjId)
+NTSTATUS AddExcludedImage(PUNICODE_STRING ImagePath, ULONG InheritType, BOOLEAN ApplyForProcesses, PULONGLONG ObjId)
 {
 	const USHORT maxBufSize = ImagePath->Length + NORMALIZE_INCREAMENT;
 	UNICODE_STRING normalized;
@@ -560,6 +749,9 @@ NTSTATUS AddExcludedImage(PUNICODE_STRING ImagePath, ULONG InheritType, PULONGLO
 	DbgPrint("FsFilter1!" __FUNCTION__ ": exclude image: %wZ\n", &normalized);
 	status = AddRuleToPsRuleList(g_excludeProcessRules, &normalized, InheritType, ObjId);
 
+	if (ApplyForProcesses)
+		SetStateForProcessesByImage(&normalized, TRUE, FALSE);
+
 	ExFreePool(normalized.Buffer);
 
 	return status;
@@ -568,9 +760,16 @@ NTSTATUS AddExcludedImage(PUNICODE_STRING ImagePath, ULONG InheritType, PULONGLO
 NTSTATUS GetExcludedProcessState(HANDLE ProcessId, PULONG InheritType, PBOOLEAN Enable)
 {
 	ProcessTableEntry entry;
+	KLOCK_QUEUE_HANDLE lockHandle;
+	BOOLEAN result;
 
 	entry.processId = ProcessId;
-	if (!GetProcessInProcessTable(&entry))
+
+	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	result = GetProcessInProcessTable(&entry);
+	KeReleaseInStackQueuedSpinLock(&lockHandle);
+
+	if (!result)
 		return STATUS_NOT_FOUND;
 
 	*Enable = entry.excluded;
@@ -583,9 +782,16 @@ NTSTATUS SetExcludedProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN En
 {
 	NTSTATUS status = STATUS_SUCCESS;
 	ProcessTableEntry entry;
+	KLOCK_QUEUE_HANDLE lockHandle;
+	BOOLEAN result;
 
 	entry.processId = ProcessId;
-	if (!GetProcessInProcessTable(&entry))
+
+	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	result = GetProcessInProcessTable(&entry);
+	KeReleaseInStackQueuedSpinLock(&lockHandle);
+
+	if (!result)
 		return STATUS_NOT_FOUND;
 
 	if (Enable)
@@ -598,7 +804,11 @@ NTSTATUS SetExcludedProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN En
 		entry.excluded = FALSE;
 	}
 
-	if (!UpdateProcessInProcessTable(&entry))
+	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	result = UpdateProcessInProcessTable(&entry);
+	KeReleaseInStackQueuedSpinLock(&lockHandle);
+
+	if (!result)
 		return STATUS_NOT_FOUND;
 
 	return status;

@@ -524,7 +524,7 @@ void do_psmon_prot_tests(HidContext context)
 
 		wcout << L"Test 2: create process, protect, check, unprotect" << endl;
 
-		hid_status = Hid_AddProtectedImage(context, path, HidPsInheritTypes::WithoutInherit, &objId[1]);
+		hid_status = Hid_AddProtectedImage(context, path, HidPsInheritTypes::WithoutInherit, FALSE, &objId[1]);
 		if (!HID_STATUS_SUCCESSFUL(hid_status))
 		{
 			wcout << L"Error, can't protect image, code: " << HID_STATUS_CODE(hid_status) << endl;
@@ -786,7 +786,7 @@ void do_psmon_excl_tests(HidContext context)
 		CloseHandle(pi.hProcess);
 		memset(&pi, 0, sizeof(pi));
 
-		hid_status = Hid_AddExcludedImage(context, L"c:\\windows\\system32\\cmd.exe", HidPsInheritTypes::InheritOnce, &objId[1]);
+		hid_status = Hid_AddExcludedImage(context, L"c:\\windows\\system32\\cmd.exe", HidPsInheritTypes::InheritOnce, FALSE, &objId[1]);
 		if (!HID_STATUS_SUCCESSFUL(hid_status))
 		{
 			wcout << L"Error, can't add excluded image, code: " << HID_STATUS_CODE(hid_status) << endl;

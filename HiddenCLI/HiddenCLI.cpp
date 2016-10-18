@@ -10,18 +10,18 @@ CONST PWCHAR g_excludeFiles[] = {
 //	L"c:\\Windows\\System32\\calc.exe",
 //	L"c:\\test.txt",
 //	L"c:\\abcd\\test.txt",
-	L"\\Device\\HarddiskVolume1\\Windows\\System32\\calc.exe",
+	//L"\\Device\\HarddiskVolume1\\Windows\\System32\\calc.exe",
 	L"\\??\\C:\\test.txt",
-	L"\\??\\C:\\abcd\\test.txt",
+	//L"c:\\Program Files\\VMware",
 };
 
 CONST PWCHAR g_excludeDirs[] = {
 //	L"\\Device\\HarddiskVolume1\\abc",
 //	L"\\Device\\HarddiskVolume1\\abcd\\abc",
 //	L"\\Device\\HarddiskVolume1\\New folder",
-	L"\\Device\\HarddiskVolume1\\abc",
-	L"\\??\\C:\\abcd\\abc",
-	L"\\??\\C:\\New folder",
+	//L"\\Device\\HarddiskVolume1\\abc",
+	//L"\\??\\C:\\abcd\\abc",
+	L"c:\\Program Files\\VMware",
 };
 
 CONST PWCHAR g_excludeRegKeys[] = {
@@ -44,8 +44,20 @@ CONST PWCHAR g_protectProcesses[] = {
 };
 
 CONST PWCHAR g_excludeProcesses[] = {
-	L"c:\\Windows\\System32\\cmd.exe",
-	L"c:\\Windows\\System32\\cmd2.exe",
+	L"C:\\Windows\\System32\\Services.exe",
+	L"C:\\Program Files\\VMware\\VMware Tools\\vmtoolsd.exe",
+	L"C:\\Program Files\\VMware\\VMware Tools\\TPAutoConnSvc.exe",
+	L"C:\\Program Files\\VMware\\VMware Tools\\rpctool.exe",
+	L"C:\\Program Files\\VMware\\VMware Tools\\rvmSetup.exe",
+	L"C:\\Program Files\\VMware\\VMware Tools\\TPAutoConnect.exe",
+	L"C:\\Program Files\\VMware\\VMware Tools\\TPVCGateway.exe",
+	L"C:\\Program Files\\VMware\\VMware Tools\\VMwareHgfsClient.exe",
+	L"C:\\Program Files\\VMware\\VMware Tools\\VMwareHostOpen.exe",
+	L"C:\\Program Files\\VMware\\VMware Tools\\VMwareResolutionSet.exe",
+	L"C:\\Program Files\\VMware\\VMware Tools\\VMwareToolboxCmd.exe",
+	L"C:\\Program Files\\VMware\\VMware Tools\\VMwareXferlogs.exe",
+	L"C:\\Program Files\\VMware\\VMware Tools\\zip.exe",
+	L"c:\\Windows\\System32\\vssvc.exe",
 };
 
 int wmain(int argc, wchar_t *argv[])
@@ -108,7 +120,7 @@ int wmain(int argc, wchar_t *argv[])
 	for (int i = 0; i < count; i++)
 	{
 		HidObjId objId;
-		hid_status = Hid_AddExcludedImage(hid_context, g_excludeProcesses[i], WithoutInherit, &objId);
+		hid_status = Hid_AddExcludedImage(hid_context, g_excludeProcesses[i], WithoutInherit, TRUE, &objId);
 		if (!HID_STATUS_SUCCESSFUL(hid_status))
 			cout << "Error, Hid_AddExcludedImage failed with code: " << HID_STATUS_CODE(hid_status) << endl;
 	}
@@ -118,10 +130,14 @@ int wmain(int argc, wchar_t *argv[])
 	for (int i = 0; i < count; i++)
 	{
 		HidObjId objId;
-		hid_status = Hid_AddProtectedImage(hid_context, g_protectProcesses[i], WithoutInherit, &objId);
+		hid_status = Hid_AddProtectedImage(hid_context, g_protectProcesses[i], WithoutInherit, TRUE, &objId);
 		if (!HID_STATUS_SUCCESSFUL(hid_status))
 			cout << "Error, Hid_AddProtectedImage failed with code: " << HID_STATUS_CODE(hid_status) << endl;
 	}
+
+	//hid_status = Hid_AttachExcludedState(hid_context, 528, WithoutInherit);
+	//if (!HID_STATUS_SUCCESSFUL(hid_status))
+	//	cout << "Error, Hid_AttachExcludedState failed with code: " << HID_STATUS_CODE(hid_status) << endl;
 
 	Hid_Destroy(hid_context);
 	cout << "Completed!" << endl;
