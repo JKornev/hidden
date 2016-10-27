@@ -6,6 +6,10 @@
 
 using namespace std;
 
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// !!!!! HiddenCLI ISN'T IMPLEMENTED YET, IT CONTAINS TEST CODE !!!!!
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 CONST PWCHAR g_excludeFiles[] = {
 //	L"c:\\Windows\\System32\\calc.exe",
 //	L"c:\\test.txt",
@@ -16,26 +20,28 @@ CONST PWCHAR g_excludeFiles[] = {
 };
 
 CONST PWCHAR g_excludeDirs[] = {
-//	L"\\Device\\HarddiskVolume1\\abc",
-//	L"\\Device\\HarddiskVolume1\\abcd\\abc",
-//	L"\\Device\\HarddiskVolume1\\New folder",
-	//L"\\Device\\HarddiskVolume1\\abc",
-	//L"\\??\\C:\\abcd\\abc",
 	L"c:\\Program Files\\VMware",
+	L"c:\\ProgramData\\VMware",
+	L"c:\\Windows\\Temp\\vmware-SYSTEM",
+	L"c:\\Program Files\\Common Files\\VMware",
 };
 
-CONST PWCHAR g_excludeRegKeys[] = {
-	L"SOFTWARE\\test",
-	L"SOFTWARE\\test2",
+typedef struct _RegEntry {
+	HidRegRootTypes root;
+	LPWSTR path;
+} RegEntry, *PRegEntry;
+
+CONST RegEntry g_excludeRegKeys[] = {
+	{ RegHKLM, L"Software\\VMware, Inc." },
+	{ RegHKLM, L"System\\ControlSet001\\Control\\Print\\Monitors\\ThinPrint Print Port Monitor for VMWare" },
+	{ RegHKLM, L"System\\ControlSet002\\Control\\Print\\Monitors\\ThinPrint Print Port Monitor for VMWare" },
+	{ RegHKLM, L"System\\CurrentControlSet\\Control\\Print\\Monitors\\ThinPrint Print Port Monitor for VMWare" },
+	{ RegHKCU, L"Software\\VMware, Inc." },
 };
 
-CONST PWCHAR g_excludeRegValues[] = {
-	L"SOFTWARE\\aaa",
-	L"SOFTWARE\\xxx",
-	L"SOFTWARE\\aa",
-	L"SOFTWARE\\aaa",
-	L"SOFTWARE\\aaaa",
-	L"SOFTWARE\\zz",
+CONST RegEntry g_excludeRegValues[] = {
+	{ RegHKLM, L"Hardware\\Description\\System\\BIOS\\SystemManufacturer" },
+	{ RegHKLM, L"Hardware\\Description\\System\\BIOS\\SystemProductName" },
 };
 
 CONST PWCHAR g_protectProcesses[] = {
@@ -45,6 +51,9 @@ CONST PWCHAR g_protectProcesses[] = {
 
 CONST PWCHAR g_excludeProcesses[] = {
 	L"C:\\Windows\\System32\\Services.exe",
+	L"C:\\Windows\\System32\\csrss.exe",
+	L"C:\\Windows\\System32\\vssvc.exe",
+	L"C:\\Windows\\System32\\spoolsv.exe",
 	L"C:\\Program Files\\VMware\\VMware Tools\\vmtoolsd.exe",
 	L"C:\\Program Files\\VMware\\VMware Tools\\TPAutoConnSvc.exe",
 	L"C:\\Program Files\\VMware\\VMware Tools\\rpctool.exe",
@@ -57,7 +66,6 @@ CONST PWCHAR g_excludeProcesses[] = {
 	L"C:\\Program Files\\VMware\\VMware Tools\\VMwareToolboxCmd.exe",
 	L"C:\\Program Files\\VMware\\VMware Tools\\VMwareXferlogs.exe",
 	L"C:\\Program Files\\VMware\\VMware Tools\\zip.exe",
-	L"c:\\Windows\\System32\\vssvc.exe",
 };
 
 int wmain(int argc, wchar_t *argv[])
@@ -80,7 +88,7 @@ int wmain(int argc, wchar_t *argv[])
 	for (int i = 0; i < count; i++)
 	{
 		HidObjId objId;
-		hid_status = Hid_AddHiddenRegKey(hid_context, RegHKLM, g_excludeRegKeys[i], &objId);
+		hid_status = Hid_AddHiddenRegKey(hid_context, g_excludeRegKeys[i].root, g_excludeRegKeys[i].path, &objId);
 		if (!HID_STATUS_SUCCESSFUL(hid_status))
 			cout << "Error, Hid_AddHiddenRegKey failed with code: " << HID_STATUS_CODE(hid_status) << endl;
 	}
@@ -90,7 +98,7 @@ int wmain(int argc, wchar_t *argv[])
 	for (int i = 0; i < count; i++)
 	{
 		HidObjId objId;
-		hid_status = Hid_AddHiddenRegValue(hid_context, RegHKLM, g_excludeRegValues[i], &objId);
+		hid_status = Hid_AddHiddenRegValue(hid_context, g_excludeRegValues[i].root, g_excludeRegValues[i].path, &objId);
 		if (!HID_STATUS_SUCCESSFUL(hid_status))
 			cout << "Error, Hid_AddHiddenRegValue failed with code: " << HID_STATUS_CODE(hid_status) << endl;
 	}
@@ -134,10 +142,6 @@ int wmain(int argc, wchar_t *argv[])
 		if (!HID_STATUS_SUCCESSFUL(hid_status))
 			cout << "Error, Hid_AddProtectedImage failed with code: " << HID_STATUS_CODE(hid_status) << endl;
 	}
-
-	//hid_status = Hid_AttachExcludedState(hid_context, 528, WithoutInherit);
-	//if (!HID_STATUS_SUCCESSFUL(hid_status))
-	//	cout << "Error, Hid_AttachExcludedState failed with code: " << HID_STATUS_CODE(hid_status) << endl;
 
 	Hid_Destroy(hid_context);
 	cout << "Completed!" << endl;
