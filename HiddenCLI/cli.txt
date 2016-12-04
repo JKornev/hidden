@@ -1,0 +1,50 @@
+
+hiddencli [connection] <command>
+
+connection:
+
+commands:
+
+	hide <file|dir|regval|regkey> <%path%>
+		Hide filesystem or registry object by path
+		
+	unhide <file|dir|regval|regkey> all
+		Unhide all filesystem or registry object by selected type
+	
+	unhide <file|dir|regval|regkey> <%ruleid%>
+		Unhide all filesystem or registry object by selected type and rule ID
+
+
+	ignore image [inherit:<none|always|once>] [apply:<fornew|forall>] <%path%>
+		Set rule that allows to see hidden filesystem and registry objects for processes with specific image path
+		
+	unignore <%ruleid%>
+		Remove rule that allows to see hidden filesystem and registry objects by rule ID
+		
+	unignore all
+		Remove all rules that allow to see hidden filesystem and registry objects
+	
+	ignore pid [inherit:<none|always|once>] <%pid%>
+		Turn on abillity to see hidden filesystem and registry objects for specific process by PID
+		
+	unignore pid <%pid%>
+		Turn off abillity to see hidden filesystem and registry objects for specific process by PID
+
+
+	protect image [inherit:<none|always|once>] [apply:<fornew|forall>] <%path%>
+		Set rule that allows to enable process protection for processes with specific image path
+	
+	unprotect <%ruleid%>
+		Remove rule that enables process protection by rule ID
+	
+	unprotect all
+		Remove all rules that enable process protection
+
+	protect pid [inherit:<none|always|once>] <%pid%>
+		Turn on protection for specific process by PID
+		
+	unprotect pid <%pid%>
+		Turn off protection for specific process by PID
+
+	query <%pid%>
+		Query information about state of the process by PID
