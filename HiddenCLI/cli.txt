@@ -2,6 +2,9 @@
 hiddencli [connection] <command>
 
 connection:
+	
+	gate <%name%>
+		Set specific connection gate name (driver device name)
 
 commands:
 

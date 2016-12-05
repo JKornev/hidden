@@ -2,5 +2,27 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="HiddenCLI.cpp" />
+    <ClCompile Include="Helper.cpp" />
+    <ClCompile Include="Connection.cpp" />
+    <ClCompile Include="Commands.cpp" />
+    <ClCompile Include="Hide.cpp">
+      <Filter>Commands</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="cli.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Helper.h" />
+    <ClInclude Include="Connection.h" />
+    <ClInclude Include="Commands.h" />
+    <ClInclude Include="Hide.h">
+      <Filter>Commands</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Commands">
+      <UniqueIdentifier>{680a2e80-be0d-4ac2-8a4a-d59b67e55c61}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

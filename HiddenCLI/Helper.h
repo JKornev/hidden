@@ -30,7 +30,8 @@ public:
 
 	size_t ArgsCount();
 
-	bool ProbNext(std::wstring& arg);
+	bool Probe(std::wstring& arg);
+	bool SwitchToNext();
 	bool GetNext(std::wstring& arg);
 };
 

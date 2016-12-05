@@ -37,6 +37,24 @@ size_t Arguments::ArgsCount()
 	return m_arguments.size();
 }
 
+bool Arguments::Probe(std::wstring& arg)
+{
+	if (m_argPointer >= m_arguments.size())
+		return false;
+
+	arg = m_arguments[m_argPointer];
+	return true;
+}
+
+bool Arguments::SwitchToNext()
+{
+	if (m_argPointer >= m_arguments.size())
+		return false;
+
+	m_argPointer++;
+	return true;
+}
+
 bool Arguments::GetNext(wstring& arg)
 {
 	if (m_argPointer >= m_arguments.size())

@@ -155,11 +155,13 @@
     <ClCompile Include="Connection.cpp" />
     <ClCompile Include="Helper.cpp" />
     <ClCompile Include="HiddenCLI.cpp" />
+    <ClCompile Include="Hide.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Commands.h" />
     <ClInclude Include="Connection.h" />
     <ClInclude Include="Helper.h" />
+    <ClInclude Include="Hide.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="cli.txt" />

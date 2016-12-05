@@ -14,6 +14,7 @@ int wmain(int argc, wchar_t* argv[])
 	try 
 	{
 		Arguments arguments(argc, argv);
+		Connection connection(arguments);
 
 		if (!arguments.ArgsCount())
 			throw WException(
@@ -21,9 +22,12 @@ int wmain(int argc, wchar_t* argv[])
 				L"Welcome to HiddenCLI, please use 'hiddencli help'"
 			);
 
-		Connection connection(arguments);
-		Commands commands(arguments);
+		{
+			Commands commands(arguments);
 
+			connection.Open();
+			commands.Perform(connection);
+		}
 	}
 	catch (WException& exception)
 	{
