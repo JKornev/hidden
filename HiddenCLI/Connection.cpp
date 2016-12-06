@@ -12,7 +12,7 @@ Connection::Connection(Arguments& args) :
 
 	do
 	{
-		if (arg == L"gate")
+		if (arg == L"/gate")
 		{
 			args.SwitchToNext();
 			if (!args.GetNext(m_deviceName))

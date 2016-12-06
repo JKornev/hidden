@@ -2,6 +2,7 @@
 
 #include "Helper.h"
 #include "Connection.h"
+#include <memory>
 
 class ICommand
 {
@@ -16,7 +17,10 @@ public:
 
 class Commands
 {
-	std::vector<ICommand*> m_commandsStack;
+	typedef std::shared_ptr<ICommand> CommandPtr;
+
+	std::vector<CommandPtr> m_commandsStack;
+	CommandPtr m_current;
 
 	void LoadCommandsStack();
 

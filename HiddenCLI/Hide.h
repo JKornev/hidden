@@ -34,6 +34,9 @@ class CommandUnhide : public ICommand
 {
 	const wchar_t* m_command = nullptr;
 
+	EHideTypes      m_hideType;
+	HidObjId        m_targetId;
+	bool            m_targetAll;
 public:
 
 	CommandUnhide();
