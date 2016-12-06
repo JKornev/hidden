@@ -85,3 +85,19 @@ DWORD Handle::Error()
 {
 	return m_error;
 }
+
+HidRegRootTypes GetRegType(wstring& path)
+{
+	static wchar_t regHKLM[] = L"HKLM\\";
+	static wchar_t regHKCU[] = L"HKCU\\";
+	static wchar_t regHKU[] = L"HKU\\";
+
+	if (path.compare(0, _countof(regHKLM) - 1, regHKLM) == 0)
+		return HidRegRootTypes::RegHKLM;
+	else if (path.compare(0, _countof(regHKCU) - 1, regHKCU) == 0)
+		return HidRegRootTypes::RegHKCU;
+	else if (path.compare(0, _countof(regHKU) - 1, regHKU) == 0)
+		return HidRegRootTypes::RegHKU;
+	else
+		throw WException(-2, L"Error, invalid registry prefix");
+}

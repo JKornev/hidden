@@ -6,6 +6,8 @@
 #include <stdarg.h>
 #include <Windows.h>
 
+#include "../HiddenLib/HiddenLib.h"
+
 class WException
 {
 	std::wstring m_errorMessage;
@@ -50,3 +52,19 @@ public:
 	DWORD Error();
 
 };
+
+enum EObjTypes {
+	TypeFile,
+	TypeDir,
+	TypeRegKey,
+	TypeRegVal,
+	TypeUnknown,
+};
+
+enum EProcTypes {
+	TypeProcessId,
+	TypeImage,
+	TypeUnknown,
+};
+
+HidRegRootTypes GetRegType(std::wstring& path);

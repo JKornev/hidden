@@ -30,27 +30,26 @@ void CommandHide::LoadArgs(Arguments& args)
 
 	if (object == L"file")
 	{
-		m_hideType = EHideTypes::TypeFile;
+		m_hideType = EObjTypes::TypeFile;
 	}
 	else if (object == L"dir")
 	{
-		m_hideType = EHideTypes::TypeDir;
+		m_hideType = EObjTypes::TypeDir;
 	}
 	else if (object == L"regkey")
 	{
-		m_hideType = EHideTypes::TypeRegKey;
+		m_hideType = EObjTypes::TypeRegKey;
 		m_regRootType = GetRegType(m_path);
 	}
 	else if (object == L"regval")
 	{
-		m_hideType = EHideTypes::TypeRegVal;
+		m_hideType = EObjTypes::TypeRegVal;
 		m_regRootType = GetRegType(m_path);
 	}
 	else
 	{
 		throw WException(-2, L"Error, invalid argument for command 'hide'");
 	}
-
 }
 
 void CommandHide::PerformCommand(Connection& connection)
@@ -60,16 +59,16 @@ void CommandHide::PerformCommand(Connection& connection)
 
 	switch (m_hideType)
 	{
-	case EHideTypes::TypeFile:
+	case EObjTypes::TypeFile:
 		status = Hid_AddHiddenFile(connection.GetContext(), m_path.c_str(), &objId);
 		break;
-	case EHideTypes::TypeDir:
+	case EObjTypes::TypeDir:
 		status = Hid_AddHiddenDir(connection.GetContext(), m_path.c_str(), &objId);
 		break;
-	case EHideTypes::TypeRegKey:
+	case EObjTypes::TypeRegKey:
 		status = Hid_AddHiddenRegKey(connection.GetContext(), m_regRootType, m_path.c_str(), &objId);
 		break;
-	case EHideTypes::TypeRegVal:
+	case EObjTypes::TypeRegVal:
 		status = Hid_AddHiddenRegValue(connection.GetContext(), m_regRootType, m_path.c_str(), &objId);
 		break;
 	default:
@@ -80,23 +79,7 @@ void CommandHide::PerformCommand(Connection& connection)
 		throw WException(HID_STATUS_CODE(status), L"Error, command 'hide' rejected");
 
 	wcerr << L"Command 'hide' successful" << endl;
-	wcout << L"status:ok;id:" << objId << endl;
-}
-
-HidRegRootTypes CommandHide::GetRegType(wstring& path)
-{
-	static wchar_t regHKLM[] = L"HKLM\\";
-	static wchar_t regHKCU[] = L"HKCU\\";
-	static wchar_t regHKU[]  = L"HKU\\";
-
-	if (path.compare(0, _countof(regHKLM) - 1, regHKLM) == 0)
-		return HidRegRootTypes::RegHKLM;
-	else if (path.compare(0, _countof(regHKCU) - 1, regHKCU) == 0)
-		return HidRegRootTypes::RegHKCU;
-	else if (path.compare(0, _countof(regHKU) - 1, regHKU) == 0)
-		return HidRegRootTypes::RegHKU;
-	else
-		throw WException(-2, L"Error, invalid registry prefix");
+	wcout << L"status:ok;objid:" << objId << endl;
 }
 
 // =================
@@ -127,19 +110,19 @@ void CommandUnhide::LoadArgs(Arguments& args)
 
 	if (object == L"file")
 	{
-		m_hideType = EHideTypes::TypeFile;
+		m_hideType = EObjTypes::TypeFile;
 	}
 	else if (object == L"dir")
 	{
-		m_hideType = EHideTypes::TypeDir;
+		m_hideType = EObjTypes::TypeDir;
 	}
 	else if (object == L"regkey")
 	{
-		m_hideType = EHideTypes::TypeRegKey;
+		m_hideType = EObjTypes::TypeRegKey;
 	}
 	else if (object == L"regval")
 	{
-		m_hideType = EHideTypes::TypeRegVal;
+		m_hideType = EObjTypes::TypeRegVal;
 	}
 	else
 	{
@@ -151,7 +134,7 @@ void CommandUnhide::LoadArgs(Arguments& args)
 	{
 		m_targetId = _wtoll(target.c_str());
 		if (!m_targetId)
-			throw WException(-2, L"Error, invalid target id for command 'unhide'");
+			throw WException(-2, L"Error, invalid target objid for command 'unhide'");
 	}
 }
 
@@ -163,16 +146,16 @@ void CommandUnhide::PerformCommand(Connection& connection)
 	{
 		switch (m_hideType)
 		{
-		case EHideTypes::TypeFile:
+		case EObjTypes::TypeFile:
 			status = Hid_RemoveAllHiddenFiles(connection.GetContext());
 			break;
-		case EHideTypes::TypeDir:
+		case EObjTypes::TypeDir:
 			status = Hid_RemoveAllHiddenDirs(connection.GetContext());
 			break;
-		case EHideTypes::TypeRegKey:
+		case EObjTypes::TypeRegKey:
 			status = Hid_RemoveAllHiddenRegKeys(connection.GetContext());
 			break;
-		case EHideTypes::TypeRegVal:
+		case EObjTypes::TypeRegVal:
 			status = Hid_RemoveAllHiddenRegValues(connection.GetContext());
 			break;
 		default:
@@ -183,16 +166,16 @@ void CommandUnhide::PerformCommand(Connection& connection)
 	{
 		switch (m_hideType)
 		{
-		case EHideTypes::TypeFile:
+		case EObjTypes::TypeFile:
 			status = Hid_RemoveHiddenFile(connection.GetContext(), m_targetId);
 			break;
-		case EHideTypes::TypeDir:
+		case EObjTypes::TypeDir:
 			status = Hid_RemoveHiddenDir(connection.GetContext(), m_targetId);
 			break;
-		case EHideTypes::TypeRegKey:
+		case EObjTypes::TypeRegKey:
 			status = Hid_RemoveHiddenRegKey(connection.GetContext(), m_targetId);
 			break;
-		case EHideTypes::TypeRegVal:
+		case EObjTypes::TypeRegVal:
 			status = Hid_RemoveHiddenRegValue(connection.GetContext(), m_targetId);
 			break;
 		default:

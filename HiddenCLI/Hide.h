@@ -2,23 +2,13 @@
 
 #include "Commands.h"
 
-enum EHideTypes {
-	TypeFile,
-	TypeDir,
-	TypeRegKey,
-	TypeRegVal,
-	TypeUnknown,
-};
-
 class CommandHide : public ICommand
 {
 	const wchar_t* m_command = nullptr;
 
-	EHideTypes      m_hideType;
+	EObjTypes       m_hideType;
 	HidRegRootTypes m_regRootType;
 	std::wstring    m_path;
-
-	HidRegRootTypes GetRegType(std::wstring& path);
 
 public:
 
@@ -34,9 +24,10 @@ class CommandUnhide : public ICommand
 {
 	const wchar_t* m_command = nullptr;
 
-	EHideTypes      m_hideType;
+	EObjTypes       m_hideType;
 	HidObjId        m_targetId;
 	bool            m_targetAll;
+
 public:
 
 	CommandUnhide();
