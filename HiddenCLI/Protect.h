@@ -2,7 +2,7 @@
 
 #include "Commands.h"
 
-class CommandIgnore : public ICommand
+class CommandProtect : public ICommand
 {
 	const wchar_t* m_command = nullptr;
 
@@ -14,15 +14,15 @@ class CommandIgnore : public ICommand
 
 public:
 
-	CommandIgnore();
-	virtual ~CommandIgnore();
+	CommandProtect();
+	virtual ~CommandProtect();
 
 	virtual bool CompareCommand(std::wstring& command);
 	virtual void LoadArgs(Arguments& args);
 	virtual void PerformCommand(Connection& connection);
 };
 
-class CommandUnignore : public ICommand
+class CommandUnprotect : public ICommand
 {
 	const wchar_t* m_command = nullptr;
 
@@ -38,8 +38,8 @@ class CommandUnignore : public ICommand
 
 public:
 
-	CommandUnignore();
-	virtual ~CommandUnignore();
+	CommandUnprotect();
+	virtual ~CommandUnprotect();
 
 	virtual bool CompareCommand(std::wstring& command);
 	virtual void LoadArgs(Arguments& args);

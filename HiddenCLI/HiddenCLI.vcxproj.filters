@@ -8,6 +8,12 @@
     <ClCompile Include="Hide.cpp">
       <Filter>Commands</Filter>
     </ClCompile>
+    <ClCompile Include="Ignore.cpp">
+      <Filter>Commands</Filter>
+    </ClCompile>
+    <ClCompile Include="Protect.cpp">
+      <Filter>Commands</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="cli.txt" />
@@ -17,6 +23,12 @@
     <ClInclude Include="Connection.h" />
     <ClInclude Include="Commands.h" />
     <ClInclude Include="Hide.h">
+      <Filter>Commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Ignore.h">
+      <Filter>Commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Protect.h">
       <Filter>Commands</Filter>
     </ClInclude>
   </ItemGroup>

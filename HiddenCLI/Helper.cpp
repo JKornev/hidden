@@ -101,3 +101,35 @@ HidRegRootTypes GetRegType(wstring& path)
 	else
 		throw WException(-2, L"Error, invalid registry prefix");
 }
+
+HidPsInheritTypes LoadInheritOption(Arguments& args, HidPsInheritTypes default)
+{
+	wstring arg;
+
+	if (!args.Probe(arg))
+		return default;
+
+	if (arg == L"inherit:none")
+		return HidPsInheritTypes::WithoutInherit;
+	else if (arg == L"inherit:always")
+		return HidPsInheritTypes::InheritAlways;
+	else if (arg == L"inherit:once")
+		return HidPsInheritTypes::InheritOnce;
+
+	return default;
+}
+
+bool LoadApplyOption(Arguments& args, bool applyByDefault)
+{
+	wstring arg;
+
+	if (!args.Probe(arg))
+		return applyByDefault;
+
+	if (arg == L"apply:fornew")
+		return false;
+	else if (arg == L"apply:forall")
+		return true;
+
+	return applyByDefault;
+}

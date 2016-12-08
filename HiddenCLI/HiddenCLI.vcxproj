@@ -156,12 +156,16 @@
     <ClCompile Include="Helper.cpp" />
     <ClCompile Include="HiddenCLI.cpp" />
     <ClCompile Include="Hide.cpp" />
+    <ClCompile Include="Ignore.cpp" />
+    <ClCompile Include="Protect.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Commands.h" />
     <ClInclude Include="Connection.h" />
     <ClInclude Include="Helper.h" />
     <ClInclude Include="Hide.h" />
+    <ClInclude Include="Ignore.h" />
+    <ClInclude Include="Protect.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="cli.txt" />

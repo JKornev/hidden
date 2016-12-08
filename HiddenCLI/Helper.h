@@ -58,13 +58,14 @@ enum EObjTypes {
 	TypeDir,
 	TypeRegKey,
 	TypeRegVal,
-	TypeUnknown,
 };
 
 enum EProcTypes {
 	TypeProcessId,
 	TypeImage,
-	TypeUnknown,
 };
 
 HidRegRootTypes GetRegType(std::wstring& path);
+
+HidPsInheritTypes LoadInheritOption(Arguments& args, HidPsInheritTypes default);
+bool LoadApplyOption(Arguments& args, bool applyByDefault);
