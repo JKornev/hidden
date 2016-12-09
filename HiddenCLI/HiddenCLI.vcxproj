@@ -158,6 +158,7 @@
     <ClCompile Include="Hide.cpp" />
     <ClCompile Include="Ignore.cpp" />
     <ClCompile Include="Protect.cpp" />
+    <ClCompile Include="Query.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Commands.h" />
@@ -166,6 +167,7 @@
     <ClInclude Include="Hide.h" />
     <ClInclude Include="Ignore.h" />
     <ClInclude Include="Protect.h" />
+    <ClInclude Include="Query.h" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="cli.txt" />

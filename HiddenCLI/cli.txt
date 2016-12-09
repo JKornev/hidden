@@ -8,6 +8,9 @@ connection:
 
 commands:
 
+	state <on|off>
+		Enable or disable hidden
+
 	hide <file|dir|regval|regkey> <%path%>
 		Hide filesystem or registry object by path
 		
@@ -49,5 +52,5 @@ commands:
 	unprotect pid <%pid%>
 		Turn off protection for specific process by PID
 
-	query <%pid%>
+	query process <%pid%>
 		Query information about state of the process by PID

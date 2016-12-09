@@ -14,6 +14,9 @@
     <ClCompile Include="Protect.cpp">
       <Filter>Commands</Filter>
     </ClCompile>
+    <ClCompile Include="Query.cpp">
+      <Filter>Commands</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Text Include="cli.txt" />
@@ -29,6 +32,9 @@
       <Filter>Commands</Filter>
     </ClInclude>
     <ClInclude Include="Protect.h">
+      <Filter>Commands</Filter>
+    </ClInclude>
+    <ClInclude Include="Query.h">
       <Filter>Commands</Filter>
     </ClInclude>
   </ItemGroup>

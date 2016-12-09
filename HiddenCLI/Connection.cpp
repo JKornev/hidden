@@ -40,9 +40,9 @@ void Connection::Open()
 	if (m_deviceName.size())
 		deviceName = m_deviceName.c_str();
 
-	//status = Hid_Initialize(&m_context, deviceName);
-	//if (!HID_STATUS_SUCCESSFUL(status))
-	//	throw WException(HID_STATUS_CODE(status), L"Error, can't connect to gate");
+	status = Hid_Initialize(&m_context, deviceName);
+	if (!HID_STATUS_SUCCESSFUL(status))
+		throw WException(HID_STATUS_CODE(status), L"Error, can't connect to gate");
 }
 
 HidContext Connection::GetContext()
