@@ -62,7 +62,7 @@ void CommandIgnore::LoadArgs(Arguments& args)
 void CommandIgnore::PerformCommand(Connection& connection)
 {
 	HidStatus status;
-	HidObjId objId;
+	HidObjId objId = 0;
 
 	switch (m_procType)
 	{
@@ -80,7 +80,7 @@ void CommandIgnore::PerformCommand(Connection& connection)
 		throw WException(HID_STATUS_CODE(status), L"Error, command 'ignore' rejected");
 
 	wcerr << L"Command 'ignore' successful" << endl;
-	if (EProcTypes::TypeProcessId)
+	if (m_procType == EProcTypes::TypeProcessId)
 		wcout << L"status:ok" << endl;
 	else
 		wcout << L"status:ok;objid:" << objId << endl;

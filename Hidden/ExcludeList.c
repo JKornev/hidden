@@ -55,7 +55,7 @@ NTSTATUS InitializeExcludeListContext(PExcludeContext Context, UINT32 Type)
 
 	InitializeListHead(&cntx->listHead);
 	KeInitializeSpinLock(&cntx->listLock);
-	cntx->guidCounter = 0;
+	cntx->guidCounter = 1;
 	cntx->type = Type;
 
 	*Context = cntx;

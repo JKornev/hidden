@@ -65,11 +65,11 @@ void CommandQuery::PerformCommand(Connection& connection)
 	if (!HID_STATUS_SUCCESSFUL(status))
 		throw WException(HID_STATUS_CODE(status), L"Error, query protected state rejected");
 
-	wcerr << L"ignore state:" << (excludeState == HidActiveState::StateEnabled ? L"true" : L"false") 
+	wcerr << L"Ignored state:" << (excludeState == HidActiveState::StateEnabled ? L"true" : L"false") 
 		<< L", inherit:" << ConvertInheritTypeToUnicode(excludedInherit) << endl;
-	wcerr << L"protect state:" << (protectedState == HidActiveState::StateEnabled ? L"true" : L"false")
+	wcerr << L"Protected state:" << (protectedState == HidActiveState::StateEnabled ? L"true" : L"false")
 		<< L", inherit:" << ConvertInheritTypeToUnicode(protectedInherit) << endl;
 
-	wcout << L"status:ok;ignore:" << excludeState << L"," << excludedInherit 
-		<< L";protect:" << protectedState << L"," << protectedInherit << endl;
+	wcout << L"status:ok;ignored:" << excludeState << L"," << excludedInherit 
+		<< L";protected:" << protectedState << L"," << protectedInherit << endl;
 }

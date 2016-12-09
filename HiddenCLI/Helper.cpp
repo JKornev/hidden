@@ -110,11 +110,20 @@ HidPsInheritTypes LoadInheritOption(Arguments& args, HidPsInheritTypes default)
 		return default;
 
 	if (arg == L"inherit:none")
+	{
+		args.SwitchToNext();
 		return HidPsInheritTypes::WithoutInherit;
+	}
 	else if (arg == L"inherit:always")
+	{
+		args.SwitchToNext();
 		return HidPsInheritTypes::InheritAlways;
+	}
 	else if (arg == L"inherit:once")
+	{
+		args.SwitchToNext();
 		return HidPsInheritTypes::InheritOnce;
+	}
 
 	return default;
 }
@@ -127,9 +136,15 @@ bool LoadApplyOption(Arguments& args, bool applyByDefault)
 		return applyByDefault;
 
 	if (arg == L"apply:fornew")
+	{
+		args.SwitchToNext();
 		return false;
+	}
 	else if (arg == L"apply:forall")
+	{
+		args.SwitchToNext();
 		return true;
+	}
 
 	return applyByDefault;
 }

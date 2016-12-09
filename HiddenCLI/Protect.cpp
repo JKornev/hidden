@@ -80,7 +80,7 @@ void CommandProtect::PerformCommand(Connection& connection)
 		throw WException(HID_STATUS_CODE(status), L"Error, command 'protect' rejected");
 
 	wcerr << L"Command 'protect' successful" << endl;
-	if (EProcTypes::TypeProcessId)
+	if (m_procType == EProcTypes::TypeProcessId)
 		wcout << L"status:ok" << endl;
 	else
 		wcout << L"status:ok;objid:" << objId << endl;

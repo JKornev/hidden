@@ -51,7 +51,7 @@ NTSTATUS InitializePsRuleListContext(PPsRulesContext pRuleContext)
 		return STATUS_MEMORY_NOT_ALLOCATED;
 	}
 
-	context->idCounter = 0;
+	context->idCounter = 1;
 	KeInitializeSpinLock(&context->tableLock);
 	RtlInitializeGenericTableAvl(&context->table, ComparePsRuleEntry, AllocatePsRuleEntry, FreePsRuleEntry, NULL);
 

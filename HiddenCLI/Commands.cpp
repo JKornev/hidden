@@ -1,5 +1,8 @@
 #include "Commands.h"
 #include "Hide.h"
+#include "Ignore.h"
+#include "Protect.h"
+#include "Query.h"
 
 using namespace std;
 
@@ -44,6 +47,11 @@ void Commands::LoadCommandsStack()
 {
 	m_commandsStack.push_back(CommandPtr(new CommandHide()));
 	m_commandsStack.push_back(CommandPtr(new CommandUnhide()));
+	m_commandsStack.push_back(CommandPtr(new CommandIgnore()));
+	m_commandsStack.push_back(CommandPtr(new CommandUnignore()));
+	m_commandsStack.push_back(CommandPtr(new CommandProtect()));
+	m_commandsStack.push_back(CommandPtr(new CommandUnprotect()));
+	m_commandsStack.push_back(CommandPtr(new CommandQuery()));
 }
 
 void Commands::Perform(Connection& connection)

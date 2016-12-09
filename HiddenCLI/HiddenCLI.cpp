@@ -17,7 +17,7 @@ int wmain(int argc, wchar_t* argv[])
 		if (!arguments.ArgsCount())
 			throw WException(
 				-2,
-				L"Welcome to HiddenCLI, please use 'hiddencli help'"
+				L"Welcome to HiddenCLI, please use 'hiddencli /help'"
 			);
 
 		{
