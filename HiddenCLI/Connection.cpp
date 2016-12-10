@@ -17,6 +17,9 @@ Connection::Connection(Arguments& args) :
 			args.SwitchToNext();
 			if (!args.GetNext(m_deviceName))
 				throw WException(-2, L"Error, mismatched argument for command 'gate'");
+
+			if (m_deviceName.compare(0, 1, L"\\") != 0)
+				m_deviceName.insert(0, L"\\\\.\\");
 		}
 		else
 		{

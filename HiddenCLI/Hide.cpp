@@ -79,7 +79,7 @@ void CommandHide::PerformCommand(Connection& connection)
 		throw WException(HID_STATUS_CODE(status), L"Error, command 'hide' rejected");
 
 	wcerr << L"Command 'hide' successful" << endl;
-	wcout << L"status:ok;objid:" << objId << endl;
+	wcout << L"status:ok;ruleid:" << objId << endl;
 }
 
 // =================

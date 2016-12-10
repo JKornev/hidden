@@ -83,7 +83,7 @@ void CommandProtect::PerformCommand(Connection& connection)
 	if (m_procType == EProcTypes::TypeProcessId)
 		wcout << L"status:ok" << endl;
 	else
-		wcout << L"status:ok;objid:" << objId << endl;
+		wcout << L"status:ok;ruleid:" << objId << endl;
 }
 
 // =================

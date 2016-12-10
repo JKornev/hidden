@@ -285,7 +285,7 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 			return;
 		}
 
-		CheckProcessFlags(&entry, &normalized, CreateInfo->ParentProcessId);
+		CheckProcessFlags(&entry, &normalized, PsGetCurrentProcessId()/*CreateInfo->ParentProcessId*/);
 
 		if (entry.excluded)
 			DbgPrint("FsFilter1!" __FUNCTION__ ": excluded process:%d\n", ProcessId);
