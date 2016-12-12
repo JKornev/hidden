@@ -38,6 +38,11 @@ enum Hid_ObjectTypes {
 
 // Fs/Reg packets
 
+typedef struct _Hid_DriverStatusPacket {
+	unsigned short state;
+	unsigned short reserved;
+} Hid_DriverStatus, *PHid_DriverStatus;
+
 typedef struct _Hid_HideObjectPacket {
 	unsigned short objType;
 	unsigned short dataSize;

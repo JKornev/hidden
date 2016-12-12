@@ -3,6 +3,7 @@
 #include "PsMonitor.h"
 #include "Device.h"
 #include "DeviceAPI.h"
+#include "Driver.h"
 
 BOOLEAN g_deviceInited = FALSE;
 PDEVICE_OBJECT g_deviceObject = NULL;
@@ -319,6 +320,26 @@ NTSTATUS RemoveAllPsObjects(PHid_RemoveAllPsObjectsPacket Packet, USHORT Size)
 	return status;
 }
 
+NTSTATUS SetDriverStateObject(PHid_DriverStatus Packet, USHORT Size)
+{
+	if (Size != sizeof(Hid_DriverStatus))
+		return STATUS_INVALID_PARAMETER;
+
+	EnableDisableDriver(Packet->state ? TRUE : FALSE);
+	return STATUS_SUCCESS;
+}
+
+NTSTATUS GetDriverStateObject(PHid_DriverStatus Packet, USHORT Size, PULONG state)
+{
+	UNREFERENCED_PARAMETER(Packet);
+
+	if (Size != sizeof(Hid_DriverStatus))
+		return STATUS_INVALID_PARAMETER;
+
+	*state = IsDriverEnabled();
+	return STATUS_SUCCESS;
+}
+
 NTSTATUS IrpDeviceControlHandler(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 {
 	PIO_STACK_LOCATION irpStack;
@@ -363,6 +384,13 @@ NTSTATUS IrpDeviceControlHandler(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 	// data in the same time you should make the copy of input data and work with it.
 	switch (ioctl)
 	{
+	// Driver
+	case HID_IOCTL_SET_DRIVER_STATE:
+		result.status = SetDriverStateObject((PHid_DriverStatus)inputBuffer, (USHORT)inputBufferSize);
+		break;
+	case HID_IOCTL_GET_DRIVER_STATE:
+		result.status = GetDriverStateObject((PHid_DriverStatus)inputBuffer, (USHORT)inputBufferSize, &result.info.state);
+		break;
 	// Reg/Fs 
 	case HID_IOCTL_ADD_HIDDEN_OBJECT:
 		result.status = AddHiddenObject((PHid_HideObjectPacket)inputBuffer, (USHORT)inputBufferSize, &result.info.id);

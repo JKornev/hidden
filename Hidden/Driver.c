@@ -11,18 +11,18 @@
 
 PDRIVER_OBJECT g_driverObject = NULL;
 
-BOOLEAN g_driverActive = FALSE;
+volatile LONG g_driverActive = FALSE;
 
 // =========================================================================================
 
-VOID SetDriverActivityState(BOOLEAN state)
+VOID EnableDisableDriver(BOOLEAN enabled)
 {
-	g_driverActive = state;
+	InterlockedExchange(&g_driverActive, (LONG)enabled);
 }
 
-BOOLEAN GetDriverActiviteState()
+BOOLEAN IsDriverEnabled()
 {
-	return g_driverActive;
+	return (g_driverActive ? TRUE : FALSE);
 }
 
 // =========================================================================================
@@ -43,7 +43,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 
 	UNREFERENCED_PARAMETER(RegistryPath);
 
-	g_driverActive = TRUE;
+	EnableDisableDriver(TRUE);
 
 	status = InitializePsMonitor(DriverObject);
 	if (!NT_SUCCESS(status))

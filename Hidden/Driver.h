@@ -1,4 +1,4 @@
 #pragma once
 
-VOID SetDriverActivityState(BOOLEAN state);
-BOOLEAN GetDriverActiviteState();
+VOID EnableDisableDriver(BOOLEAN enabled);
+BOOLEAN IsDriverEnabled();

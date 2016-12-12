@@ -249,6 +249,46 @@ void FreeNormalizedPath(wchar_t* normalized)
 	free(normalized);
 }
 
+HidStatus SendIoctl_QueryDriverStatusPacket(PHidContextInternal context, HidActiveState* state)
+{
+	Hid_DriverStatus packet = { 0 };
+	Hid_StatusPacket result;
+	DWORD returned;
+
+	if (!DeviceIoControl(context->hdevice, HID_IOCTL_GET_DRIVER_STATE, &packet, sizeof(packet), &result, sizeof(result), &returned, NULL))
+		return HID_SET_STATUS(FALSE, GetLastError());
+
+	if (returned != sizeof(result))
+		return HID_SET_STATUS(FALSE, ERROR_INVALID_PARAMETER);
+
+	if (!NT_SUCCESS(result.status))
+		return HID_SET_STATUS(FALSE, result.status);
+
+	*state = (result.info.state ? HidActiveState::StateEnabled : HidActiveState::StateDisabled);
+	return HID_SET_STATUS(TRUE, 0);
+}
+
+HidStatus SendIoctl_SetDriverStatusPacket(PHidContextInternal context, HidActiveState state)
+{
+	Hid_DriverStatus packet;
+	Hid_StatusPacket result;
+	DWORD returned;
+
+	packet.state = (state == HidActiveState::StateEnabled ? 1 : 0);
+	packet.reserved = 0;
+
+	if (!DeviceIoControl(context->hdevice, HID_IOCTL_SET_DRIVER_STATE, &packet, sizeof(packet), &result, sizeof(result), &returned, NULL))
+		return HID_SET_STATUS(FALSE, GetLastError());
+
+	if (returned != sizeof(result))
+		return HID_SET_STATUS(FALSE, ERROR_INVALID_PARAMETER);
+
+	if (!NT_SUCCESS(result.status))
+		return HID_SET_STATUS(FALSE, result.status);
+
+	return HID_SET_STATUS(TRUE, 0);
+}
+
 HidStatus SendIoctl_HideObjectPacket(PHidContextInternal context, const wchar_t* path, unsigned short type, HidObjId* objId)
 {
 	PHid_HideObjectPacket hide;
@@ -498,14 +538,12 @@ HidStatus SendIoctl_SetPsStatePacket(PHidContextInternal context, HidProcId proc
 
 HidStatus _API Hid_SetState(HidContext context, HidActiveState state)
 {
-	PHidContextInternal cntx = (PHidContextInternal)context;
-	return HID_SET_STATUS(FALSE, ERROR_CALL_NOT_IMPLEMENTED);
+	return SendIoctl_SetDriverStatusPacket((PHidContextInternal)context, state);
 }
 
 HidStatus _API Hid_GetState(HidContext context, HidActiveState* pstate)
 {
-	PHidContextInternal cntx = (PHidContextInternal)context;
-	return HID_SET_STATUS(FALSE, ERROR_CALL_NOT_IMPLEMENTED);
+	return SendIoctl_QueryDriverStatusPacket((PHidContextInternal)context, pstate);
 }
 
 // Registry hiding interface

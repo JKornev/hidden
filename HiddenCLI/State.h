@@ -2,25 +2,18 @@
 
 #include "Commands.h"
 
-class CommandQuery : public ICommand
+class CommandState : public ICommand
 {
-	enum EQueryType {
-		QueryProcess,
-		QueryState,
-	};
-
 	const wchar_t* m_command = nullptr;
 
-	EQueryType m_queryType;
-	HidProcId  m_targetProcId;
+	bool m_state;
 
 public:
 
-	CommandQuery();
-	virtual ~CommandQuery();
+	CommandState();
+	virtual ~CommandState();
 
 	virtual bool CompareCommand(std::wstring& command);
 	virtual void LoadArgs(Arguments& args);
 	virtual void PerformCommand(Connection& connection);
 };
-

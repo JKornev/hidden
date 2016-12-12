@@ -3,6 +3,7 @@
 #include "Ignore.h"
 #include "Protect.h"
 #include "Query.h"
+#include "State.h"
 
 using namespace std;
 
@@ -52,6 +53,7 @@ void Commands::LoadCommandsStack()
 	m_commandsStack.push_back(CommandPtr(new CommandProtect()));
 	m_commandsStack.push_back(CommandPtr(new CommandUnprotect()));
 	m_commandsStack.push_back(CommandPtr(new CommandQuery()));
+	m_commandsStack.push_back(CommandPtr(new CommandState()));
 }
 
 void Commands::Perform(Connection& connection)

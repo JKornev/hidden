@@ -10,7 +10,10 @@ connection:
 commands:
 
 	state <on|off>
-		Enable or disable hidden
+		Enable or disable enforcement (hiding, protecting, ignoring etc)
+	
+	query state
+		Get enforcement state
 
 	hide <file|dir|regval|regkey> <%path%>
 		Hide filesystem or registry object by path
@@ -20,7 +23,6 @@ commands:
 	
 	unhide <file|dir|regval|regkey> <%ruleid%>
 		Unhide all filesystem or registry object by selected type and rule ID
-
 
 	ignore image [inherit:<none|always|once>] [apply:<fornew|forall>] <%path%>
 		Set rule that allows to see hidden filesystem and registry objects for processes with specific image path
@@ -36,7 +38,6 @@ commands:
 		
 	unignore pid <%pid%>
 		Turn off abillity to see hidden filesystem and registry objects for specific process by PID
-
 
 	protect image [inherit:<none|always|once>] [apply:<fornew|forall>] <%path%>
 		Set rule that allows to enable process protection for processes with specific image path

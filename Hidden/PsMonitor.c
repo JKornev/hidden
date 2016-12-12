@@ -3,6 +3,7 @@
 #include "Helper.h"
 #include "PsTable.h"
 #include "PsRules.h"
+#include "Driver.h"
 
 #define PROCESS_QUERY_LIMITED_INFORMATION      0x1000
 #define SYSTEM_PROCESS_ID (HANDLE)4
@@ -112,6 +113,9 @@ OB_PREOP_CALLBACK_STATUS ProcessPreCallback(PVOID RegistrationContext, POB_PRE_O
 {
 	UNREFERENCED_PARAMETER(RegistrationContext);
 
+	if (!IsDriverEnabled())
+		return OB_PREOP_SUCCESS;
+
 	if (OperationInformation->KernelHandle)
 		return OB_PREOP_SUCCESS;
 	
@@ -140,6 +144,9 @@ OB_PREOP_CALLBACK_STATUS ProcessPreCallback(PVOID RegistrationContext, POB_PRE_O
 OB_PREOP_CALLBACK_STATUS ThreadPreCallback(PVOID RegistrationContext, POB_PRE_OPERATION_INFORMATION OperationInformation)
 {
 	UNREFERENCED_PARAMETER(RegistrationContext);
+
+	if (!IsDriverEnabled())
+		return OB_PREOP_SUCCESS;
 
 	if (OperationInformation->KernelHandle)
 		return OB_PREOP_SUCCESS;

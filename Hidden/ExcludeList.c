@@ -170,7 +170,7 @@ NTSTATUS AddExcludeListEntry(ExcludeContext Context, PUNICODE_STRING FilePath, U
 
 NTSTATUS RemoveExcludeListEntry(ExcludeContext Context, ExcludeEntryId EntryId)
 {
-	NTSTATUS status = STATUS_SUCCESS;
+	NTSTATUS status = STATUS_NOT_FOUND;
 	PEXCLUDE_FILE_CONTEXT cntx = (PEXCLUDE_FILE_CONTEXT)Context;
 	KLOCK_QUEUE_HANDLE lockHandle;
 	PEXCLUDE_FILE_LIST_ENTRY entry;

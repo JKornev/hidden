@@ -148,3 +148,20 @@ bool LoadApplyOption(Arguments& args, bool applyByDefault)
 
 	return applyByDefault;
 }
+
+const wchar_t* ConvertInheritTypeToUnicode(HidPsInheritTypes type)
+{
+	switch (type)
+	{
+	case HidPsInheritTypes::WithoutInherit:
+		return L"none";
+		break;
+	case HidPsInheritTypes::InheritOnce:
+		return L"once";
+		break;
+	case HidPsInheritTypes::InheritAlways:
+		return L"always";
+		break;
+	}
+	return L"unknown";
+}

@@ -7,6 +7,7 @@
 #include "FsFilter.h"
 #include "Helper.h"
 #include "PsMonitor.h"
+#include "Driver.h"
 
 NTSTATUS FilterSetup(PCFLT_RELATED_OBJECTS FltObjects, FLT_INSTANCE_SETUP_FLAGS Flags, DEVICE_TYPE VolumeDeviceType, FLT_FILESYSTEM_TYPE VolumeFilesystemType);
 
@@ -101,6 +102,9 @@ FLT_PREOP_CALLBACK_STATUS FltCreatePreOperation(
 	UNREFERENCED_PARAMETER(FltObjects);
 	UNREFERENCED_PARAMETER(CompletionContext);
 
+	if (!IsDriverEnabled())
+		return FLT_PREOP_SUCCESS_NO_CALLBACK;
+
 	//DbgPrint("!!!!! " __FUNCTION__ ": Entered %d\n", (ULONG)KeGetCurrentIrql());
 	//DbgPrint("%wZ %x\n", &Data->Iopb->TargetFileObject->FileName, Data->Iopb->Parameters.Create.Options);
 
@@ -147,10 +151,13 @@ FLT_PREOP_CALLBACK_STATUS FltCreatePreOperation(
 
 FLT_PREOP_CALLBACK_STATUS FltDirCtrlPreOperation(PFLT_CALLBACK_DATA Data, PCFLT_RELATED_OBJECTS FltObjects, PVOID *CompletionContext)
 {
-	PAGED_CODE();
-
 	UNREFERENCED_PARAMETER(FltObjects);
 	UNREFERENCED_PARAMETER(CompletionContext);
+	
+	PAGED_CODE();
+
+	if (!IsDriverEnabled())
+		return FLT_POSTOP_FINISHED_PROCESSING;
 
 	//DbgPrint("!!!!! " __FUNCTION__ ": Entered\n");
 	//DbgPrint("%wZ\n", &Data->Iopb->TargetFileObject->FileName);
@@ -185,6 +192,9 @@ FLT_POSTOP_CALLBACK_STATUS FltDirCtrlPostOperation(PFLT_CALLBACK_DATA Data, PCFL
 	UNREFERENCED_PARAMETER(Flags);
 
 	PAGED_CODE();
+
+	if (!IsDriverEnabled())
+		return FLT_POSTOP_FINISHED_PROCESSING;
 
 	if (!NT_SUCCESS(Data->IoStatus.Status))
 		return FLT_POSTOP_FINISHED_PROCESSING;
