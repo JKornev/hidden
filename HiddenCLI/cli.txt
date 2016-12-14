@@ -1,58 +1,77 @@
 
-hiddencli [connection] <command>
+hiddencli [mode] [connection] [perform] <command>
 hiddencli /help
+
+mode:
+
+	By default perform current commands
+
+	/install [%driver%]
+	  Install commands to registry without execution, driver will load them on start. If this flag is set 
+	  connection parameters shouldn't be set. Optional parameter is used for set valid registry path if
+	  driver name is changed, by default "hidden"
 
 connection:
 	
-	gate <%name%>
+	/gate <%name%>
 		Set specific connection gate name (driver device name)
+
+perform:
+
+	By default perform one command by one execution
+
+	/multi
+	  Enable multiple commands per execution, just type commands one by one without any separator
+
+	/config
+	  Loads multiple commands from file, each command should be on separate line
 
 commands:
 
-	state <on|off>
+	/state <on|off>
 		Enable or disable enforcement (hiding, protecting, ignoring etc)
 	
-	query state
+	/query state
 		Get enforcement state
 
-	hide <file|dir|regval|regkey> <%path%>
+	/hide <file|dir|regval|regkey> <%path%>
 		Hide filesystem or registry object by path
 		
-	unhide <file|dir|regval|regkey> all
+	/unhide <file|dir|regval|regkey> all
 		Unhide all filesystem or registry object by selected type
 	
-	unhide <file|dir|regval|regkey> <%ruleid%>
+	/unhide <file|dir|regval|regkey> <%ruleid%>
 		Unhide all filesystem or registry object by selected type and rule ID
 
-	ignore image [inherit:<none|always|once>] [apply:<fornew|forall>] <%path%>
+	/ignore image [inherit:<none|always|once>] [apply:<fornew|forall>] <%path%>
 		Set rule that allows to see hidden filesystem and registry objects for processes with specific image path
 		
-	unignore <%ruleid%>
+	/unignore <%ruleid%>
 		Remove rule that allows to see hidden filesystem and registry objects by rule ID
 		
-	unignore all
+	/unignore all
 		Remove all rules that allow to see hidden filesystem and registry objects
 	
-	ignore pid [inherit:<none|always|once>] <%pid%>
+	/ignore pid [inherit:<none|always|once>] <%pid%>
 		Turn on abillity to see hidden filesystem and registry objects for specific process by PID
 		
-	unignore pid <%pid%>
+	/unignore pid <%pid%>
 		Turn off abillity to see hidden filesystem and registry objects for specific process by PID
 
-	protect image [inherit:<none|always|once>] [apply:<fornew|forall>] <%path%>
+	/protect image [inherit:<none|always|once>] [apply:<fornew|forall>] <%path%>
 		Set rule that allows to enable process protection for processes with specific image path
 	
-	unprotect <%ruleid%>
+	/unprotect <%ruleid%>
 		Remove rule that enables process protection by rule ID
 	
-	unprotect all
+	/unprotect all
 		Remove all rules that enable process protection
 
-	protect pid [inherit:<none|always|once>] <%pid%>
+	/protect pid [inherit:<none|always|once>] <%pid%>
 		Turn on protection for specific process by PID
 		
-	unprotect pid <%pid%>
+	/unprotect pid <%pid%>
 		Turn off protection for specific process by PID
 
-	query process <%pid%>
+	/query process <%pid%>
 		Query information about state of the process by PID

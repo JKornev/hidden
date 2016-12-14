@@ -86,6 +86,11 @@ void CommandProtect::PerformCommand(Connection& connection)
 		wcout << L"status:ok;ruleid:" << objId << endl;
 }
 
+CommandPtr CommandProtect::CreateInstance()
+{
+	return CommandPtr(new CommandProtect());
+}
+
 // =================
 
 CommandUnprotect::CommandUnprotect() : m_command(L"/unprotect")
@@ -157,4 +162,9 @@ void CommandUnprotect::PerformCommand(Connection& connection)
 
 	wcerr << L"Command 'unprotect' successful" << endl;
 	wcout << L"status:ok" << endl;
+}
+
+CommandPtr CommandUnprotect::CreateInstance()
+{
+	return CommandPtr(new CommandUnprotect());
 }

@@ -42,3 +42,8 @@ void CommandState::PerformCommand(Connection& connection)
 	wcerr << L"Command 'state' successful" << endl;
 	wcout << L"status:ok" << endl;
 }
+
+CommandPtr CommandState::CreateInstance()
+{
+	return CommandPtr(new CommandState());
+}

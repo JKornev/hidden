@@ -82,3 +82,8 @@ void CommandQuery::PerformCommand(Connection& connection)
 			<< L";protected:" << protectedState << L"," << protectedInherit << endl;
 	}
 }
+
+CommandPtr CommandQuery::CreateInstance()
+{
+	return CommandPtr(new CommandQuery());
+}

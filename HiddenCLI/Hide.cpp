@@ -82,6 +82,11 @@ void CommandHide::PerformCommand(Connection& connection)
 	wcout << L"status:ok;ruleid:" << objId << endl;
 }
 
+CommandPtr CommandHide::CreateInstance()
+{
+	return CommandPtr(new CommandHide());
+}
+
 // =================
 
 CommandUnhide::CommandUnhide() : m_command(L"/unhide")
@@ -188,4 +193,9 @@ void CommandUnhide::PerformCommand(Connection& connection)
 
 	wcerr << L"Command 'unhide' successful" << endl;
 	wcout << L"status:ok" << endl;
+}
+
+CommandPtr CommandUnhide::CreateInstance()
+{
+	return CommandPtr(new CommandUnhide());
 }

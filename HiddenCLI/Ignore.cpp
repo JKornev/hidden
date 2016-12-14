@@ -86,6 +86,11 @@ void CommandIgnore::PerformCommand(Connection& connection)
 		wcout << L"status:ok;ruleid:" << objId << endl;
 }
 
+CommandPtr CommandIgnore::CreateInstance()
+{
+	return CommandPtr(new CommandIgnore());
+}
+
 // =================
 
 CommandUnignore::CommandUnignore() : m_command(L"/unignore")
@@ -157,4 +162,9 @@ void CommandUnignore::PerformCommand(Connection& connection)
 
 	wcerr << L"Command 'unignore' successful" << endl;
 	wcout << L"status:ok" << endl;
+}
+
+CommandPtr CommandUnignore::CreateInstance()
+{
+	return CommandPtr(new CommandUnignore());
 }

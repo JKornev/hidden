@@ -9,15 +9,68 @@ using namespace std;
 
 // =================
 
-Commands::Commands(Arguments& args)
+void LoadCommandsStack(vector<CommandPtr>& stack)
+{
+	stack.push_back(CommandPtr(new CommandHide()));
+	stack.push_back(CommandPtr(new CommandUnhide()));
+	stack.push_back(CommandPtr(new CommandIgnore()));
+	stack.push_back(CommandPtr(new CommandUnignore()));
+	stack.push_back(CommandPtr(new CommandProtect()));
+	stack.push_back(CommandPtr(new CommandUnprotect()));
+	stack.push_back(CommandPtr(new CommandQuery()));
+	stack.push_back(CommandPtr(new CommandState()));
+}
+
+// =================
+
+SingleCommand::SingleCommand(Arguments& args)
+{
+	wstring arg;
+	bool found = false;
+
+	if (!args.GetNext(arg))
+		throw WException(-2, L"Error, no command, please use 'hiddencli /help'");
+
+	LoadCommandsStack(m_commandsStack);
+
+	for (auto it = m_commandsStack.begin(); it != m_commandsStack.end(); it++)
+	{
+		if ((*it)->CompareCommand(arg))
+		{
+			(*it)->LoadArgs(args);
+			m_current = *it;
+			found = true;
+			break;
+		}
+	}
+
+	if (!found)
+		throw WException(-2, L"Error, unknown command, please use 'hiddencli /help'");
+
+	if (args.GetNext(arg))
+		throw WException(-2, L"Error, too many arguments");
+}
+
+SingleCommand::~SingleCommand()
+{
+}
+
+void SingleCommand::Perform(Connection& connection)
+{
+	m_current->PerformCommand(connection);
+}
+
+// =================
+
+MultipleCommands::MultipleCommands(Arguments& args)
 {
 	wstring arg;
 
 	if (!args.GetNext(arg))
-		throw WException(-2, L"Error, no command, please use 'hiddencli help'");
+		throw WException(-2, L"Error, no command, please use 'hiddencli /help'");
 
-	LoadCommandsStack();
-	
+	LoadCommandsStack(m_commandsStack);
+
 	do
 	{
 		bool found = false;
@@ -26,37 +79,42 @@ Commands::Commands(Arguments& args)
 		{
 			if ((*it)->CompareCommand(arg))
 			{
-				(*it)->LoadArgs(args);
-				m_current = *it;
+				CommandPtr command = (*it)->CreateInstance();
+				command->LoadArgs(args);
+				m_currentStack.push_back(command);
 				found = true;
 				break;
 			}
 		}
 
 		if (!found)
-			throw WException(-2, L"Error, unknown command, please use 'hiddencli help'");
-	}
+			throw WException(-2, L"Error, unknown command, please use 'hiddencli /help'");
+	} 
 	while (args.GetNext(arg));
-
 }
 
-Commands::~Commands()
+MultipleCommands::~MultipleCommands()
 {
 }
 
-void Commands::LoadCommandsStack()
+void MultipleCommands::Perform(Connection& connection)
 {
-	m_commandsStack.push_back(CommandPtr(new CommandHide()));
-	m_commandsStack.push_back(CommandPtr(new CommandUnhide()));
-	m_commandsStack.push_back(CommandPtr(new CommandIgnore()));
-	m_commandsStack.push_back(CommandPtr(new CommandUnignore()));
-	m_commandsStack.push_back(CommandPtr(new CommandProtect()));
-	m_commandsStack.push_back(CommandPtr(new CommandUnprotect()));
-	m_commandsStack.push_back(CommandPtr(new CommandQuery()));
-	m_commandsStack.push_back(CommandPtr(new CommandState()));
+	for (auto it = m_currentStack.begin(); it != m_currentStack.end(); it++)
+		(*it)->PerformCommand(connection);
 }
 
-void Commands::Perform(Connection& connection)
+// =================
+
+MultipleCommandsFromFile::MultipleCommandsFromFile(Arguments& args)
 {
-	m_current->PerformCommand(connection);
+	throw WException(-2, L"Error, /config isn't implemented yet");
 }
+
+MultipleCommandsFromFile::~MultipleCommandsFromFile()
+{
+}
+
+void MultipleCommandsFromFile::Perform(Connection& connection)
+{
+}
+

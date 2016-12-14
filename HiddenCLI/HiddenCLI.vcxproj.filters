@@ -49,4 +49,7 @@
       <UniqueIdentifier>{680a2e80-be0d-4ac2-8a4a-d59b67e55c61}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="vmware.conf" />
+  </ItemGroup>
 </Project>
