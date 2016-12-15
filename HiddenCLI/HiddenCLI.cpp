@@ -132,7 +132,7 @@ int wmain(int argc, wchar_t* argv[])
 {
 	try 
 	{
-		Arguments arguments(argc, argv);
+		Arguments arguments(argc , argv);
 		Connection connection(arguments);
 		wstring mode;
 

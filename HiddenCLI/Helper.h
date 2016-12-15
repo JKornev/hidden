@@ -28,7 +28,7 @@ class Arguments
 
 public:
 
-	Arguments(int argc, wchar_t* argv[]);
+	Arguments(int argc, wchar_t* argv[], int start = 1);
 
 	size_t ArgsCount();
 

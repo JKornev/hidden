@@ -25,10 +25,10 @@ unsigned int WException::Code()
 	return m_errorCode;
 }
 
-Arguments::Arguments(int argc, wchar_t* argv[]) :
+Arguments::Arguments(int argc, wchar_t* argv[], int start) :
 	m_argPointer(0)
 {
-	for (int i = 1; i < argc; i++)
+	for (int i = start; i < argc; i++)
 		m_arguments.push_back(argv[i]);
 }
 
