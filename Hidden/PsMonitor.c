@@ -4,6 +4,7 @@
 #include "PsTable.h"
 #include "PsRules.h"
 #include "Driver.h"
+#include "Configs.h"
 
 #define PROCESS_QUERY_LIMITED_INFORMATION      0x1000
 #define SYSTEM_PROCESS_ID (HANDLE)4
@@ -28,14 +29,14 @@ typedef struct _ProcessListEntry {
 // For instance: L"\\Device\\HarddiskVolume1\\Windows\\System32\\calc.exe",
 // Notice: this array should be NULL terminated
 CONST ProcessListEntry g_excludeProcesses[] = {
-	{ NULL, 0 }
+	{ NULL, PsRuleTypeWithoutInherit }
 };
 
 // Use this variable for hard code full path to applications that will be protected 
 // For instance: L"\\Device\\HarddiskVolume1\\Windows\\System32\\cmd.exe",
 // Notice: this array should be NULL terminated
 CONST ProcessListEntry g_protectProcesses[] = {
-	{ NULL, 0 }
+	{ NULL, PsRuleTypeWithoutInherit }
 };
 
 #define CSRSS_PAHT_BUFFER_SIZE 256
@@ -357,6 +358,67 @@ BOOLEAN IsProcessProtected(HANDLE ProcessId)
 	return entry.protected;
 }
 
+NTSTATUS ParsePsConfigEntry(PUNICODE_STRING Entry, PUNICODE_STRING Path, PULONG Inherit)
+{
+	USHORT inx, length = Entry->Length / sizeof(WCHAR);
+	LPWSTR str = Entry->Buffer;
+	UNICODE_STRING command, template;
+
+	RtlZeroMemory(&command, sizeof(command));
+
+	for (inx = 0; inx < length; inx++)
+	{
+		if (str[inx] == L';')
+		{
+			command.Buffer = str + inx + 1;
+			command.Length = (length - inx - 1) * sizeof(WCHAR);
+			command.MaximumLength = command.Length;
+			break;
+		}
+	}
+
+	if (inx == 0)
+		return STATUS_NO_DATA_DETECTED;
+
+	Path->Buffer = Entry->Buffer;
+	Path->Length = inx * sizeof(WCHAR);
+	Path->MaximumLength = Path->Length;
+
+	RtlInitUnicodeString(&template, L"none");
+	if (RtlCompareUnicodeString(&command, &template, TRUE) == 0)
+	{
+		*Inherit = PsRuleTypeWithoutInherit;
+		return STATUS_SUCCESS;
+	}
+
+	RtlInitUnicodeString(&template, L"always");
+	if (RtlCompareUnicodeString(&command, &template, TRUE) == 0)
+	{
+		*Inherit = PsRuleTypeInherit;
+		return STATUS_SUCCESS;
+	}
+
+	RtlInitUnicodeString(&template, L"once");
+	if (RtlCompareUnicodeString(&command, &template, TRUE) == 0)
+	{
+		*Inherit = PsRuleTypeInheritOnce;
+		return STATUS_SUCCESS;
+	}
+
+	return STATUS_NOT_FOUND;
+}
+
+VOID LoadConfigRulesCallback(PUNICODE_STRING Str, PVOID Params)
+{
+	PsRulesContext context = (PsRulesContext)Params;
+	UNICODE_STRING path;
+	ULONG inherit;
+	PsRuleEntryId ruleId;
+
+	if (NT_SUCCESS(ParsePsConfigEntry(Str, &path, &inherit)))
+		AddRuleToPsRuleList(context, &path, inherit, &ruleId);
+}
+
 NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 {
 	const USHORT maxBufSize = 512;
@@ -422,6 +484,9 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 		AddRuleToPsRuleList(g_excludeProcessRules, &normalized, g_excludeProcesses[i].inherit, &ruleId);
 	}
 
+	// Load entries from the config
+	CfgEnumConfigsTable(IgnoreImagesTable, &LoadConfigRulesCallback, g_excludeProcessRules);
+
 	// protected
 
 	status = InitializePsRuleListContext(&g_protectProcessRules);
@@ -447,6 +512,9 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 
 		AddRuleToPsRuleList(g_protectProcessRules, &normalized, g_protectProcesses[i].inherit, &ruleId);
 	}
+
+	// Load entries from the config
+	CfgEnumConfigsTable(ProtectImagesTable, &LoadConfigRulesCallback, g_protectProcessRules);
 
 	// Process table
 

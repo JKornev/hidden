@@ -7,7 +7,7 @@
 #include "PsMonitor.h"
 #include "Device.h"
 #include "Driver.h"
-
+#include "Configs.h"
 
 PDRIVER_OBJECT g_driverObject = NULL;
 
@@ -45,6 +45,10 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 
 	EnableDisableDriver(TRUE);
 
+	status = InitializeConfigs(RegistryPath);
+	if (!NT_SUCCESS(status))
+		DbgPrint("FsFilter1!" __FUNCTION__ ": can't initialize configs\n");
+
 	status = InitializePsMonitor(DriverObject);
 	if (!NT_SUCCESS(status))
 		DbgPrint("FsFilter1!" __FUNCTION__ ": object monitor didn't start\n");
@@ -60,6 +64,8 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	status = InitializeDevice(DriverObject);
 	if (!NT_SUCCESS(status))
 		DbgPrint("FsFilter1!" __FUNCTION__ ": can't create device\n");
+
+	DestroyConfigs();
 
 	DriverObject->DriverUnload = DriverUnload;
 	g_driverObject = DriverObject;

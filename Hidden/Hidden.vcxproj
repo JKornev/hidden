@@ -67,6 +67,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Configs.c" />
     <ClCompile Include="Device.c" />
     <ClCompile Include="FsFilter.c" />
     <ClCompile Include="Helper.c" />
@@ -352,6 +353,7 @@
     <Text Include="todo.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Configs.h" />
     <ClInclude Include="Device.h" />
     <ClInclude Include="DeviceAPI.h" />
     <ClInclude Include="ExcludeList.h" />

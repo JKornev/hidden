@@ -8,6 +8,7 @@
 #include "Helper.h"
 #include "PsMonitor.h"
 #include "Driver.h"
+#include "Configs.h"
 
 NTSTATUS FilterSetup(PCFLT_RELATED_OBJECTS FltObjects, FLT_INSTANCE_SETUP_FLAGS Flags, DEVICE_TYPE VolumeDeviceType, FLT_FILESYSTEM_TYPE VolumeFilesystemType);
 
@@ -751,6 +752,20 @@ NTSTATUS CleanFileNamesInformation(PFILE_NAMES_INFORMATION info, PFLT_FILE_NAME_
 	return STATUS_SUCCESS;
 }
 
+VOID LoadConfigFilesCallback(PUNICODE_STRING Str, PVOID Params)
+{
+	ExcludeContext context = (ExcludeContext)Params;
+	ExcludeEntryId id;
+	AddExcludeListFile(context, Str, &id);
+}
+
+VOID LoadConfigDirsCallback(PUNICODE_STRING Str, PVOID Params)
+{
+	ExcludeContext context = (ExcludeContext)Params;
+	ExcludeEntryId id;
+	AddExcludeListDirectory(context, Str, &id);
+}
+
 NTSTATUS InitializeFSMiniFilter(PDRIVER_OBJECT DriverObject)
 {
 	NTSTATUS status;
@@ -775,6 +790,8 @@ NTSTATUS InitializeFSMiniFilter(PDRIVER_OBJECT DriverObject)
 		AddExcludeListFile(g_excludeFileContext, &str, &id);
 	}
 
+	CfgEnumConfigsTable(HideFilesTable, &LoadConfigFilesCallback, g_excludeFileContext);
+
 	status = InitializeExcludeListContext(&g_excludeDirectoryContext, ExcludeDirectory);
 	if (!NT_SUCCESS(status))
 	{
@@ -788,6 +805,8 @@ NTSTATUS InitializeFSMiniFilter(PDRIVER_OBJECT DriverObject)
 		RtlInitUnicodeString(&str, g_excludeDirs[i]);
 		AddExcludeListDirectory(g_excludeDirectoryContext, &str, &id);
 	}
+
+	CfgEnumConfigsTable(HideDirsTable, &LoadConfigDirsCallback, g_excludeDirectoryContext);
 
 	// Filesystem mini-filter initialization
 

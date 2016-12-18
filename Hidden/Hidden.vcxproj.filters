@@ -46,6 +46,9 @@
     <ClCompile Include="PsRules.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Configs.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Hidden.rc">
@@ -85,6 +88,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="PsRules.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Configs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

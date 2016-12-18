@@ -5,6 +5,7 @@
 #include "RegFilter.h"
 #include "ExcludeList.h"
 #include "PsMonitor.h"
+#include "Configs.h"
 
 #define FILTER_ALLOC_TAG 'FRlF'
 
@@ -555,6 +556,20 @@ NTSTATUS RegistryFilterCallback(PVOID CallbackContext, PVOID Argument1, PVOID Ar
 	return status;
 }
 
+VOID LoadConfigRegKeysCallback(PUNICODE_STRING Str, PVOID Params)
+{
+	ExcludeContext context = (ExcludeContext)Params;
+	ExcludeEntryId id;
+	AddExcludeListRegistryKey(context, Str, &id);
+}
+
+VOID LoadConfigRegValuesCallback(PUNICODE_STRING Str, PVOID Params)
+{
+	ExcludeContext context = (ExcludeContext)Params;
+	ExcludeEntryId id;
+	AddExcludeListRegistryValue(context, Str, &id);
+}
+
 NTSTATUS InitializeRegistryFilter(PDRIVER_OBJECT DriverObject)
 {
 	NTSTATUS status;
@@ -577,6 +592,8 @@ NTSTATUS InitializeRegistryFilter(PDRIVER_OBJECT DriverObject)
 		AddExcludeListRegistryKey(g_excludeRegKeyContext, &str, &id);
 	}
 
+	CfgEnumConfigsTable(HideRegKeysTable, &LoadConfigRegKeysCallback, g_excludeRegKeyContext);
+
 	status = InitializeExcludeListContext(&g_excludeRegValueContext, ExcludeRegValue);
 	if (!NT_SUCCESS(status))
 	{
@@ -590,6 +607,8 @@ NTSTATUS InitializeRegistryFilter(PDRIVER_OBJECT DriverObject)
 		RtlInitUnicodeString(&str, g_excludeRegValues[i]);
 		AddExcludeListRegistryValue(g_excludeRegValueContext, &str, &id);
 	}
+
+	CfgEnumConfigsTable(HideRegValuesTable, &LoadConfigRegValuesCallback, g_excludeRegValueContext);
 
 	// Register registry filter
 
