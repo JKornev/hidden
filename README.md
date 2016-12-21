@@ -1,6 +1,6 @@
 # Hidden
 
-This toolset developed like a solution for my reverse engineering and researching tasks. This is a very simple windows driver with a usermode interface which uses for hidding specific environment on VMs, like installed rce programs (ex. procmon, wireshark), vm infrastracture (ex. vmware tools) and etc. 
+This toolset is developed like as solution for my reverse engineering and researching tasks. This is a windows driver with a usermode interface which is used for hidding specific environment on VMs, like installed rce programs (ex. procmon, wireshark), vm infrastracture (ex. vmware tools) and etc. 
 
 Features:
 - hide registry keys and values
