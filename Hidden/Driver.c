@@ -27,6 +27,19 @@ BOOLEAN IsDriverEnabled()
 
 // =========================================================================================
 
+NTSTATUS InitializeStealthMode(PUNICODE_STRING RegistryPath)
+{
+	if (!CfgGetStealthState())
+		return STATUS_SUCCESS;
+
+	//TODO: implement me
+	UNREFERENCED_PARAMETER(RegistryPath);
+
+	return STATUS_SUCCESS;
+}
+
+// =========================================================================================
+
 VOID DriverUnload(PDRIVER_OBJECT DriverObject)
 {
 	UNREFERENCED_PARAMETER(DriverObject);
@@ -49,6 +62,8 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	if (!NT_SUCCESS(status))
 		DbgPrint("FsFilter1!" __FUNCTION__ ": can't initialize configs\n");
 
+	EnableDisableDriver(CfgGetDriverState());
+
 	status = InitializePsMonitor(DriverObject);
 	if (!NT_SUCCESS(status))
 		DbgPrint("FsFilter1!" __FUNCTION__ ": object monitor didn't start\n");
@@ -64,6 +79,10 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	status = InitializeDevice(DriverObject);
 	if (!NT_SUCCESS(status))
 		DbgPrint("FsFilter1!" __FUNCTION__ ": can't create device\n");
+
+	status = InitializeStealthMode(RegistryPath);
+	if (!NT_SUCCESS(status))
+		DbgPrint("FsFilter1!" __FUNCTION__ ": can't activate stealth mode\n");
 
 	DestroyConfigs();
 
