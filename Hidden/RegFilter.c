@@ -14,19 +14,17 @@ BOOLEAN g_regFilterInited = FALSE;
 ExcludeContext g_excludeRegKeyContext;
 ExcludeContext g_excludeRegValueContext;
 
+// Use this variable for hard code path to registry keys that you would like to hide
+// For instance: L"\\REGISTRY\\MACHINE\\SOFTWARE\\test_key",
+// Notice: this array should be NULL terminated
 CONST PWCHAR g_excludeRegKeys[] = {
-//	L"\\REGISTRY\\MACHINE\\SOFTWARE\\test",
-//	L"\\Registry\\MACHINE\\SOFTWARE\\test2",
 	NULL
 };
 
+// Use this variable for hard code path to registry keys that you would like to hide
+// For instance: L"\\REGISTRY\\MACHINE\\SOFTWARE\\test_key\\test_value",
+// Notice: this array should be NULL terminated
 CONST PWCHAR g_excludeRegValues[] = {
-//	L"\\REGISTRY\\MACHINE\\SOFTWARE\\aaa",
-//	L"\\Registry\\MACHINE\\SOFTWARE\\xxx",
-//	L"\\Registry\\MACHINE\\SOFTWARE\\aa",
-//	L"\\Registry\\MACHINE\\SOFTWARE\\aaa",
-//	L"\\Registry\\MACHINE\\SOFTWARE\\aaaa",
-//	L"\\Registry\\MACHINE\\SOFTWARE\\zz",
 	NULL
 };
 

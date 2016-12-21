@@ -18,8 +18,6 @@ NTSTATUS IrpDeviceCreate(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 	Irp->IoStatus.Information = 0;
 	IoCompleteRequest(Irp, IO_NO_INCREMENT);
 
-	DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!!\n");
-
 	return STATUS_SUCCESS;
 }
 
@@ -31,8 +29,6 @@ NTSTATUS IrpDeviceClose(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 	Irp->IoStatus.Information = 0;
 	IoCompleteRequest(Irp, IO_NO_INCREMENT);
 
-	DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!!\n");
-
 	return STATUS_SUCCESS;
 }
 NTSTATUS IrpDeviceCleanup(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
@@ -42,8 +38,6 @@ NTSTATUS IrpDeviceCleanup(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 	Irp->IoStatus.Status = STATUS_SUCCESS;
 	Irp->IoStatus.Information = 0;
 	IoCompleteRequest(Irp, IO_NO_INCREMENT);
-
-	DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!!\n");
 
 	return STATUS_SUCCESS;
 }
