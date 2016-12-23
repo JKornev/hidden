@@ -43,6 +43,20 @@ void CommandState::PerformCommand(Connection& connection)
 	wcout << L"status:ok" << endl;
 }
 
+void CommandState::InstallCommand(RegistryKey& configKey)
+{
+	configKey.SetDwordValue(L"Hid_State", (m_state ? 1 : 0));
+	wcerr << L"Install 'state' successful" << endl;
+	wcout << L"status:ok" << endl;
+}
+
+void CommandState::UninstallCommand(RegistryKey& configKey)
+{
+	configKey.RemoveValue(L"Hid_State");
+	wcerr << L"Uninstall 'state' successful" << endl;
+	wcout << L"status:ok" << endl;
+}
+
 CommandPtr CommandState::CreateInstance()
 {
 	return CommandPtr(new CommandState());

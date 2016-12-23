@@ -138,7 +138,7 @@ NTSTATUS CfgEnumConfigsTable(enum CfgMultiStringTables Table, CfgMultiStringCall
 
 	buffer = table->Buffer;
 	length = table->Length;
-	while (length > 0)
+	while (length > 1)
 	{
 		UNICODE_STRING entry;
 		ULONG inx, delta = 0;

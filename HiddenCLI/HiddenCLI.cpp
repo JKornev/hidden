@@ -32,6 +32,10 @@ bool PrintUsage(Arguments& args)
 		L"    parameter is used for set valid registry path if driver name is changed, by\n"
 		L"    default \"hidden\"\n"
 		L"\n"
+		L"  /uninstall [%driver%] all\n"
+		L"    Uninstall all configs from registry. This flag is all-sufficient therefore\n"
+		L"    if this flag is set no other parameters and commands should be set after\n"
+		L"\n"
 		L"connection:\n"
 		L"\n"
 		L"  /gate <%name%>\n"
@@ -45,7 +49,7 @@ bool PrintUsage(Arguments& args)
 		L"    Enable multiple commands per execution, just type commands one by one\n"
 		L"    without any separator\n"
 		L"\n"
-		L"  /config\n"
+		L"  /config <%path%>\n"
 		L"    Loads multiple commands from file, each command should be on separate line\n"
 		L"\n"
 		L"commands:\n"
@@ -107,25 +111,28 @@ bool PrintUsage(Arguments& args)
 	return true;
 }
 
-CommandModePtr LoadCommands(Arguments& args)
+CommandTemplatePtr LoadCommandsTemplate(Arguments& args, CommandMode& mode)
 {
-	wstring command;
+	wstring templateType;
 
-	if (!args.Probe(command))
-		throw WException(-2, L"Error, unknown mode, please use 'hiddencli /help'");
+	if (mode.GetModeType() == CommandModeType::Uninstall)
+		return CommandTemplatePtr(new SingleCommand(args, mode.GetModeType()));
 
-	if (command == L"/multi")
+	if (!args.Probe(templateType))
+		throw WException(-2, L"Error, unknown perform mode, please use 'hiddencli /help'");
+
+	if (templateType == L"/multi")
 	{
 		args.SwitchToNext();
-		return CommandModePtr(new MultipleCommands(args));
+		return CommandTemplatePtr(new MultipleCommands(args, mode.GetModeType()));
 	}
-	else if (command == L"/config")
+	else if (templateType == L"/config")
 	{
 		args.SwitchToNext();
-		return CommandModePtr(new MultipleCommandsFromFile(args));
+		return CommandTemplatePtr(new MultipleCommandsFromFile(args, mode.GetModeType()));
 	}
 	
-	return CommandModePtr(new SingleCommand(args));
+	return CommandTemplatePtr(new SingleCommand(args, mode.GetModeType()));
 }
 
 int wmain(int argc, wchar_t* argv[])
@@ -146,9 +153,24 @@ int wmain(int argc, wchar_t* argv[])
 			return 0;
 
 		{
-			CommandModePtr commands = LoadCommands(arguments);
-			connection.Open();
-			commands->Perform(connection);
+			CommandMode mode(arguments);
+			CommandTemplatePtr commands = LoadCommandsTemplate(arguments, mode);
+
+			if (mode.GetModeType() == CommandModeType::Execute)
+			{
+				connection.Open();
+				commands->Perform(connection);
+			}
+			else if (mode.GetModeType() == CommandModeType::Install)
+			{
+				RegistryKey key(mode.GetConfigRegistryKeyPath());
+				commands->Install(key);
+			}
+			else if (mode.GetModeType() == CommandModeType::Uninstall)
+			{
+				RegistryKey key(mode.GetConfigRegistryKeyPath());
+				commands->Uninstall(key);
+			}
 		}
 	}
 	catch (WException& exception)

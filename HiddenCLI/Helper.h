@@ -53,6 +53,26 @@ public:
 
 };
 
+class RegistryKey
+{
+private:
+
+	HKEY m_hkey;
+
+public:
+
+	RegistryKey(std::wstring regKey);
+	~RegistryKey();
+
+	void SetDwordValue(const wchar_t* name, DWORD value);
+	DWORD GetDwordValue(const wchar_t* name, DWORD defValue);
+	
+	void SetMultiStrValue(const wchar_t* name, const std::vector<std::wstring>& strs);
+	void GetMultiStrValue(const wchar_t* name, std::vector<std::wstring>& strs);
+
+	void RemoveValue(const wchar_t* name);
+};
+
 enum EObjTypes {
 	TypeFile,
 	TypeDir,

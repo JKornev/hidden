@@ -11,10 +11,14 @@ mode:
 	  connection parameters shouldn't be set. Optional parameter is used for set valid registry path if
 	  driver name is changed, by default "hidden"
 
+	/uninstall [%driver%]
+	  Uninstall all configs from registry. This flag is all-sufficient therefore if this flag is set
+	  no other parameters and commands should be set after
+
 connection:
 	
 	/gate <%name%>
-		Set specific connection gate name (driver device name)
+	  Set specific connection gate name (driver device name)
 
 perform:
 
@@ -23,7 +27,7 @@ perform:
 	/multi
 	  Enable multiple commands per execution, just type commands one by one without any separator
 
-	/config
+	/config <%path%>
 	  Loads multiple commands from file, each command should be on separate line
 
 commands:

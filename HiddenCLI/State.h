@@ -16,6 +16,8 @@ public:
 	virtual bool CompareCommand(std::wstring& command);
 	virtual void LoadArgs(Arguments& args);
 	virtual void PerformCommand(Connection& connection);
+	virtual void InstallCommand(RegistryKey& configKey);
+	virtual void UninstallCommand(RegistryKey& configKey);
 
 	virtual CommandPtr CreateInstance();
 };

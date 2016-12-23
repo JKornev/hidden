@@ -14,56 +14,86 @@ public:
 	virtual bool CompareCommand(std::wstring& command) = 0;
 	virtual void LoadArgs(Arguments& args) = 0;
 	virtual void PerformCommand(Connection& connection) = 0;
+	virtual void InstallCommand(RegistryKey& configKey);
+	virtual void UninstallCommand(RegistryKey& configKey);
 	
 	virtual CommandPtrInternal CreateInstance() = 0;
 };
 
 typedef ICommand::CommandPtrInternal CommandPtr;
 
-class ICommandMode
-{
-public:
-	virtual ~ICommandMode() {}
-	virtual void Perform(Connection& connection) = 0;
+enum CommandModeType {
+	Execute,
+	Install,
+	Uninstall
 };
 
-typedef std::shared_ptr<ICommandMode> CommandModePtr;
+class CommandMode
+{
+	std::wstring m_regConfigPath;
+	CommandModeType m_type;
 
-class SingleCommand : public ICommandMode
+	void LoadConfigPath(Arguments& args);
+
+public:
+	CommandMode(Arguments& args);
+
+	CommandModeType GetModeType();
+	const std::wstring& GetConfigRegistryKeyPath();
+};
+
+class ICommandTemplate
+{
+public:
+	virtual ~ICommandTemplate() {}
+	virtual void Perform(Connection& connection) = 0;
+	virtual void Install(RegistryKey& configKey) = 0;
+	virtual void Uninstall(RegistryKey& configKey) = 0;
+};
+
+typedef std::shared_ptr<ICommandTemplate> CommandTemplatePtr;
+
+class SingleCommand : public ICommandTemplate
 {
 	std::vector<CommandPtr> m_commandsStack;
 	CommandPtr m_current;
 
 public:
 
-	SingleCommand(Arguments& args);
+	SingleCommand(Arguments& args, CommandModeType mode);
 	virtual ~SingleCommand();
 
 	virtual void Perform(Connection& connection);
+	virtual void Install(RegistryKey& configKey);
+	virtual void Uninstall(RegistryKey& configKey);
 };
 
-class MultipleCommands : public ICommandMode
+class MultipleCommands : public ICommandTemplate
 {
 	std::vector<CommandPtr> m_commandsStack;
 	std::vector<CommandPtr> m_currentStack;
 
 public:
 
-	MultipleCommands(Arguments& args);
+	MultipleCommands(Arguments& args, CommandModeType mode);
 	virtual ~MultipleCommands();
 
 	virtual void Perform(Connection& connection);
+	virtual void Install(RegistryKey& configKey);
+	virtual void Uninstall(RegistryKey& configKey);
 };
 
-class MultipleCommandsFromFile : public ICommandMode
+class MultipleCommandsFromFile : public ICommandTemplate
 {
 	std::vector<CommandPtr> m_commandsStack;
 	std::vector<CommandPtr> m_currentStack;
 
 public:
 
-	MultipleCommandsFromFile(Arguments& args);
+	MultipleCommandsFromFile(Arguments& args, CommandModeType mode);
 	virtual ~MultipleCommandsFromFile();
 
 	virtual void Perform(Connection& connection);
+	virtual void Install(RegistryKey& configKey);
+	virtual void Uninstall(RegistryKey& configKey);
 };

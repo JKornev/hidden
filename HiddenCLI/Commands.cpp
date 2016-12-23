@@ -25,10 +25,87 @@ void LoadCommandsStack(vector<CommandPtr>& stack)
 
 // =================
 
-SingleCommand::SingleCommand(Arguments& args)
+void ICommand::InstallCommand(RegistryKey& configKey) 
+{
+	throw WException(-2, L"Error, install mode is not supported");
+}
+
+void ICommand::UninstallCommand(RegistryKey& configKey) 
+{
+}
+
+// =================
+
+CommandMode::CommandMode(Arguments& args) : m_type(CommandModeType::Execute)
+{
+	wstring mode, all;
+
+	if (!args.Probe(mode))
+		throw WException(-2, L"Error, no command, please use 'hiddencli /help'");
+
+	if (mode == L"/install")
+	{
+		args.SwitchToNext();
+		m_type = CommandModeType::Install;
+		LoadConfigPath(args);
+	}
+	else if (mode == L"/uninstall")
+	{
+		args.SwitchToNext();
+		m_type = CommandModeType::Uninstall;
+		LoadConfigPath(args);
+	}
+
+	if (m_type == CommandModeType::Uninstall)
+	{
+		if (!args.Probe(all) || all != L"all")
+			throw WException(-2, L"Error, invalid '/unistall' format");
+
+		args.SwitchToNext();
+	}
+}
+
+void CommandMode::LoadConfigPath(Arguments& args)
+{
+	wstring path;
+
+	if (!args.Probe(path) || path.compare(0, 1, L"/") == 0 || path == L"all")
+	{
+		m_regConfigPath = L"System\\CurrentControlSet\\Services\\Hidden";
+		return;
+	}
+
+	args.SwitchToNext();
+	
+	m_regConfigPath = L"System\\CurrentControlSet\\Services\\";
+	m_regConfigPath += path;
+}
+
+CommandModeType CommandMode::GetModeType()
+{
+	return m_type;
+}
+
+const wstring& CommandMode::GetConfigRegistryKeyPath()
+{
+	return m_regConfigPath;
+}
+
+// =================
+
+SingleCommand::SingleCommand(Arguments& args, CommandModeType mode)
 {
 	wstring arg;
 	bool found = false;
+
+	if (mode == CommandModeType::Uninstall)
+	{
+		if (args.SwitchToNext())
+			throw WException(-2, L"Error, too many arguments");
+
+		LoadCommandsStack(m_commandsStack);
+		return;
+	}
 
 	if (!args.GetNext(arg))
 		throw WException(-2, L"Error, no command, please use 'hiddencli /help'");
@@ -62,11 +139,25 @@ void SingleCommand::Perform(Connection& connection)
 	m_current->PerformCommand(connection);
 }
 
+void SingleCommand::Install(RegistryKey& configKey)
+{
+	m_current->InstallCommand(configKey);
+}
+
+void SingleCommand::Uninstall(RegistryKey& configKey)
+{
+	for (auto it = m_commandsStack.begin(); it != m_commandsStack.end(); it++)
+		(*it)->UninstallCommand(configKey);
+}
+
 // =================
 
-MultipleCommands::MultipleCommands(Arguments& args)
+MultipleCommands::MultipleCommands(Arguments& args, CommandModeType mode)
 {
 	wstring arg;
+
+	if (mode == CommandModeType::Uninstall)
+		throw WException(-2, L"Error, /uninstall can't be combined with /multi");
 
 	if (!args.GetNext(arg))
 		throw WException(-2, L"Error, no command, please use 'hiddencli /help'");
@@ -103,6 +194,17 @@ void MultipleCommands::Perform(Connection& connection)
 {
 	for (auto it = m_currentStack.begin(); it != m_currentStack.end(); it++)
 		(*it)->PerformCommand(connection);
+}
+
+void MultipleCommands::Install(RegistryKey& configKey)
+{
+	for (auto it = m_currentStack.begin(); it != m_currentStack.end(); it++)
+		(*it)->InstallCommand(configKey);
+}
+
+void MultipleCommands::Uninstall(RegistryKey& configKey)
+{
+	throw WException(-2, L"Error, uninstall mode is not supported");
 }
 
 // =================
@@ -157,9 +259,12 @@ public:
 
 };
 
-MultipleCommandsFromFile::MultipleCommandsFromFile(Arguments& args)
+MultipleCommandsFromFile::MultipleCommandsFromFile(Arguments& args, CommandModeType mode)
 {
 	wstring configFile;
+
+	if (mode == CommandModeType::Uninstall)
+		throw WException(-2, L"Error, /uninstall can't be combined with /config");
 
 	if (!args.GetNext(configFile))
 		throw WException(-2, L"Error, no command, please use 'hiddencli /help'");
@@ -167,12 +272,12 @@ MultipleCommandsFromFile::MultipleCommandsFromFile(Arguments& args)
 	if (args.SwitchToNext())
 		throw WException(-2, L"Error, too many arguments");
 
-	wifstream config(configFile);
+	wifstream fconfig(configFile);
 	wstring line;
 
 	LoadCommandsStack(m_commandsStack);
 
-	while (getline(config, line))
+	while (getline(fconfig, line))
 	{
 		ArgsParser parser(line);
 		wstring arg;
@@ -218,3 +323,13 @@ void MultipleCommandsFromFile::Perform(Connection& connection)
 		(*it)->PerformCommand(connection);
 }
 
+void MultipleCommandsFromFile::Install(RegistryKey& configKey)
+{
+	for (auto it = m_currentStack.begin(); it != m_currentStack.end(); it++)
+		(*it)->InstallCommand(configKey);
+}
+
+void MultipleCommandsFromFile::Uninstall(RegistryKey& configKey)
+{
+	throw WException(-2, L"Error, uninstall mode is not supported");
+}

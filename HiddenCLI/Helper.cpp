@@ -1,6 +1,9 @@
 #include "helper.h"
+#include <memory>
 
 using namespace std;
+
+// =================
 
 WException::WException(unsigned int Code, wchar_t* Format, ...) :
 	m_errorCode(Code)
@@ -24,6 +27,8 @@ unsigned int WException::Code()
 {
 	return m_errorCode;
 }
+
+// =================
 
 Arguments::Arguments(int argc, wchar_t* argv[], int start) :
 	m_argPointer(0)
@@ -64,6 +69,8 @@ bool Arguments::GetNext(wstring& arg)
 	return true;
 }
 
+// =================
+
 Handle::Handle(HANDLE handle) : 
 	m_handle(handle), 
 	m_error(::GetLastError())
@@ -85,6 +92,146 @@ DWORD Handle::Error()
 {
 	return m_error;
 }
+
+// =================
+
+RegistryKey::RegistryKey(std::wstring regKey) : m_hkey(NULL)
+{
+	LONG status = RegOpenKeyExW(HKEY_LOCAL_MACHINE, regKey.c_str(), 0, KEY_ALL_ACCESS | KEY_WOW64_64KEY, &m_hkey);
+	if (status != ERROR_SUCCESS)
+		throw WException(status, L"Error, can't open registry key");
+}
+
+RegistryKey::~RegistryKey()
+{
+	RegCloseKey(m_hkey);
+}
+
+void RegistryKey::SetDwordValue(const wchar_t* name, DWORD value)
+{
+	LONG status;
+
+	status = RegSetValueExW(m_hkey, name, NULL, REG_DWORD, (LPBYTE)&value, sizeof(value));
+	if (status != ERROR_SUCCESS)
+		throw WException(status, L"Error, can't set registry value");
+}
+
+DWORD RegistryKey::GetDwordValue(const wchar_t* name, DWORD defValue)
+{
+	DWORD value, size = sizeof(value), type = REG_DWORD;
+	LONG status;
+
+	status = RegQueryValueEx(m_hkey, name, NULL, &type, (LPBYTE)&value, &size);
+	if (status != ERROR_SUCCESS)
+	{
+		if (status != ERROR_FILE_NOT_FOUND)
+			throw WException(status, L"Error, can't query registry value");
+
+		return defValue;
+	}
+
+	return value;
+}
+
+void RegistryKey::SetMultiStrValue(const wchar_t* name, const std::vector<std::wstring>& strs)
+{
+	DWORD size = 0, offset = 0;
+	shared_ptr<BYTE> buffer;
+	LONG status;
+
+	for (auto it = strs.begin(); it != strs.end(); it++)
+	{
+		if (it->size() > 0)
+			size += (it->size() + 1) * sizeof(wchar_t);
+	}
+
+	if (size == 0)
+	{
+		WCHAR value = 0;
+		status = RegSetValueExW(m_hkey, name, NULL, REG_MULTI_SZ, (LPBYTE)&value, 2);
+		if(status != ERROR_SUCCESS)
+			throw WException(status, L"Error, can't set registry value");
+
+		return;
+	}
+
+	buffer.reset(new BYTE[size]);
+	memset(buffer.get(), 0, size);
+
+	for (auto it = strs.begin(); it != strs.end(); it++)
+	{
+		if (it->size() == 0)
+			continue;
+
+		DWORD strSize = (it->size() + 1) * sizeof(wchar_t);
+		memcpy(buffer.get() + offset, it->c_str(), strSize);
+		offset += strSize;
+	}
+
+	status = RegSetValueExW(m_hkey, name, NULL, REG_MULTI_SZ, buffer.get(), size);
+	if (status != ERROR_SUCCESS)
+		throw WException(status, L"Error, can't set registry value");
+}
+
+void RegistryKey::GetMultiStrValue(const wchar_t* name, std::vector<std::wstring>& strs)
+{
+	DWORD size = 0, type = REG_MULTI_SZ;
+	shared_ptr<BYTE> buffer;
+	LPWSTR bufferPtr;
+	LONG status;
+
+	strs.clear();
+
+	status = RegQueryValueEx(m_hkey, name, NULL, &type, NULL, &size);
+	if (status != ERROR_SUCCESS)
+	{
+		if (status != ERROR_FILE_NOT_FOUND)
+			throw WException(status, L"Error, can't query registry value");
+
+		return;
+	}
+
+	if (size == 0)
+		return;
+
+	buffer.reset(new BYTE[size + sizeof(WCHAR)]);
+	memset(buffer.get(), 0, size + sizeof(WCHAR));
+
+	status = RegQueryValueEx(m_hkey, name, NULL, &type, buffer.get(), &size);
+	if (status != ERROR_SUCCESS)
+		throw WException(status, L"Error, can't query registry value");
+
+	bufferPtr = (LPWSTR)buffer.get();
+	while (size > 1)
+	{
+		ULONG inx, delta = 0;
+		ULONG len = size / sizeof(WCHAR);
+
+		for (inx = 0; inx < len; inx++)
+		{
+			if (bufferPtr[inx] == L'\0')
+			{
+				delta = 1;
+				break;
+			}
+		}
+
+		if (inx > 0)
+			strs.push_back(bufferPtr);
+
+		size -= (inx + delta) * sizeof(WCHAR);
+		bufferPtr += (inx + delta);
+	}
+}
+
+void RegistryKey::RemoveValue(const wchar_t* name)
+{
+	LONG status = RegDeleteKeyValue(m_hkey, NULL, name);
+	if (status != ERROR_SUCCESS)
+		throw WException(status, L"Error, can't delete registry value");
+}
+
+// =================
 
 HidRegRootTypes GetRegType(wstring& path)
 {
