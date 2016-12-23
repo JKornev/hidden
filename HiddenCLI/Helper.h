@@ -91,3 +91,4 @@ HidPsInheritTypes LoadInheritOption(Arguments& args, HidPsInheritTypes default);
 bool LoadApplyOption(Arguments& args, bool applyByDefault);
 
 const wchar_t* ConvertInheritTypeToUnicode(HidPsInheritTypes type);
+const wchar_t* ConvertRegRootTypeToUnicode(HidRegRootTypes type);

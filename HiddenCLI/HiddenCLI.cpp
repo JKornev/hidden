@@ -171,16 +171,20 @@ int wmain(int argc, wchar_t* argv[])
 				RegistryKey key(mode.GetConfigRegistryKeyPath());
 				commands->Uninstall(key);
 			}
+
+			wcout << L"status:ok" << endl;
 		}
 	}
 	catch (WException& exception)
 	{
 		wcerr << exception.What() << endl;
+		wcout << L"status:failed" << endl;
 		return exception.Code();
 	}
 	catch (exception& exception)
 	{
 		cerr << exception.what() << endl;
+		wcout << L"status:failed" << endl;
 		return -1;
 	}
 

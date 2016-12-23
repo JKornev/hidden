@@ -20,7 +20,7 @@ public:
 	virtual ~CommandQuery();
 
 	virtual bool CompareCommand(std::wstring& command);
-	virtual void LoadArgs(Arguments& args);
+	virtual void LoadArgs(Arguments& args, CommandModeType mode);
 	virtual void PerformCommand(Connection& connection);
 
 	virtual CommandPtr CreateInstance();

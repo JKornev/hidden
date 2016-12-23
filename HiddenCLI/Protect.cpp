@@ -18,7 +18,7 @@ bool CommandProtect::CompareCommand(std::wstring& command)
 	return (command == m_command);
 }
 
-void CommandProtect::LoadArgs(Arguments& args)
+void CommandProtect::LoadArgs(Arguments& args, CommandModeType mode)
 {
 	wstring object, target;
 
@@ -31,6 +31,9 @@ void CommandProtect::LoadArgs(Arguments& args)
 	}
 	else if (object == L"pid")
 	{
+		if (!CommandModeType::Execute)
+			throw WException(-2, L"Error, target 'pid' isn't allowed");
+
 		m_procType = EProcTypes::TypeProcessId;
 	}
 	else
@@ -41,7 +44,7 @@ void CommandProtect::LoadArgs(Arguments& args)
 	m_inheritType = LoadInheritOption(args, HidPsInheritTypes::WithoutInherit);
 
 	m_applyByDefault = false;
-	if (m_procType == EProcTypes::TypeImage)
+	if (m_procType == EProcTypes::TypeImage && mode == CommandModeType::Execute)
 		m_applyByDefault = LoadApplyOption(args, m_applyByDefault);
 
 	if (!args.GetNext(target))
@@ -86,6 +89,29 @@ void CommandProtect::PerformCommand(Connection& connection)
 		wcout << L"status:ok;ruleid:" << objId << endl;
 }
 
+void CommandProtect::InstallCommand(RegistryKey& configKey)
+{
+	vector<wstring> commands;
+	wstring entry;
+
+	entry = m_targetImage;
+	entry += L";";
+	entry += ConvertInheritTypeToUnicode(m_inheritType);
+
+	configKey.GetMultiStrValue(L"Hid_ProtectedImages", commands);
+	commands.push_back(entry);
+	configKey.SetMultiStrValue(L"Hid_ProtectedImages", commands);
+
+	wcerr << L"Install 'protect' successful" << endl;
+}
+
+void CommandProtect::UninstallCommand(RegistryKey& configKey)
+{
+	configKey.RemoveValue(L"Hid_ProtectedImages");
+
+	wcerr << L"Uninstall 'protect' successful" << endl;
+}
+
 CommandPtr CommandProtect::CreateInstance()
 {
 	return CommandPtr(new CommandProtect());
@@ -106,9 +132,12 @@ bool CommandUnprotect::CompareCommand(std::wstring& command)
 	return (command == m_command);
 }
 
-void CommandUnprotect::LoadArgs(Arguments& args)
+void CommandUnprotect::LoadArgs(Arguments& args, CommandModeType mode)
 {
 	wstring object, target;
+
+	if (mode != CommandModeType::Execute)
+		throw WException(-2, L"Error, install/uninstall mode isn't supported for this command");
 
 	if (!args.GetNext(object))
 		throw WException(-2, L"Error, mismatched argument #1 for command 'unprotect'");
@@ -161,7 +190,6 @@ void CommandUnprotect::PerformCommand(Connection& connection)
 		throw WException(HID_STATUS_CODE(status), L"Error, command 'unprotect' rejected");
 
 	wcerr << L"Command 'unprotect' successful" << endl;
-	wcout << L"status:ok" << endl;
 }
 
 CommandPtr CommandUnprotect::CreateInstance()

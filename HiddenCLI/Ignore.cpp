@@ -18,7 +18,7 @@ bool CommandIgnore::CompareCommand(std::wstring& command)
 	return (command == m_command);
 }
 
-void CommandIgnore::LoadArgs(Arguments& args)
+void CommandIgnore::LoadArgs(Arguments& args, CommandModeType mode)
 {
 	wstring object, target;
 
@@ -31,6 +31,9 @@ void CommandIgnore::LoadArgs(Arguments& args)
 	}
 	else if (object == L"pid")
 	{
+		if (!CommandModeType::Execute)
+			throw WException(-2, L"Error, target 'pid' isn't allowed");
+
 		m_procType = EProcTypes::TypeProcessId;
 	}
 	else
@@ -41,7 +44,7 @@ void CommandIgnore::LoadArgs(Arguments& args)
 	m_inheritType = LoadInheritOption(args, HidPsInheritTypes::WithoutInherit);
 
 	m_applyByDefault = false;
-	if (m_procType == EProcTypes::TypeImage)
+	if (m_procType == EProcTypes::TypeImage && mode == CommandModeType::Execute)
 		m_applyByDefault = LoadApplyOption(args, m_applyByDefault);
 
 	if (!args.GetNext(target))
@@ -86,6 +89,29 @@ void CommandIgnore::PerformCommand(Connection& connection)
 		wcout << L"status:ok;ruleid:" << objId << endl;
 }
 
+void CommandIgnore::InstallCommand(RegistryKey& configKey)
+{
+	vector<wstring> commands;
+	wstring entry;
+
+	entry = m_targetImage;
+	entry += L";";
+	entry += ConvertInheritTypeToUnicode(m_inheritType);
+
+	configKey.GetMultiStrValue(L"Hid_IgnoredImages", commands);
+	commands.push_back(entry);
+	configKey.SetMultiStrValue(L"Hid_IgnoredImages", commands);
+
+	wcerr << L"Install 'ignore' successful" << endl;
+}
+
+void CommandIgnore::UninstallCommand(RegistryKey& configKey)
+{
+	configKey.RemoveValue(L"Hid_IgnoredImages");
+
+	wcerr << L"Uninstall 'ignore' successful" << endl;
+}
+
 CommandPtr CommandIgnore::CreateInstance()
 {
 	return CommandPtr(new CommandIgnore());
@@ -106,9 +132,12 @@ bool CommandUnignore::CompareCommand(std::wstring& command)
 	return (command == m_command);
 }
 
-void CommandUnignore::LoadArgs(Arguments& args)
+void CommandUnignore::LoadArgs(Arguments& args, CommandModeType mode)
 {
 	wstring object, target;
+
+	if (mode != CommandModeType::Execute)
+		throw WException(-2, L"Error, install/uninstall mode isn't supported for this command");
 
 	if (!args.GetNext(object))
 		throw WException(-2, L"Error, mismatched argument #1 for command 'unignore'");
@@ -161,7 +190,6 @@ void CommandUnignore::PerformCommand(Connection& connection)
 		throw WException(HID_STATUS_CODE(status), L"Error, command 'unignore' rejected");
 
 	wcerr << L"Command 'unignore' successful" << endl;
-	wcout << L"status:ok" << endl;
 }
 
 CommandPtr CommandUnignore::CreateInstance()

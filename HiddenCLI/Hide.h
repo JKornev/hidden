@@ -16,8 +16,10 @@ public:
 	virtual ~CommandHide();
 
 	virtual bool CompareCommand(std::wstring& command);
-	virtual void LoadArgs(Arguments& args);
+	virtual void LoadArgs(Arguments& args, CommandModeType mode);
 	virtual void PerformCommand(Connection& connection);
+	virtual void InstallCommand(RegistryKey& configKey);
+	virtual void UninstallCommand(RegistryKey& configKey);
 
 	virtual CommandPtr CreateInstance();
 };
@@ -36,7 +38,7 @@ public:
 	virtual ~CommandUnhide();
 
 	virtual bool CompareCommand(std::wstring& command);
-	virtual void LoadArgs(Arguments& args);
+	virtual void LoadArgs(Arguments& args, CommandModeType mode);
 	virtual void PerformCommand(Connection& connection);
 
 	virtual CommandPtr CreateInstance();

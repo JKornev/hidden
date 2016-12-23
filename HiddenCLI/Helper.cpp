@@ -312,3 +312,20 @@ const wchar_t* ConvertInheritTypeToUnicode(HidPsInheritTypes type)
 	}
 	return L"unknown";
 }
+
+const wchar_t* ConvertRegRootTypeToUnicode(HidRegRootTypes type)
+{
+	switch (type)
+	{
+	case HidRegRootTypes::RegHKCU:
+		return L"HKCU";
+		break;
+	case HidRegRootTypes::RegHKLM:
+		return L"HKLM";
+		break;
+	case HidRegRootTypes::RegHKU:
+		return L"HKU";
+		break;
+	}
+	return L"unknown";
+}

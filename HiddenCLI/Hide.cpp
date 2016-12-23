@@ -18,7 +18,7 @@ bool CommandHide::CompareCommand(std::wstring& command)
 	return (command == m_command);
 }
 
-void CommandHide::LoadArgs(Arguments& args)
+void CommandHide::LoadArgs(Arguments& args, CommandModeType mode)
 {
 	wstring object;
 
@@ -82,6 +82,51 @@ void CommandHide::PerformCommand(Connection& connection)
 	wcout << L"status:ok;ruleid:" << objId << endl;
 }
 
+void CommandHide::InstallCommand(RegistryKey& configKey)
+{
+	vector<wstring> commands;
+	const wchar_t* valueName;
+	wstring entry;
+
+	switch (m_hideType)
+	{
+	case EObjTypes::TypeFile:
+		valueName = L"Hid_HideFsFiles";
+		entry = m_path;
+		break;
+	case EObjTypes::TypeDir:
+		valueName = L"Hid_HideFsDirs";
+		entry = m_path;
+		break;
+	case EObjTypes::TypeRegKey:
+		valueName = L"Hid_HideRegKeys";
+		entry = m_path;
+		break;
+	case EObjTypes::TypeRegVal:
+		valueName = L"Hid_HideRegValues";
+		entry = m_path;
+		break;
+	default:
+		throw WException(-2, L"Internal error, invalid type for command 'hide'");
+	}
+	
+	configKey.GetMultiStrValue(valueName, commands);
+	commands.push_back(entry);
+	configKey.SetMultiStrValue(valueName, commands);
+
+	wcerr << L"Install 'hide' successful" << endl;
+}
+
+void CommandHide::UninstallCommand(RegistryKey& configKey)
+{
+	configKey.RemoveValue(L"Hid_HideFsFiles");
+	configKey.RemoveValue(L"Hid_HideFsDirs");
+	configKey.RemoveValue(L"Hid_HideRegKeys");
+	configKey.RemoveValue(L"Hid_HideRegValues");
+
+	wcerr << L"Uninstall 'hide' successful" << endl;
+}
+
 CommandPtr CommandHide::CreateInstance()
 {
 	return CommandPtr(new CommandHide());
@@ -103,7 +148,7 @@ bool CommandUnhide::CompareCommand(std::wstring& command)
 	return (command == m_command);
 }
 
-void CommandUnhide::LoadArgs(Arguments& args)
+void CommandUnhide::LoadArgs(Arguments& args, CommandModeType mode)
 {
 	wstring object, target;
 
@@ -192,7 +237,6 @@ void CommandUnhide::PerformCommand(Connection& connection)
 		throw WException(HID_STATUS_CODE(status), L"Error, command 'hide' rejected");
 
 	wcerr << L"Command 'unhide' successful" << endl;
-	wcout << L"status:ok" << endl;
 }
 
 CommandPtr CommandUnhide::CreateInstance()

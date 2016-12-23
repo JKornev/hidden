@@ -14,7 +14,7 @@ public:
 	virtual ~CommandState();
 
 	virtual bool CompareCommand(std::wstring& command);
-	virtual void LoadArgs(Arguments& args);
+	virtual void LoadArgs(Arguments& args, CommandModeType mode);
 	virtual void PerformCommand(Connection& connection);
 	virtual void InstallCommand(RegistryKey& configKey);
 	virtual void UninstallCommand(RegistryKey& configKey);

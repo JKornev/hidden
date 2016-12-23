@@ -16,7 +16,7 @@ bool CommandState::CompareCommand(std::wstring& command)
 	return (command == m_command);
 }
 
-void CommandState::LoadArgs(Arguments& args)
+void CommandState::LoadArgs(Arguments& args, CommandModeType mode)
 {
 	wstring state, enable;
 
@@ -40,21 +40,20 @@ void CommandState::PerformCommand(Connection& connection)
 		throw WException(HID_STATUS_CODE(status), L"Error, command 'state' rejected");
 
 	wcerr << L"Command 'state' successful" << endl;
-	wcout << L"status:ok" << endl;
 }
 
 void CommandState::InstallCommand(RegistryKey& configKey)
 {
 	configKey.SetDwordValue(L"Hid_State", (m_state ? 1 : 0));
+
 	wcerr << L"Install 'state' successful" << endl;
-	wcout << L"status:ok" << endl;
 }
 
 void CommandState::UninstallCommand(RegistryKey& configKey)
 {
 	configKey.RemoveValue(L"Hid_State");
+
 	wcerr << L"Uninstall 'state' successful" << endl;
-	wcout << L"status:ok" << endl;
 }
 
 CommandPtr CommandState::CreateInstance()

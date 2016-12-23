@@ -16,7 +16,7 @@ bool CommandQuery::CompareCommand(std::wstring& command)
 	return (command == m_command);
 }
 
-void CommandQuery::LoadArgs(Arguments& args)
+void CommandQuery::LoadArgs(Arguments& args, CommandModeType mode)
 {
 	wstring object, target;
 

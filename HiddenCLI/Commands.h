@@ -4,6 +4,12 @@
 #include "Connection.h"
 #include <memory>
 
+enum CommandModeType {
+	Execute,
+	Install,
+	Uninstall
+};
+
 class ICommand
 {
 public:
@@ -12,7 +18,7 @@ public:
 	virtual ~ICommand() {};
 
 	virtual bool CompareCommand(std::wstring& command) = 0;
-	virtual void LoadArgs(Arguments& args) = 0;
+	virtual void LoadArgs(Arguments& args, CommandModeType mode) = 0;
 	virtual void PerformCommand(Connection& connection) = 0;
 	virtual void InstallCommand(RegistryKey& configKey);
 	virtual void UninstallCommand(RegistryKey& configKey);
@@ -21,12 +27,6 @@ public:
 };
 
 typedef ICommand::CommandPtrInternal CommandPtr;
-
-enum CommandModeType {
-	Execute,
-	Install,
-	Uninstall
-};
 
 class CommandMode
 {

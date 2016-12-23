@@ -6,6 +6,7 @@
 #include "State.h"
 #include <fstream>
 #include <algorithm>
+#include <iostream>
 
 using namespace std;
 
@@ -116,7 +117,7 @@ SingleCommand::SingleCommand(Arguments& args, CommandModeType mode)
 	{
 		if ((*it)->CompareCommand(arg))
 		{
-			(*it)->LoadArgs(args);
+			(*it)->LoadArgs(args, mode);
 			m_current = *it;
 			found = true;
 			break;
@@ -147,7 +148,16 @@ void SingleCommand::Install(RegistryKey& configKey)
 void SingleCommand::Uninstall(RegistryKey& configKey)
 {
 	for (auto it = m_commandsStack.begin(); it != m_commandsStack.end(); it++)
-		(*it)->UninstallCommand(configKey);
+	{
+		try 
+		{
+			(*it)->UninstallCommand(configKey);
+		}
+		catch (WException&)
+		{ 
+			// Skip exceptions because we don't wan't break uninstall on registry deletion fails
+		}
+	}
 }
 
 // =================
@@ -173,7 +183,7 @@ MultipleCommands::MultipleCommands(Arguments& args, CommandModeType mode)
 			if ((*it)->CompareCommand(arg))
 			{
 				CommandPtr command = (*it)->CreateInstance();
-				command->LoadArgs(args);
+				command->LoadArgs(args, mode);
 				m_currentStack.push_back(command);
 				found = true;
 				break;
@@ -298,7 +308,7 @@ MultipleCommandsFromFile::MultipleCommandsFromFile(Arguments& args, CommandModeT
 					if ((*it)->CompareCommand(arg))
 					{
 						CommandPtr command = (*it)->CreateInstance();
-						command->LoadArgs(lineArgs);
+						command->LoadArgs(lineArgs, mode);
 						m_currentStack.push_back(command);
 						found = true;
 						break;
