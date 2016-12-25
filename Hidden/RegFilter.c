@@ -6,6 +6,7 @@
 #include "ExcludeList.h"
 #include "PsMonitor.h"
 #include "Configs.h"
+#include "Driver.h"
 
 #define FILTER_ALLOC_TAG 'FRlF'
 
@@ -513,6 +514,9 @@ NTSTATUS RegistryFilterCallback(PVOID CallbackContext, PVOID Argument1, PVOID Ar
 {
 	REG_NOTIFY_CLASS notifyClass = (REG_NOTIFY_CLASS)(ULONG_PTR)Argument1;
 	NTSTATUS status;
+
+	if (!IsDriverEnabled())
+		return STATUS_SUCCESS;
 
 	switch (notifyClass)
 	{

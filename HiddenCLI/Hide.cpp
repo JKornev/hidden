@@ -1,5 +1,6 @@
 #include "Hide.h"
 #include <iostream>
+#include <algorithm>
 
 using namespace std;
 
@@ -16,6 +17,17 @@ CommandHide::~CommandHide()
 bool CommandHide::CompareCommand(std::wstring& command)
 {
 	return (command == m_command);
+}
+
+HidRegRootTypes CommandHide::GetTypeAndNormalizeRegPath(std::wstring& regPath)
+{
+	HidRegRootTypes type = GetRegType(regPath);
+	size_t pos = regPath.find(L"\\");
+	if (pos == wstring::npos)
+		throw WException(-2, L"Error, invalid registry path");
+
+	regPath = std::move(wstring(regPath.c_str() + pos + 1));
+	return type;
 }
 
 void CommandHide::LoadArgs(Arguments& args, CommandModeType mode)
@@ -39,12 +51,12 @@ void CommandHide::LoadArgs(Arguments& args, CommandModeType mode)
 	else if (object == L"regkey")
 	{
 		m_hideType = EObjTypes::TypeRegKey;
-		m_regRootType = GetRegType(m_path);
+		m_regRootType = GetTypeAndNormalizeRegPath(m_path);
 	}
 	else if (object == L"regval")
 	{
 		m_hideType = EObjTypes::TypeRegVal;
-		m_regRootType = GetRegType(m_path);
+		m_regRootType = GetTypeAndNormalizeRegPath(m_path);
 	}
 	else
 	{
@@ -86,25 +98,28 @@ void CommandHide::InstallCommand(RegistryKey& configKey)
 {
 	vector<wstring> commands;
 	const wchar_t* valueName;
+	HidStatus status;
 	wstring entry;
+
+	entry.insert(0, m_path.size() + HID_NORMALIZATION_OVERHEAD, L'\0');
 
 	switch (m_hideType)
 	{
 	case EObjTypes::TypeFile:
 		valueName = L"Hid_HideFsFiles";
-		entry = m_path;
+		status = Hid_NormalizeFilePath(m_path.c_str(), const_cast<wchar_t*>(entry.c_str()), entry.size());
 		break;
 	case EObjTypes::TypeDir:
 		valueName = L"Hid_HideFsDirs";
-		entry = m_path;
+		status = Hid_NormalizeFilePath(m_path.c_str(), const_cast<wchar_t*>(entry.c_str()), entry.size());
 		break;
 	case EObjTypes::TypeRegKey:
 		valueName = L"Hid_HideRegKeys";
-		entry = m_path;
+		status = Hid_NormalizeRegistryPath(m_regRootType, m_path.c_str(), const_cast<wchar_t*>(entry.c_str()), entry.size());
 		break;
 	case EObjTypes::TypeRegVal:
 		valueName = L"Hid_HideRegValues";
-		entry = m_path;
+		status = Hid_NormalizeRegistryPath(m_regRootType, m_path.c_str(), const_cast<wchar_t*>(entry.c_str()), entry.size());
 		break;
 	default:
 		throw WException(-2, L"Internal error, invalid type for command 'hide'");

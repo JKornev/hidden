@@ -53,3 +53,15 @@ HidContext Connection::GetContext()
 	return m_context;
 }
 
+LibInitializator::LibInitializator()
+{
+	HidStatus status = Hid_InitializeWithNoConnection();
+	if (!HID_STATUS_SUCCESSFUL(status))
+		throw WException(HID_STATUS_CODE(status), L"Error, init hidden lib");
+}
+
+LibInitializator::~LibInitializator()
+{
+	// We don't need release lib resources because in case of the 
+	// Hid_InitializeWithNoConnection() there aren't any dynamic data
+}

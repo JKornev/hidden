@@ -105,7 +105,24 @@ bool PrintUsage(Arguments& args)
 		L"    Turn off protection for specific process by PID\n"
 		L"\n"
 		L"  /query process <%pid%>\n"
-		L"    Query information about state of the process by PID\n";
+		L"    Query information about state of the process by PID\n"
+		L"\n"
+		L"options:\n"
+		L"\n"
+		L"  inherit:none\n"
+		L"    Disable inheritance of the protected or ignored state\n"
+		L"\n"
+		L"  inherit:once\n"
+		L"    Child process will inherit the same state but its children no\n"
+		L"\n"
+		L"  inherit:always\n"
+		L"    Child process will inherit the same state and its children too\n"
+		L"\n"
+		L"  apply:forall\n"
+		L"    Apply policy for existing processes and for all new processes\n"
+		L"\n"
+		L"  apply:fornew\n"
+		L"    Don't apply policy for existing processes only for new\n";
 
 	wcout << message << endl;
 	return true;
@@ -140,8 +157,6 @@ int wmain(int argc, wchar_t* argv[])
 	try 
 	{
 		Arguments arguments(argc , argv);
-		Connection connection(arguments);
-		wstring mode;
 
 		if (!arguments.ArgsCount())
 			throw WException(
@@ -152,28 +167,37 @@ int wmain(int argc, wchar_t* argv[])
 		if (PrintUsage(arguments))
 			return 0;
 
-		{
-			CommandMode mode(arguments);
-			CommandTemplatePtr commands = LoadCommandsTemplate(arguments, mode);
 
-			if (mode.GetModeType() == CommandModeType::Execute)
+		CommandMode mode(arguments);
+
+		if (mode.GetModeType() == CommandModeType::Execute)
+		{
+			Connection connection(arguments);
 			{
+				CommandTemplatePtr commands = LoadCommandsTemplate(arguments, mode);
 				connection.Open();
 				commands->Perform(connection);
 			}
-			else if (mode.GetModeType() == CommandModeType::Install)
+		}
+		else if (mode.GetModeType() == CommandModeType::Install)
+		{
+			LibInitializator lib;
 			{
+				CommandTemplatePtr commands = LoadCommandsTemplate(arguments, mode);
 				RegistryKey key(mode.GetConfigRegistryKeyPath());
 				commands->Install(key);
 			}
-			else if (mode.GetModeType() == CommandModeType::Uninstall)
+		}
+		else if (mode.GetModeType() == CommandModeType::Uninstall)
+		{
+			LibInitializator lib;
 			{
+				CommandTemplatePtr commands = LoadCommandsTemplate(arguments, mode);
 				RegistryKey key(mode.GetConfigRegistryKeyPath());
 				commands->Uninstall(key);
 			}
-
-			wcout << L"status:ok" << endl;
 		}
+		wcout << L"status:ok" << endl;
 	}
 	catch (WException& exception)
 	{

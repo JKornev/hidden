@@ -408,15 +408,28 @@ NTSTATUS ParsePsConfigEntry(PUNICODE_STRING Entry, PUNICODE_STRING Path, PULONG 
 	return STATUS_NOT_FOUND;
 }
 
-VOID LoadConfigRulesCallback(PUNICODE_STRING Str, PVOID Params)
+VOID LoadProtectedRulesCallback(PUNICODE_STRING Str, PVOID Params)
 {
-	PsRulesContext context = (PsRulesContext)Params;
 	UNICODE_STRING path;
 	ULONG inherit;
 	PsRuleEntryId ruleId;
 
+	UNREFERENCED_PARAMETER(Params);
+
 	if (NT_SUCCESS(ParsePsConfigEntry(Str, &path, &inherit)))
-		AddRuleToPsRuleList(context, &path, inherit, &ruleId);
+		AddProtectedImage(&path, inherit, FALSE, &ruleId);
+}
+
+VOID LoadIgnoredRulesCallback(PUNICODE_STRING Str, PVOID Params)
+{
+	UNICODE_STRING path;
+	ULONG inherit;
+	PsRuleEntryId ruleId;
+
+	UNREFERENCED_PARAMETER(Params);
+
+	if (NT_SUCCESS(ParsePsConfigEntry(Str, &path, &inherit)))
+		AddExcludedImage(&path, inherit, FALSE, &ruleId);
 }
 
 NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
@@ -485,7 +498,7 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 	}
 
 	// Load entries from the config
-	CfgEnumConfigsTable(IgnoreImagesTable, &LoadConfigRulesCallback, g_excludeProcessRules);
+	CfgEnumConfigsTable(IgnoreImagesTable, &LoadIgnoredRulesCallback, NULL);
 
 	// protected
 
@@ -514,7 +527,7 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 	}
 
 	// Load entries from the config
-	CfgEnumConfigsTable(ProtectImagesTable, &LoadConfigRulesCallback, g_protectProcessRules);
+	CfgEnumConfigsTable(ProtectImagesTable, &LoadProtectedRulesCallback, NULL);
 
 	// Process table
 

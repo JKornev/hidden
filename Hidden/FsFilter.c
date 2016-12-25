@@ -754,16 +754,16 @@ NTSTATUS CleanFileNamesInformation(PFILE_NAMES_INFORMATION info, PFLT_FILE_NAME_
 
 VOID LoadConfigFilesCallback(PUNICODE_STRING Str, PVOID Params)
 {
-	ExcludeContext context = (ExcludeContext)Params;
-	ExcludeEntryId id;
-	AddExcludeListFile(context, Str, &id);
+	ULONGLONG id;
+	UNREFERENCED_PARAMETER(Params);
+	AddHiddenFile(Str, &id);
 }
 
 VOID LoadConfigDirsCallback(PUNICODE_STRING Str, PVOID Params)
 {
-	ExcludeContext context = (ExcludeContext)Params;
-	ExcludeEntryId id;
-	AddExcludeListDirectory(context, Str, &id);
+	ULONGLONG id;
+	UNREFERENCED_PARAMETER(Params);
+	AddHiddenDir(Str, &id);
 }
 
 NTSTATUS InitializeFSMiniFilter(PDRIVER_OBJECT DriverObject)
@@ -790,7 +790,7 @@ NTSTATUS InitializeFSMiniFilter(PDRIVER_OBJECT DriverObject)
 		AddExcludeListFile(g_excludeFileContext, &str, &id);
 	}
 
-	CfgEnumConfigsTable(HideFilesTable, &LoadConfigFilesCallback, g_excludeFileContext);
+	CfgEnumConfigsTable(HideFilesTable, &LoadConfigFilesCallback, NULL);
 
 	status = InitializeExcludeListContext(&g_excludeDirectoryContext, ExcludeDirectory);
 	if (!NT_SUCCESS(status))
@@ -806,7 +806,7 @@ NTSTATUS InitializeFSMiniFilter(PDRIVER_OBJECT DriverObject)
 		AddExcludeListDirectory(g_excludeDirectoryContext, &str, &id);
 	}
 
-	CfgEnumConfigsTable(HideDirsTable, &LoadConfigDirsCallback, g_excludeDirectoryContext);
+	CfgEnumConfigsTable(HideDirsTable, &LoadConfigDirsCallback, NULL);
 
 	// Filesystem mini-filter initialization
 

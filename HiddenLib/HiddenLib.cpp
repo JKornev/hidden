@@ -44,11 +44,8 @@ static RtlDosPathNameToRelativeNtPathName_U_Prototype RtlDosPathNameToRelativeNt
 static RtlFormatCurrentUserKeyPath_Prototype RtlFormatCurrentUserKeyPath = nullptr;
 static RtlFreeUnicodeString_Prototype RtlFreeUnicodeString = nullptr;
 
-HidStatus _API Hid_Initialize(PHidContext pcontext, const wchar_t* deviceName)
+HidStatus _API Hid_InitializeWithNoConnection()
 {
-	HANDLE hdevice = INVALID_HANDLE_VALUE;
-	PHidContextInternal context;
-
 	if (!RtlDosPathNameToRelativeNtPathName_U)
 	{
 		*(FARPROC*)&RtlDosPathNameToRelativeNtPathName_U = GetProcAddress(
@@ -78,6 +75,19 @@ HidStatus _API Hid_Initialize(PHidContext pcontext, const wchar_t* deviceName)
 		if (!RtlFreeUnicodeString)
 			return HID_SET_STATUS(FALSE, GetLastError());
 	}
+
+	return HID_SET_STATUS(TRUE, 0);
+}
+
+HidStatus _API Hid_Initialize(PHidContext pcontext, const wchar_t* deviceName)
+{
+	HANDLE hdevice = INVALID_HANDLE_VALUE;
+	PHidContextInternal context;
+	HidStatus status;
+
+	status = Hid_InitializeWithNoConnection();
+	if (!HID_STATUS_SUCCESSFUL(status))
+		return status;
 
 	if (!deviceName)
 		deviceName = DEVICE_WIN32_NAME;
@@ -732,4 +742,20 @@ HidStatus _API Hid_AttachProtectedState(HidContext context, HidProcId procId, Hi
 HidStatus _API Hid_RemoveProtectedState(HidContext context, HidProcId procId)
 {
 	return SendIoctl_SetPsStatePacket((PHidContextInternal)context, procId, PsProtectedObject, HidActiveState::StateDisabled, HidPsInheritTypes::WithoutInherit);
+}
+
+HidStatus _API Hid_NormalizeFilePath(const wchar_t* filePath, wchar_t* normalized, size_t normalizedLen)
+{
+	if (!ConvertToNtPath(filePath, normalized, normalizedLen))
+		return HID_SET_STATUS(FALSE, ERROR_INVALID_PARAMETER);
+
+	return HID_SET_STATUS(TRUE, 0);
+}
+
+HidStatus _API Hid_NormalizeRegistryPath(HidRegRootTypes root, const wchar_t* regPath, wchar_t* normalized, size_t normalizedLen)
+{
+	if (!NormalizeRegistryPath(root, regPath, normalized, normalizedLen))
+		return HID_SET_STATUS(FALSE, ERROR_INVALID_PARAMETER);
+
+	return HID_SET_STATUS(TRUE, 0);
 }

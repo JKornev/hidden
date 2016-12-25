@@ -7,6 +7,8 @@ typedef unsigned long long HidStatus;
 
 #define HID_SET_STATUS(state, code)   (unsigned long long)((unsigned long long)code << 1 | (state ? 1 : 0))
 
+#define HID_NORMALIZATION_OVERHEAD                         100
+
 #define _API __cdecl
 
 typedef void*       HidContext;
@@ -39,6 +41,7 @@ enum HidRegRootTypes
 	RegHKU
 };
 
+HidStatus _API Hid_InitializeWithNoConnection();
 HidStatus _API Hid_Initialize(PHidContext pcontext, const wchar_t* deviceName = 0);
 void _API Hid_Destroy(HidContext context);
 
@@ -78,3 +81,8 @@ HidStatus _API Hid_RemoveAllProtectedImages(HidContext context);
 HidStatus _API Hid_GetProtectedState(HidContext context, HidProcId procId, HidActiveState* state, HidPsInheritTypes* inheritType);
 HidStatus _API Hid_AttachProtectedState(HidContext context, HidProcId procId, HidPsInheritTypes inheritType);
 HidStatus _API Hid_RemoveProtectedState(HidContext context, HidProcId procId);
+
+// Misc
+
+HidStatus _API Hid_NormalizeFilePath(const wchar_t* filePath, wchar_t* normalized, size_t normalizedLen);
+HidStatus _API Hid_NormalizeRegistryPath(HidRegRootTypes root, const wchar_t* regPath, wchar_t* normalized, size_t normalizedLen);

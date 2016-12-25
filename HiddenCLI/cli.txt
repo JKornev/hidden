@@ -79,3 +79,20 @@ commands:
 
 	/query process <%pid%>
 		Query information about state of the process by PID
+
+options:
+
+  inherit:none
+    Disable inheritance of the protected or ignored state
+
+  inherit:once
+    Child process will inherit the same state but its children no
+
+  inherit:always
+    Child process will inherit the same state and its children too
+
+  apply:forall
+    Apply policy for existing processes and for all new processes
+
+  apply:fornew
+    Don't apply policy for existing processes only for new

@@ -92,9 +92,16 @@ void CommandIgnore::PerformCommand(Connection& connection)
 void CommandIgnore::InstallCommand(RegistryKey& configKey)
 {
 	vector<wstring> commands;
-	wstring entry;
+	wstring temp, entry;
+	HidStatus status;
 
-	entry = m_targetImage;
+	temp.insert(0, m_targetImage.size() + HID_NORMALIZATION_OVERHEAD, L'\0');
+
+	status = Hid_NormalizeFilePath(m_targetImage.c_str(), const_cast<wchar_t*>(temp.c_str()), temp.size());
+	if (!HID_STATUS_SUCCESSFUL(status))
+		throw WException(HID_STATUS_CODE(status), L"Error, can't normalize path, 'ignore' rejected");
+
+	entry += temp.c_str();
 	entry += L";";
 	entry += ConvertInheritTypeToUnicode(m_inheritType);
 

@@ -9,6 +9,8 @@ class CommandHide : public ICommand
 	EObjTypes       m_hideType;
 	HidRegRootTypes m_regRootType;
 	std::wstring    m_path;
+	
+	HidRegRootTypes GetTypeAndNormalizeRegPath(std::wstring& regPath);
 
 public:
 

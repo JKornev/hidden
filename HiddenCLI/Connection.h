@@ -20,3 +20,10 @@ public:
 
 	HidContext GetContext();
 };
+
+class LibInitializator
+{
+public:
+	LibInitializator();
+	~LibInitializator();
+};

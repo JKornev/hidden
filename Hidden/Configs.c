@@ -56,7 +56,7 @@ NTSTATUS InitializeConfigs(PUNICODE_STRING RegistryPath)
 	QueryAndAllocRegistryData(hkey, L"Hid_HideRegKeys",     REG_MULTI_SZ, &config.hideRegKeys,   NULL);
 	QueryAndAllocRegistryData(hkey, L"Hid_HideRegValues",   REG_MULTI_SZ, &config.hideRegValues, NULL);
 
-	QueryAndAllocRegistryData(hkey, L"Hid_IgnoredImages",    REG_MULTI_SZ, &config.ignoreImages,  NULL);
+	QueryAndAllocRegistryData(hkey, L"Hid_IgnoredImages",   REG_MULTI_SZ, &config.ignoreImages,  NULL);
 	QueryAndAllocRegistryData(hkey, L"Hid_ProtectedImages", REG_MULTI_SZ, &config.protectImages, NULL);
 
 	ZwClose(hkey);
