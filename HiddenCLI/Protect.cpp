@@ -82,11 +82,9 @@ void CommandProtect::PerformCommand(Connection& connection)
 	if (!HID_STATUS_SUCCESSFUL(status))
 		throw WException(HID_STATUS_CODE(status), L"Error, command 'protect' rejected");
 
-	wcerr << L"Command 'protect' successful" << endl;
-	if (m_procType == EProcTypes::TypeProcessId)
-		wcout << L"status:ok" << endl;
-	else
-		wcout << L"status:ok;ruleid:" << objId << endl;
+	g_stderr << L"Command 'protect' successful" << endl;
+	if (m_procType == EProcTypes::TypeImage)
+		g_stdout << L"status:ok;ruleid:" << objId << endl;
 }
 
 void CommandProtect::InstallCommand(RegistryKey& configKey)
@@ -109,14 +107,14 @@ void CommandProtect::InstallCommand(RegistryKey& configKey)
 	commands.push_back(entry);
 	configKey.SetMultiStrValue(L"Hid_ProtectedImages", commands);
 
-	wcerr << L"Install 'protect' successful" << endl;
+	g_stderr << L"Install 'protect' successful" << endl;
 }
 
 void CommandProtect::UninstallCommand(RegistryKey& configKey)
 {
 	configKey.RemoveValue(L"Hid_ProtectedImages");
 
-	wcerr << L"Uninstall 'protect' successful" << endl;
+	g_stderr << L"Uninstall 'protect' successful" << endl;
 }
 
 CommandPtr CommandProtect::CreateInstance()
@@ -196,7 +194,7 @@ void CommandUnprotect::PerformCommand(Connection& connection)
 	if (!HID_STATUS_SUCCESSFUL(status))
 		throw WException(HID_STATUS_CODE(status), L"Error, command 'unprotect' rejected");
 
-	wcerr << L"Command 'unprotect' successful" << endl;
+	g_stderr << L"Command 'unprotect' successful" << endl;
 }
 
 CommandPtr CommandUnprotect::CreateInstance()

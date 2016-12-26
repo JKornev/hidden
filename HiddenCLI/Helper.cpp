@@ -5,6 +5,11 @@ using namespace std;
 
 // =================
 
+std::wstringstream g_stdout;
+std::wstringstream g_stderr;
+
+// =================
+
 WException::WException(unsigned int Code, wchar_t* Format, ...) :
 	m_errorCode(Code)
 {

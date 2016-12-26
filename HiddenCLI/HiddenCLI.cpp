@@ -197,7 +197,15 @@ int wmain(int argc, wchar_t* argv[])
 				commands->Uninstall(key);
 			}
 		}
-		wcout << L"status:ok" << endl;
+
+		const wstring output = g_stdout.str();
+
+		wcerr << g_stderr.str();
+		
+		if (output.empty())
+			wcout << L"status:ok" << endl;
+		else
+			wcout << L"status:ok;" << output << endl;
 	}
 	catch (WException& exception)
 	{

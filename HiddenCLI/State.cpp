@@ -39,21 +39,21 @@ void CommandState::PerformCommand(Connection& connection)
 	if (!HID_STATUS_SUCCESSFUL(status))
 		throw WException(HID_STATUS_CODE(status), L"Error, command 'state' rejected");
 
-	wcerr << L"Command 'state' successful" << endl;
+	g_stderr << L"Command 'state' successful" << endl;
 }
 
 void CommandState::InstallCommand(RegistryKey& configKey)
 {
 	configKey.SetDwordValue(L"Hid_State", (m_state ? 1 : 0));
 
-	wcerr << L"Install 'state' successful" << endl;
+	g_stderr << L"Install 'state' successful" << endl;
 }
 
 void CommandState::UninstallCommand(RegistryKey& configKey)
 {
 	configKey.RemoveValue(L"Hid_State");
 
-	wcerr << L"Uninstall 'state' successful" << endl;
+	g_stderr << L"Uninstall 'state' successful" << endl;
 }
 
 CommandPtr CommandState::CreateInstance()

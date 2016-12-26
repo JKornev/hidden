@@ -1,12 +1,16 @@
 #pragma once
 
 #include <string>
+#include <sstream>
 #include <vector>
 #include <stdio.h>
 #include <stdarg.h>
 #include <Windows.h>
 
 #include "../HiddenLib/HiddenLib.h"
+
+extern std::wstringstream g_stdout;
+extern std::wstringstream g_stderr;
 
 class WException
 {

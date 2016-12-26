@@ -82,11 +82,9 @@ void CommandIgnore::PerformCommand(Connection& connection)
 	if (!HID_STATUS_SUCCESSFUL(status))
 		throw WException(HID_STATUS_CODE(status), L"Error, command 'ignore' rejected");
 
-	wcerr << L"Command 'ignore' successful" << endl;
-	if (m_procType == EProcTypes::TypeProcessId)
-		wcout << L"status:ok" << endl;
-	else
-		wcout << L"status:ok;ruleid:" << objId << endl;
+	g_stderr << L"Command 'ignore' successful" << endl;
+	if (m_procType == EProcTypes::TypeImage)
+		g_stdout << L"ruleid:" << objId << endl;
 }
 
 void CommandIgnore::InstallCommand(RegistryKey& configKey)
@@ -109,14 +107,14 @@ void CommandIgnore::InstallCommand(RegistryKey& configKey)
 	commands.push_back(entry);
 	configKey.SetMultiStrValue(L"Hid_IgnoredImages", commands);
 
-	wcerr << L"Install 'ignore' successful" << endl;
+	g_stderr << L"Install 'ignore' successful" << endl;
 }
 
 void CommandIgnore::UninstallCommand(RegistryKey& configKey)
 {
 	configKey.RemoveValue(L"Hid_IgnoredImages");
 
-	wcerr << L"Uninstall 'ignore' successful" << endl;
+	g_stderr << L"Uninstall 'ignore' successful" << endl;
 }
 
 CommandPtr CommandIgnore::CreateInstance()
@@ -196,7 +194,7 @@ void CommandUnignore::PerformCommand(Connection& connection)
 	if (!HID_STATUS_SUCCESSFUL(status))
 		throw WException(HID_STATUS_CODE(status), L"Error, command 'unignore' rejected");
 
-	wcerr << L"Command 'unignore' successful" << endl;
+	g_stderr << L"Command 'unignore' successful" << endl;
 }
 
 CommandPtr CommandUnignore::CreateInstance()

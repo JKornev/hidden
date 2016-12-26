@@ -90,8 +90,8 @@ void CommandHide::PerformCommand(Connection& connection)
 	if (!HID_STATUS_SUCCESSFUL(status))
 		throw WException(HID_STATUS_CODE(status), L"Error, command 'hide' rejected");
 
-	wcerr << L"Command 'hide' successful" << endl;
-	wcout << L"status:ok;ruleid:" << objId << endl;
+	g_stderr << L"Command 'hide' successful" << endl;
+	g_stdout << L"ruleid:" << objId << endl;
 }
 
 void CommandHide::InstallCommand(RegistryKey& configKey)
@@ -129,17 +129,20 @@ void CommandHide::InstallCommand(RegistryKey& configKey)
 	commands.push_back(entry);
 	configKey.SetMultiStrValue(valueName, commands);
 
-	wcerr << L"Install 'hide' successful" << endl;
+	g_stderr << L"Install 'hide' successful" << endl;
 }
 
 void CommandHide::UninstallCommand(RegistryKey& configKey)
 {
-	configKey.RemoveValue(L"Hid_HideFsFiles");
-	configKey.RemoveValue(L"Hid_HideFsDirs");
-	configKey.RemoveValue(L"Hid_HideRegKeys");
-	configKey.RemoveValue(L"Hid_HideRegValues");
+	int errors = 0;
 
-	wcerr << L"Uninstall 'hide' successful" << endl;
+	try { configKey.RemoveValue(L"Hid_HideFsFiles");   } catch (...) { errors++; }
+	try { configKey.RemoveValue(L"Hid_HideFsDirs");    } catch (...) { errors++; }
+	try { configKey.RemoveValue(L"Hid_HideRegKeys");   } catch (...) { errors++; }
+	try { configKey.RemoveValue(L"Hid_HideRegValues"); } catch (...) { errors++; }
+
+	if (errors < 4)
+		g_stderr << L"Uninstall 'hide' successful" << endl;
 }
 
 CommandPtr CommandHide::CreateInstance()
@@ -249,9 +252,9 @@ void CommandUnhide::PerformCommand(Connection& connection)
 	}
 
 	if (!HID_STATUS_SUCCESSFUL(status))
-		throw WException(HID_STATUS_CODE(status), L"Error, command 'hide' rejected");
+		throw WException(HID_STATUS_CODE(status), L"Error, command 'unhide' rejected");
 
-	wcerr << L"Command 'unhide' successful" << endl;
+	g_stderr << L"Command 'unhide' successful" << endl;
 }
 
 CommandPtr CommandUnhide::CreateInstance()

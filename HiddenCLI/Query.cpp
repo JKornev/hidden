@@ -57,8 +57,8 @@ void CommandQuery::PerformCommand(Connection& connection)
 		if (!HID_STATUS_SUCCESSFUL(status))
 			throw WException(HID_STATUS_CODE(status), L"Error, query state rejected");
 
-		wcerr << L"Driver state:" << (state == HidActiveState::StateEnabled ? L"enabled" : L"disabled") << endl;
-		wcout << L"status:ok;state:" << (state == HidActiveState::StateEnabled ? 1 : 0) << endl;
+		g_stderr << L"Driver state:" << (state == HidActiveState::StateEnabled ? L"enabled" : L"disabled") << endl;
+		g_stdout << L"state:" << (state == HidActiveState::StateEnabled ? 1 : 0) << endl;
 	}
 	else if (m_queryType == EQueryType::QueryProcess)
 	{
@@ -73,12 +73,12 @@ void CommandQuery::PerformCommand(Connection& connection)
 		if (!HID_STATUS_SUCCESSFUL(status))
 			throw WException(HID_STATUS_CODE(status), L"Error, query protected state rejected");
 
-		wcerr << L"Ignored state:" << (excludeState == HidActiveState::StateEnabled ? L"true" : L"false")
+		g_stderr << L"Ignored state:" << (excludeState == HidActiveState::StateEnabled ? L"true" : L"false")
 			<< L", inherit:" << ConvertInheritTypeToUnicode(excludedInherit) << endl;
-		wcerr << L"Protected state:" << (protectedState == HidActiveState::StateEnabled ? L"true" : L"false")
+		g_stderr << L"Protected state:" << (protectedState == HidActiveState::StateEnabled ? L"true" : L"false")
 			<< L", inherit:" << ConvertInheritTypeToUnicode(protectedInherit) << endl;
 
-		wcout << L"status:ok;ignored:" << excludeState << L"," << excludedInherit
+		g_stdout << L"ignored:" << excludeState << L"," << excludedInherit
 			<< L";protected:" << protectedState << L"," << protectedInherit << endl;
 	}
 }
