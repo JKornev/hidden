@@ -24,7 +24,7 @@ HidRegRootTypes CommandHide::GetTypeAndNormalizeRegPath(std::wstring& regPath)
 	HidRegRootTypes type = GetRegType(regPath);
 	size_t pos = regPath.find(L"\\");
 	if (pos == wstring::npos)
-		throw WException(-2, L"Error, invalid registry path");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid registry path");
 
 	regPath = std::move(wstring(regPath.c_str() + pos + 1));
 	return type;
@@ -35,10 +35,10 @@ void CommandHide::LoadArgs(Arguments& args, CommandModeType mode)
 	wstring object;
 
 	if (!args.GetNext(object))
-		throw WException(-2, L"Error, mismatched argument #1 for command 'hide'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched argument #1 for command 'hide'");
 
 	if (!args.GetNext(m_path))
-		throw WException(-2, L"Error, mismatched argument #2 for command 'hide'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched argument #2 for command 'hide'");
 
 	if (object == L"file")
 	{
@@ -60,7 +60,7 @@ void CommandHide::LoadArgs(Arguments& args, CommandModeType mode)
 	}
 	else
 	{
-		throw WException(-2, L"Error, invalid argument for command 'hide'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid argument for command 'hide'");
 	}
 }
 
@@ -84,7 +84,7 @@ void CommandHide::PerformCommand(Connection& connection)
 		status = Hid_AddHiddenRegValue(connection.GetContext(), m_regRootType, m_path.c_str(), &objId);
 		break;
 	default:
-		throw WException(-2, L"Internal error, invalid type for command 'hide'");
+		throw WException(ERROR_UNKNOWN_COMPONENT, L"Internal error, invalid type for command 'hide'");
 	}
 
 	if (!HID_STATUS_SUCCESSFUL(status))
@@ -122,7 +122,7 @@ void CommandHide::InstallCommand(RegistryKey& configKey)
 		status = Hid_NormalizeRegistryPath(m_regRootType, m_path.c_str(), const_cast<wchar_t*>(entry.c_str()), entry.size());
 		break;
 	default:
-		throw WException(-2, L"Internal error, invalid type for command 'hide'");
+		throw WException(ERROR_UNKNOWN_COMPONENT, L"Internal error, invalid type for command 'hide'");
 	}
 	
 	configKey.GetMultiStrValue(valueName, commands);
@@ -171,10 +171,10 @@ void CommandUnhide::LoadArgs(Arguments& args, CommandModeType mode)
 	wstring object, target;
 
 	if (!args.GetNext(object))
-		throw WException(-2, L"Error, mismatched argument #1 for command 'unhide'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched argument #1 for command 'unhide'");
 
 	if (!args.GetNext(target))
-		throw WException(-2, L"Error, mismatched argument #2 for command 'unhide'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched argument #2 for command 'unhide'");
 
 	if (object == L"file")
 	{
@@ -194,7 +194,7 @@ void CommandUnhide::LoadArgs(Arguments& args, CommandModeType mode)
 	}
 	else
 	{
-		throw WException(-2, L"Error, invalid argument for command 'unhide'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid argument for command 'unhide'");
 	}
 
 	m_targetAll = (target == L"all");
@@ -202,7 +202,7 @@ void CommandUnhide::LoadArgs(Arguments& args, CommandModeType mode)
 	{
 		m_targetId = _wtoll(target.c_str());
 		if (!m_targetId)
-			throw WException(-2, L"Error, invalid target objid for command 'unhide'");
+			throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid target objid for command 'unhide'");
 	}
 }
 
@@ -227,7 +227,7 @@ void CommandUnhide::PerformCommand(Connection& connection)
 			status = Hid_RemoveAllHiddenRegValues(connection.GetContext());
 			break;
 		default:
-			throw WException(-2, L"Internal error #1, invalid type for command 'unhide'");
+			throw WException(ERROR_UNKNOWN_COMPONENT, L"Internal error #1, invalid type for command 'unhide'");
 		}
 	}
 	else
@@ -247,7 +247,7 @@ void CommandUnhide::PerformCommand(Connection& connection)
 			status = Hid_RemoveHiddenRegValue(connection.GetContext(), m_targetId);
 			break;
 		default:
-			throw WException(-2, L"Internal error #2, invalid type for command 'unhide'");
+			throw WException(ERROR_UNKNOWN_COMPONENT, L"Internal error #2, invalid type for command 'unhide'");
 		}
 	}
 

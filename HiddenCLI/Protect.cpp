@@ -23,7 +23,7 @@ void CommandProtect::LoadArgs(Arguments& args, CommandModeType mode)
 	wstring object, target;
 
 	if (!args.GetNext(object))
-		throw WException(-2, L"Error, mismatched argument #1 for command 'protect'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched argument #1 for command 'protect'");
 
 	if (object == L"image")
 	{
@@ -32,13 +32,13 @@ void CommandProtect::LoadArgs(Arguments& args, CommandModeType mode)
 	else if (object == L"pid")
 	{
 		if (!CommandModeType::Execute)
-			throw WException(-2, L"Error, target 'pid' isn't allowed");
+			throw WException(ERROR_INVALID_PARAMETER, L"Error, target 'pid' isn't allowed");
 
 		m_procType = EProcTypes::TypeProcessId;
 	}
 	else
 	{
-		throw WException(-2, L"Error, invalid object type in command 'protect'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid object type in command 'protect'");
 	}
 
 	m_inheritType = LoadInheritOption(args, HidPsInheritTypes::WithoutInherit);
@@ -48,7 +48,7 @@ void CommandProtect::LoadArgs(Arguments& args, CommandModeType mode)
 		m_applyByDefault = LoadApplyOption(args, m_applyByDefault);
 
 	if (!args.GetNext(target))
-		throw WException(-2, L"Error, mismatched argument #2 for command 'protect'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched argument #2 for command 'protect'");
 
 	if (m_procType == EProcTypes::TypeImage)
 	{
@@ -58,7 +58,7 @@ void CommandProtect::LoadArgs(Arguments& args, CommandModeType mode)
 	{
 		m_targetProcId = _wtol(target.c_str());
 		if (!m_targetProcId)
-			throw WException(-2, L"Error, invalid target pid for command 'protect'");
+			throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid target pid for command 'protect'");
 	}
 }
 
@@ -76,7 +76,7 @@ void CommandProtect::PerformCommand(Connection& connection)
 		status = Hid_AddProtectedImage(connection.GetContext(), m_targetImage.c_str(), m_inheritType, m_applyByDefault, &objId);
 		break;
 	default:
-		throw WException(-2, L"Internal error, invalid type for command 'protect'");
+		throw WException(ERROR_UNKNOWN_COMPONENT, L"Internal error, invalid type for command 'protect'");
 	}
 
 	if (!HID_STATUS_SUCCESSFUL(status))
@@ -142,21 +142,21 @@ void CommandUnprotect::LoadArgs(Arguments& args, CommandModeType mode)
 	wstring object, target;
 
 	if (mode != CommandModeType::Execute)
-		throw WException(-2, L"Error, install/uninstall mode isn't supported for this command");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, install/uninstall mode isn't supported for this command");
 
 	if (!args.GetNext(object))
-		throw WException(-2, L"Error, mismatched argument #1 for command 'unprotect'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched argument #1 for command 'unprotect'");
 
 	if (object == L"pid")
 	{
 		m_targetType = ETargetIdType::ProcId;
 
 		if (!args.GetNext(target))
-			throw WException(-2, L"Error, mismatched argument #2 for command 'unprotect'");
+			throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched argument #2 for command 'unprotect'");
 
 		m_targetProcId = _wtol(target.c_str());
 		if (!m_targetProcId)
-			throw WException(-2, L"Error, invalid target ruleid for command 'unprotect'");
+			throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid target ruleid for command 'unprotect'");
 	}
 	else if (object == L"all")
 	{
@@ -168,7 +168,7 @@ void CommandUnprotect::LoadArgs(Arguments& args, CommandModeType mode)
 
 		m_targetId = _wtoll(object.c_str());
 		if (!m_targetId)
-			throw WException(-2, L"Error, invalid target ruleid for command 'unprotect'");
+			throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid target ruleid for command 'unprotect'");
 	}
 }
 
@@ -188,7 +188,7 @@ void CommandUnprotect::PerformCommand(Connection& connection)
 		status = Hid_RemoveProtectedImage(connection.GetContext(), m_targetId);
 		break;
 	default:
-		throw WException(-2, L"Internal error, invalid type for command 'unprotect'");
+		throw WException(ERROR_UNKNOWN_COMPONENT, L"Internal error, invalid type for command 'unprotect'");
 	}
 
 	if (!HID_STATUS_SUCCESSFUL(status))

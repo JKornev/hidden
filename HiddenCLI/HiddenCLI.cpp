@@ -136,7 +136,7 @@ CommandTemplatePtr LoadCommandsTemplate(Arguments& args, CommandMode& mode)
 		return CommandTemplatePtr(new SingleCommand(args, mode.GetModeType()));
 
 	if (!args.Probe(templateType))
-		throw WException(-2, L"Error, unknown perform mode, please use 'hiddencli /help'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, unknown perform mode, please use 'hiddencli /help'");
 
 	if (templateType == L"/multi")
 	{
@@ -160,7 +160,7 @@ int wmain(int argc, wchar_t* argv[])
 
 		if (!arguments.ArgsCount())
 			throw WException(
-				-2,
+				ERROR_INVALID_PARAMETER,
 				L"Welcome to HiddenCLI, please use 'hiddencli /help'"
 			);
 

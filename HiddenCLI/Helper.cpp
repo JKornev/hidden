@@ -251,7 +251,7 @@ HidRegRootTypes GetRegType(wstring& path)
 	else if (path.compare(0, _countof(regHKU) - 1, regHKU) == 0)
 		return HidRegRootTypes::RegHKU;
 	else
-		throw WException(-2, L"Error, invalid registry prefix");
+		throw WException(ERROR_INVALID_DATA, L"Error, invalid registry prefix");
 }
 
 HidPsInheritTypes LoadInheritOption(Arguments& args, HidPsInheritTypes default)

@@ -28,7 +28,7 @@ void LoadCommandsStack(vector<CommandPtr>& stack)
 
 void ICommand::InstallCommand(RegistryKey& configKey) 
 {
-	throw WException(-2, L"Error, install mode is not supported");
+	throw WException(ERROR_UNSUPPORTED_TYPE, L"Error, install mode is not supported");
 }
 
 void ICommand::UninstallCommand(RegistryKey& configKey) 
@@ -42,7 +42,7 @@ CommandMode::CommandMode(Arguments& args) : m_type(CommandModeType::Execute)
 	wstring mode, all;
 
 	if (!args.Probe(mode))
-		throw WException(-2, L"Error, no command, please use 'hiddencli /help'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, no command, please use 'hiddencli /help'");
 
 	if (mode == L"/install")
 	{
@@ -60,7 +60,7 @@ CommandMode::CommandMode(Arguments& args) : m_type(CommandModeType::Execute)
 	if (m_type == CommandModeType::Uninstall)
 	{
 		if (!args.Probe(all) || all != L"all")
-			throw WException(-2, L"Error, invalid '/unistall' format");
+			throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid '/unistall' format");
 
 		args.SwitchToNext();
 	}
@@ -102,14 +102,14 @@ SingleCommand::SingleCommand(Arguments& args, CommandModeType mode)
 	if (mode == CommandModeType::Uninstall)
 	{
 		if (args.SwitchToNext())
-			throw WException(-2, L"Error, too many arguments");
+			throw WException(ERROR_INVALID_PARAMETER, L"Error, too many arguments");
 
 		LoadCommandsStack(m_commandsStack);
 		return;
 	}
 
 	if (!args.GetNext(arg))
-		throw WException(-2, L"Error, no command, please use 'hiddencli /help'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, no command, please use 'hiddencli /help'");
 
 	LoadCommandsStack(m_commandsStack);
 
@@ -125,10 +125,10 @@ SingleCommand::SingleCommand(Arguments& args, CommandModeType mode)
 	}
 
 	if (!found)
-		throw WException(-2, L"Error, unknown command, please use 'hiddencli /help'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, unknown command, please use 'hiddencli /help'");
 
 	if (args.SwitchToNext())
-		throw WException(-2, L"Error, too many arguments");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, too many arguments");
 }
 
 SingleCommand::~SingleCommand()
@@ -167,10 +167,10 @@ MultipleCommands::MultipleCommands(Arguments& args, CommandModeType mode)
 	wstring arg;
 
 	if (mode == CommandModeType::Uninstall)
-		throw WException(-2, L"Error, /uninstall can't be combined with /multi");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, /uninstall can't be combined with /multi");
 
 	if (!args.GetNext(arg))
-		throw WException(-2, L"Error, no command, please use 'hiddencli /help'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, no command, please use 'hiddencli /help'");
 
 	LoadCommandsStack(m_commandsStack);
 
@@ -191,7 +191,7 @@ MultipleCommands::MultipleCommands(Arguments& args, CommandModeType mode)
 		}
 
 		if (!found)
-			throw WException(-2, L"Error, unknown command, please use 'hiddencli /help'");
+			throw WException(ERROR_INVALID_PARAMETER, L"Error, unknown command, please use 'hiddencli /help'");
 	} 
 	while (args.GetNext(arg));
 }
@@ -214,7 +214,7 @@ void MultipleCommands::Install(RegistryKey& configKey)
 
 void MultipleCommands::Uninstall(RegistryKey& configKey)
 {
-	throw WException(-2, L"Error, uninstall mode is not supported");
+	throw WException(ERROR_UNSUPPORTED_TYPE, L"Error, uninstall mode is not supported");
 }
 
 // =================
@@ -241,7 +241,7 @@ public:
 
 		argv = CommandLineToArgvW(line.c_str(), &argc);
 		if (!argv)
-			throw WException(-2, L"Error, invalid command format");
+			throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid command format");
 
 		try
 		{
@@ -274,13 +274,13 @@ MultipleCommandsFromFile::MultipleCommandsFromFile(Arguments& args, CommandModeT
 	wstring configFile;
 
 	if (mode == CommandModeType::Uninstall)
-		throw WException(-2, L"Error, /uninstall can't be combined with /config");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, /uninstall can't be combined with /config");
 
 	if (!args.GetNext(configFile))
-		throw WException(-2, L"Error, no command, please use 'hiddencli /help'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, no command, please use 'hiddencli /help'");
 
 	if (args.SwitchToNext())
-		throw WException(-2, L"Error, too many arguments");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, too many arguments");
 
 	wifstream fconfig(configFile);
 	wstring line;
@@ -297,7 +297,7 @@ MultipleCommandsFromFile::MultipleCommandsFromFile(Arguments& args, CommandModeT
 			Arguments lineArgs = parser.GetArgs();
 
 			if (!lineArgs.GetNext(arg))
-				throw WException(-2, L"Error, no command, please use 'hiddencli /help'");
+				throw WException(ERROR_INVALID_PARAMETER, L"Error, no command, please use 'hiddencli /help'");
 
 			do
 			{
@@ -316,7 +316,7 @@ MultipleCommandsFromFile::MultipleCommandsFromFile(Arguments& args, CommandModeT
 				}
 
 				if (!found)
-					throw WException(-2, L"Error, unknown command, please use 'hiddencli /help'");
+					throw WException(ERROR_INVALID_PARAMETER, L"Error, unknown command, please use 'hiddencli /help'");
 			} 
 			while (lineArgs.GetNext(arg));
 		}
@@ -341,5 +341,5 @@ void MultipleCommandsFromFile::Install(RegistryKey& configKey)
 
 void MultipleCommandsFromFile::Uninstall(RegistryKey& configKey)
 {
-	throw WException(-2, L"Error, uninstall mode is not supported");
+	throw WException(ERROR_UNSUPPORTED_TYPE, L"Error, uninstall mode is not supported");
 }

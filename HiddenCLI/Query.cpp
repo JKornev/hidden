@@ -21,18 +21,18 @@ void CommandQuery::LoadArgs(Arguments& args, CommandModeType mode)
 	wstring object, target;
 
 	if (!args.GetNext(object))
-		throw WException(-2, L"Error, mismatched argument #1 for command 'query'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched argument #1 for command 'query'");
 
 	if (object == L"process")
 	{
 		m_queryType = EQueryType::QueryProcess;
 
 		if (!args.GetNext(target))
-			throw WException(-2, L"Error, mismatched argument #2 for command 'query'");
+			throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched argument #2 for command 'query'");
 
 		m_targetProcId = _wtol(target.c_str());
 		if (!m_targetProcId)
-			throw WException(-2, L"Error, invalid target pid for command 'query'");
+			throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid target pid for command 'query'");
 	}
 	else if (object == L"state")
 	{
@@ -41,7 +41,7 @@ void CommandQuery::LoadArgs(Arguments& args, CommandModeType mode)
 	else
 	{
 
-		throw WException(-2, L"Error, invalid object type for command 'query'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid object type for command 'query'");
 	}
 }
 

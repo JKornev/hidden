@@ -21,14 +21,14 @@ void CommandState::LoadArgs(Arguments& args, CommandModeType mode)
 	wstring state, enable;
 
 	if (!args.GetNext(state))
-		throw WException(-2, L"Error, mismatched argument #1 for command 'state'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched argument #1 for command 'state'");
 
 	if (state == L"on")
 		m_state = true;
 	else if (state == L"off")
 		m_state = false;
 	else
-		throw WException(-2, L"Error, mismatched argument #2 for command 'state'");
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched argument #2 for command 'state'");
 }
 
 void CommandState::PerformCommand(Connection& connection)
