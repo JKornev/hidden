@@ -17,7 +17,7 @@ typedef struct _EXCLUDE_FILE_LIST_ENTRY {
 
 typedef struct _EXCLUDE_FILE_CONTEXT {
 	LIST_ENTRY       listHead;
-	KSPIN_LOCK       listLock;
+	FAST_MUTEX       listLock;
 	ULONGLONG        guidCounter;
 	UINT32           type;
 } EXCLUDE_FILE_CONTEXT, *PEXCLUDE_FILE_CONTEXT;
@@ -54,7 +54,7 @@ NTSTATUS InitializeExcludeListContext(PExcludeContext Context, UINT32 Type)
 	}
 
 	InitializeListHead(&cntx->listHead);
-	KeInitializeSpinLock(&cntx->listLock);
+	ExInitializeFastMutex(&cntx->listLock);
 	cntx->guidCounter = 1;
 	cntx->type = Type;
 
@@ -94,7 +94,7 @@ NTSTATUS AddExcludeListEntry(ExcludeContext Context, PUNICODE_STRING FilePath, U
 {
 	enum { MAX_PATH_SIZE = 1024 };
 	PEXCLUDE_FILE_CONTEXT cntx = (PEXCLUDE_FILE_CONTEXT)Context;
-	KLOCK_QUEUE_HANDLE lockHandle;
+	//KLOCK_QUEUE_HANDLE lockHandle;
 	PEXCLUDE_FILE_LIST_ENTRY entry, head;
 	UNICODE_STRING temp;
 	SIZE_T size;
@@ -158,10 +158,10 @@ NTSTATUS AddExcludeListEntry(ExcludeContext Context, PUNICODE_STRING FilePath, U
 		head = (PEXCLUDE_FILE_LIST_ENTRY)&cntx->listHead;
 	}
 	
-	KeAcquireInStackQueuedSpinLock(&cntx->listLock, &lockHandle);
+	ExAcquireFastMutex(&cntx->listLock);
 	entry->guid = cntx->guidCounter++;
 	InsertTailList((PLIST_ENTRY)head, (PLIST_ENTRY)entry);
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&cntx->listLock);
 
 	*EntryId = entry->guid;
 
@@ -172,10 +172,10 @@ NTSTATUS RemoveExcludeListEntry(ExcludeContext Context, ExcludeEntryId EntryId)
 {
 	NTSTATUS status = STATUS_NOT_FOUND;
 	PEXCLUDE_FILE_CONTEXT cntx = (PEXCLUDE_FILE_CONTEXT)Context;
-	KLOCK_QUEUE_HANDLE lockHandle;
+	//KLOCK_QUEUE_HANDLE lockHandle;
 	PEXCLUDE_FILE_LIST_ENTRY entry;
 
-	KeAcquireInStackQueuedSpinLock(&cntx->listLock, &lockHandle);
+	ExAcquireFastMutex(&cntx->listLock);
 
 	entry = (PEXCLUDE_FILE_LIST_ENTRY)cntx->listHead.Flink;
 	while (entry != (PEXCLUDE_FILE_LIST_ENTRY)&cntx->listHead)
@@ -191,7 +191,7 @@ NTSTATUS RemoveExcludeListEntry(ExcludeContext Context, ExcludeEntryId EntryId)
 		entry = (PEXCLUDE_FILE_LIST_ENTRY)entry->list.Flink;
 	}
 
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&cntx->listLock);
 
 	return status;
 }
@@ -199,10 +199,10 @@ NTSTATUS RemoveExcludeListEntry(ExcludeContext Context, ExcludeEntryId EntryId)
 NTSTATUS RemoveAllExcludeListEntries(ExcludeContext Context)
 {
 	PEXCLUDE_FILE_CONTEXT cntx = (PEXCLUDE_FILE_CONTEXT)Context;
-	KLOCK_QUEUE_HANDLE lockHandle;
+	//KLOCK_QUEUE_HANDLE lockHandle;
 	PEXCLUDE_FILE_LIST_ENTRY entry;
 
-	KeAcquireInStackQueuedSpinLock(&cntx->listLock, &lockHandle);
+	ExAcquireFastMutex(&cntx->listLock);
 
 	entry = (PEXCLUDE_FILE_LIST_ENTRY)cntx->listHead.Flink;
 	while (entry != (PEXCLUDE_FILE_LIST_ENTRY)&cntx->listHead)
@@ -213,7 +213,7 @@ NTSTATUS RemoveAllExcludeListEntries(ExcludeContext Context)
 		ExFreePoolWithTag(remove, EXCLUDE_ALLOC_TAG);
 	}
 
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&cntx->listLock);
 
 	return STATUS_SUCCESS;
 }
@@ -221,11 +221,11 @@ NTSTATUS RemoveAllExcludeListEntries(ExcludeContext Context)
 BOOLEAN CheckExcludeListFile(ExcludeContext Context, PCUNICODE_STRING Path)
 {
 	PEXCLUDE_FILE_CONTEXT cntx = (PEXCLUDE_FILE_CONTEXT)Context;
-	KLOCK_QUEUE_HANDLE lockHandle;
+	//KLOCK_QUEUE_HANDLE lockHandle;
 	PEXCLUDE_FILE_LIST_ENTRY entry;
 	BOOLEAN result = FALSE;
 
-	KeAcquireInStackQueuedSpinLock(&cntx->listLock, &lockHandle);
+	ExAcquireFastMutex(&cntx->listLock);
 
 	entry = (PEXCLUDE_FILE_LIST_ENTRY)cntx->listHead.Flink;
 	while (entry != (PEXCLUDE_FILE_LIST_ENTRY)&cntx->listHead)
@@ -239,7 +239,7 @@ BOOLEAN CheckExcludeListFile(ExcludeContext Context, PCUNICODE_STRING Path)
 		entry = (PEXCLUDE_FILE_LIST_ENTRY)entry->list.Flink;
 	}
 
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&cntx->listLock);
 
 	return result;
 }
@@ -247,7 +247,7 @@ BOOLEAN CheckExcludeListFile(ExcludeContext Context, PCUNICODE_STRING Path)
 BOOLEAN CheckExcludeListDirectory(ExcludeContext Context, PCUNICODE_STRING Path)
 {
 	PEXCLUDE_FILE_CONTEXT cntx = (PEXCLUDE_FILE_CONTEXT)Context;
-	KLOCK_QUEUE_HANDLE lockHandle;
+	//KLOCK_QUEUE_HANDLE lockHandle;
 	PEXCLUDE_FILE_LIST_ENTRY entry;
 	UNICODE_STRING Directory, dir;
 	BOOLEAN result = FALSE;
@@ -256,7 +256,7 @@ BOOLEAN CheckExcludeListDirectory(ExcludeContext Context, PCUNICODE_STRING Path)
 	if (Directory.Length > 0 && Directory.Buffer[Directory.Length / sizeof(WCHAR) - 1] == L'\\')
 		Directory.Length -= sizeof(WCHAR);
 
-	KeAcquireInStackQueuedSpinLock(&cntx->listLock, &lockHandle);
+	ExAcquireFastMutex(&cntx->listLock);
 
 	entry = (PEXCLUDE_FILE_LIST_ENTRY)cntx->listHead.Flink;
 	while (entry != (PEXCLUDE_FILE_LIST_ENTRY)&cntx->listHead)
@@ -285,7 +285,7 @@ BOOLEAN CheckExcludeListDirectory(ExcludeContext Context, PCUNICODE_STRING Path)
 		entry = (PEXCLUDE_FILE_LIST_ENTRY)entry->list.Flink;
 	}
 
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&cntx->listLock);
 
 	return result;
 }
@@ -293,7 +293,7 @@ BOOLEAN CheckExcludeListDirectory(ExcludeContext Context, PCUNICODE_STRING Path)
 BOOLEAN CheckExcludeListDirFile(ExcludeContext Context, PCUNICODE_STRING Dir, PCUNICODE_STRING File)
 {
 	PEXCLUDE_FILE_CONTEXT cntx = (PEXCLUDE_FILE_CONTEXT)Context;
-	KLOCK_QUEUE_HANDLE lockHandle;
+	//KLOCK_QUEUE_HANDLE lockHandle;
 	PEXCLUDE_FILE_LIST_ENTRY entry;
 	UNICODE_STRING Directory;
 	BOOLEAN result = FALSE;
@@ -303,7 +303,7 @@ BOOLEAN CheckExcludeListDirFile(ExcludeContext Context, PCUNICODE_STRING Dir, PC
 	if (Directory.Length > 0 && Directory.Buffer[Directory.Length / sizeof(WCHAR) - 1] == L'\\')
 		Directory.Length -= sizeof(WCHAR);
 
-	KeAcquireInStackQueuedSpinLock(&cntx->listLock, &lockHandle);
+	ExAcquireFastMutex(&cntx->listLock);
 
 	entry = (PEXCLUDE_FILE_LIST_ENTRY)cntx->listHead.Flink;
 	while (entry != (PEXCLUDE_FILE_LIST_ENTRY)&cntx->listHead)
@@ -318,7 +318,7 @@ BOOLEAN CheckExcludeListDirFile(ExcludeContext Context, PCUNICODE_STRING Dir, PC
 		entry = (PEXCLUDE_FILE_LIST_ENTRY)entry->list.Flink;
 	}
 
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&cntx->listLock);
 
 	return result;
 }
@@ -331,7 +331,7 @@ BOOLEAN CheckExcludeListRegKey(ExcludeContext Context, PUNICODE_STRING Key)
 BOOLEAN CheckExcludeListRegKeyValueName(ExcludeContext Context, PUNICODE_STRING Key, PUNICODE_STRING Name, PUINT32 Increament)
 {
 	PEXCLUDE_FILE_CONTEXT cntx = (PEXCLUDE_FILE_CONTEXT)Context;
-	KLOCK_QUEUE_HANDLE lockHandle;
+	//KLOCK_QUEUE_HANDLE lockHandle;
 	PEXCLUDE_FILE_LIST_ENTRY entry;
 	UNICODE_STRING Directory;
 	BOOLEAN result = FALSE;
@@ -342,7 +342,7 @@ BOOLEAN CheckExcludeListRegKeyValueName(ExcludeContext Context, PUNICODE_STRING 
 	if (Directory.Length > 0 && Directory.Buffer[Directory.Length / sizeof(WCHAR)-1] == L'\\')
 		Directory.Length -= sizeof(WCHAR);
 
-	KeAcquireInStackQueuedSpinLock(&cntx->listLock, &lockHandle);
+	ExAcquireFastMutex(&cntx->listLock);
 
 	entry = (PEXCLUDE_FILE_LIST_ENTRY)cntx->listHead.Flink;
 	while (entry != (PEXCLUDE_FILE_LIST_ENTRY)&cntx->listHead)
@@ -371,7 +371,7 @@ BOOLEAN CheckExcludeListRegKeyValueName(ExcludeContext Context, PUNICODE_STRING 
 		entry = (PEXCLUDE_FILE_LIST_ENTRY)entry->list.Flink;
 	}
 
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&cntx->listLock);
 
 	return result;
 }

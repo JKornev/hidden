@@ -184,7 +184,10 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 	RtlZeroMemory(&lookup, sizeof(lookup));
 
 	Entry->inited = (!g_psMonitorInited ? TRUE : FALSE);
-	Entry->subsystem = RtlEqualUnicodeString(&g_csrssPath, ImgPath, TRUE);
+	//if (Entry->processId == (HANDLE)4)
+	//	Entry->subsystem = TRUE;
+	//else
+		Entry->subsystem = RtlEqualUnicodeString(&g_csrssPath, ImgPath, TRUE);
 
 	// Check exclude flag
 
@@ -337,7 +340,8 @@ BOOLEAN IsProcessExcluded(HANDLE ProcessId)
 	if (!result)
 		return FALSE;
 
-	return entry.excluded;
+	//return ((entry.excluded || entry.subsystem) ? TRUE : FALSE);
+	return ((entry.excluded || ProcessId == (HANDLE)4) ? TRUE : FALSE);
 }
 
 BOOLEAN IsProcessProtected(HANDLE ProcessId)
