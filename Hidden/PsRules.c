@@ -5,7 +5,7 @@
 typedef struct _PsRulesInternalContext {
 	RTL_AVL_TABLE table;
 	ULONGLONG     idCounter;
-	KSPIN_LOCK    tableLock;
+	FAST_MUTEX    tableLock;
 } PsRulesInternalContext, *PPsRulesInternalContext;
 
 RTL_GENERIC_COMPARE_RESULTS ComparePsRuleEntry(struct _RTL_AVL_TABLE  *Table, PVOID  FirstStruct, PVOID  SecondStruct)
@@ -52,7 +52,7 @@ NTSTATUS InitializePsRuleListContext(PPsRulesContext pRuleContext)
 	}
 
 	context->idCounter = 1;
-	KeInitializeSpinLock(&context->tableLock);
+	ExInitializeFastMutex(&context->tableLock);
 	RtlInitializeGenericTableAvl(&context->table, ComparePsRuleEntry, AllocatePsRuleEntry, FreePsRuleEntry, NULL);
 
 	*pRuleContext = context;
@@ -68,7 +68,6 @@ VOID DestroyPsRuleListContext(PsRulesContext RuleContext)
 NTSTATUS AddRuleToPsRuleList(PsRulesContext RuleContext, PUNICODE_STRING ImgPath, ULONG InheritType, PPsRuleEntryId EntryId)
 {
 	PPsRulesInternalContext context = (PPsRulesInternalContext)RuleContext;
-	KLOCK_QUEUE_HANDLE lockHandle;
 	NTSTATUS status = STATUS_SUCCESS;
 	ULONGLONG guid;
 	PPsRuleEntry entry;
@@ -97,11 +96,11 @@ NTSTATUS AddRuleToPsRuleList(PsRulesContext RuleContext, PUNICODE_STRING ImgPath
 	entry->imagePath.MaximumLength = ImgPath->Length;
 	RtlCopyUnicodeString(&entry->imagePath, ImgPath);
 
-	KeAcquireInStackQueuedSpinLock(&context->tableLock, &lockHandle);
+	ExAcquireFastMutex(&context->tableLock);
 	guid = context->idCounter++;
 	entry->guid = guid;
 	buf = RtlInsertElementGenericTableAvl(&context->table, entry, entryLen, &newElem);
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&context->tableLock);
 
 	if (!buf)
 	{
@@ -123,11 +122,10 @@ NTSTATUS RemoveRuleFromPsRuleList(PsRulesContext RuleContext, PsRuleEntryId Entr
 {
 	PPsRulesInternalContext context = (PPsRulesInternalContext)RuleContext;
 	NTSTATUS status = STATUS_NOT_FOUND;
-	KLOCK_QUEUE_HANDLE lockHandle;
 	PPsRuleEntry entry;
 	PVOID restartKey = NULL;
 
-	KeAcquireInStackQueuedSpinLock(&context->tableLock, &lockHandle);
+	ExAcquireFastMutex(&context->tableLock);
 
 	for (entry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey);
 		entry != NULL;
@@ -143,7 +141,7 @@ NTSTATUS RemoveRuleFromPsRuleList(PsRulesContext RuleContext, PsRuleEntryId Entr
 		}
 	}
 
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&context->tableLock);
 
 	return status;
 }
@@ -152,11 +150,10 @@ NTSTATUS RemoveAllRulesFromPsRuleList(PsRulesContext RuleContext)
 {
 	PPsRulesInternalContext context = (PPsRulesInternalContext)RuleContext;
 	NTSTATUS status = STATUS_SUCCESS;
-	KLOCK_QUEUE_HANDLE lockHandle;
 	PPsRuleEntry entry;
 	PVOID restartKey = NULL;
 
-	KeAcquireInStackQueuedSpinLock(&context->tableLock, &lockHandle);
+	ExAcquireFastMutex(&context->tableLock);
 
 	for (entry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey);
 		entry != NULL;
@@ -168,7 +165,7 @@ NTSTATUS RemoveAllRulesFromPsRuleList(PsRulesContext RuleContext)
 		restartKey = NULL; // reset enum
 	}
 
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&context->tableLock);
 
 	return status;
 }
@@ -177,11 +174,10 @@ NTSTATUS CheckInPsRuleList(PsRulesContext RuleContext, PCUNICODE_STRING ImgPath,
 {
 	PPsRulesInternalContext context = (PPsRulesInternalContext)RuleContext;
 	NTSTATUS status = STATUS_NOT_FOUND;
-	KLOCK_QUEUE_HANDLE lockHandle;
 	PPsRuleEntry entry;
 	PVOID restartKey = NULL;
 
-	KeAcquireInStackQueuedSpinLock(&context->tableLock, &lockHandle);
+	ExAcquireFastMutex(&context->tableLock);
 
 	for (entry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey);
 		 entry != NULL;
@@ -203,7 +199,7 @@ NTSTATUS CheckInPsRuleList(PsRulesContext RuleContext, PCUNICODE_STRING ImgPath,
 		}
 	}
 
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&context->tableLock);
 
 	return status;
 }
@@ -211,12 +207,11 @@ NTSTATUS CheckInPsRuleList(PsRulesContext RuleContext, PCUNICODE_STRING ImgPath,
 BOOLEAN FindInheritanceInPsRuleList(PsRulesContext RuleContext, PCUNICODE_STRING ImgPath, PULONG pInheritance)
 {
 	PPsRulesInternalContext context = (PPsRulesInternalContext)RuleContext;
-	KLOCK_QUEUE_HANDLE lockHandle;
 	PPsRuleEntry entry;
 	PVOID restartKey = NULL;
 	BOOLEAN result = FALSE;
 
-	KeAcquireInStackQueuedSpinLock(&context->tableLock, &lockHandle);
+	ExAcquireFastMutex(&context->tableLock);
 
 	for (entry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey);
 		 entry != NULL;
@@ -230,7 +225,7 @@ BOOLEAN FindInheritanceInPsRuleList(PsRulesContext RuleContext, PCUNICODE_STRING
 		}
 	}
 
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&context->tableLock);
 
 	return result;
 }

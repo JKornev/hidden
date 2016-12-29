@@ -94,7 +94,6 @@ NTSTATUS AddExcludeListEntry(ExcludeContext Context, PUNICODE_STRING FilePath, U
 {
 	enum { MAX_PATH_SIZE = 1024 };
 	PEXCLUDE_FILE_CONTEXT cntx = (PEXCLUDE_FILE_CONTEXT)Context;
-	//KLOCK_QUEUE_HANDLE lockHandle;
 	PEXCLUDE_FILE_LIST_ENTRY entry, head;
 	UNICODE_STRING temp;
 	SIZE_T size;
@@ -172,7 +171,6 @@ NTSTATUS RemoveExcludeListEntry(ExcludeContext Context, ExcludeEntryId EntryId)
 {
 	NTSTATUS status = STATUS_NOT_FOUND;
 	PEXCLUDE_FILE_CONTEXT cntx = (PEXCLUDE_FILE_CONTEXT)Context;
-	//KLOCK_QUEUE_HANDLE lockHandle;
 	PEXCLUDE_FILE_LIST_ENTRY entry;
 
 	ExAcquireFastMutex(&cntx->listLock);
@@ -199,7 +197,6 @@ NTSTATUS RemoveExcludeListEntry(ExcludeContext Context, ExcludeEntryId EntryId)
 NTSTATUS RemoveAllExcludeListEntries(ExcludeContext Context)
 {
 	PEXCLUDE_FILE_CONTEXT cntx = (PEXCLUDE_FILE_CONTEXT)Context;
-	//KLOCK_QUEUE_HANDLE lockHandle;
 	PEXCLUDE_FILE_LIST_ENTRY entry;
 
 	ExAcquireFastMutex(&cntx->listLock);
@@ -221,7 +218,6 @@ NTSTATUS RemoveAllExcludeListEntries(ExcludeContext Context)
 BOOLEAN CheckExcludeListFile(ExcludeContext Context, PCUNICODE_STRING Path)
 {
 	PEXCLUDE_FILE_CONTEXT cntx = (PEXCLUDE_FILE_CONTEXT)Context;
-	//KLOCK_QUEUE_HANDLE lockHandle;
 	PEXCLUDE_FILE_LIST_ENTRY entry;
 	BOOLEAN result = FALSE;
 
@@ -247,7 +243,6 @@ BOOLEAN CheckExcludeListFile(ExcludeContext Context, PCUNICODE_STRING Path)
 BOOLEAN CheckExcludeListDirectory(ExcludeContext Context, PCUNICODE_STRING Path)
 {
 	PEXCLUDE_FILE_CONTEXT cntx = (PEXCLUDE_FILE_CONTEXT)Context;
-	//KLOCK_QUEUE_HANDLE lockHandle;
 	PEXCLUDE_FILE_LIST_ENTRY entry;
 	UNICODE_STRING Directory, dir;
 	BOOLEAN result = FALSE;
@@ -293,7 +288,6 @@ BOOLEAN CheckExcludeListDirectory(ExcludeContext Context, PCUNICODE_STRING Path)
 BOOLEAN CheckExcludeListDirFile(ExcludeContext Context, PCUNICODE_STRING Dir, PCUNICODE_STRING File)
 {
 	PEXCLUDE_FILE_CONTEXT cntx = (PEXCLUDE_FILE_CONTEXT)Context;
-	//KLOCK_QUEUE_HANDLE lockHandle;
 	PEXCLUDE_FILE_LIST_ENTRY entry;
 	UNICODE_STRING Directory;
 	BOOLEAN result = FALSE;
@@ -331,7 +325,6 @@ BOOLEAN CheckExcludeListRegKey(ExcludeContext Context, PUNICODE_STRING Key)
 BOOLEAN CheckExcludeListRegKeyValueName(ExcludeContext Context, PUNICODE_STRING Key, PUNICODE_STRING Name, PUINT32 Increament)
 {
 	PEXCLUDE_FILE_CONTEXT cntx = (PEXCLUDE_FILE_CONTEXT)Context;
-	//KLOCK_QUEUE_HANDLE lockHandle;
 	PEXCLUDE_FILE_LIST_ENTRY entry;
 	UNICODE_STRING Directory;
 	BOOLEAN result = FALSE;

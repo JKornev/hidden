@@ -18,7 +18,7 @@ OB_CALLBACK_REGISTRATION g_regCallback;
 PsRulesContext g_excludeProcessRules;
 PsRulesContext g_protectProcessRules;
 
-KSPIN_LOCK     g_processTableLock;
+FAST_MUTEX     g_processTableLock;
 
 typedef struct _ProcessListEntry {
 	LPCWSTR path;
@@ -47,7 +47,6 @@ WCHAR          g_csrssPathBuffer[CSRSS_PAHT_BUFFER_SIZE];
 BOOLEAN CheckProtectedOperation(HANDLE Source, HANDLE Destination)
 {
 	ProcessTableEntry srcInfo, destInfo;
-	KLOCK_QUEUE_HANDLE lockHandle;
 	BOOLEAN result;
 
 	if (Source == Destination)
@@ -55,9 +54,9 @@ BOOLEAN CheckProtectedOperation(HANDLE Source, HANDLE Destination)
 
 	srcInfo.processId = Source;
 	
-	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	ExAcquireFastMutex(&g_processTableLock);
 	result = GetProcessInProcessTable(&srcInfo);
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&g_processTableLock);
 	
 	if (!result)
 		return FALSE;
@@ -67,11 +66,11 @@ BOOLEAN CheckProtectedOperation(HANDLE Source, HANDLE Destination)
 	// Spinlock is locked once for both Get\Update process table functions
 	// because we want to prevent situations when another thread can change 
 	// any state of process beetwen get and update functions on this place
-	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	ExAcquireFastMutex(&g_processTableLock);
 
 	if (!GetProcessInProcessTable(&destInfo))
 	{
-		KeReleaseInStackQueuedSpinLock(&lockHandle);
+		ExReleaseFastMutex(&g_processTableLock);
 		return FALSE;
 	}
 
@@ -88,7 +87,7 @@ BOOLEAN CheckProtectedOperation(HANDLE Source, HANDLE Destination)
 				result = FALSE;
 		}
 
-		KeReleaseInStackQueuedSpinLock(&lockHandle);
+		ExReleaseFastMutex(&g_processTableLock);
 
 		if (!result)
 			DbgPrint("FsFilter1!" __FUNCTION__ ": can't update initial state for process: %d\n", destInfo.processId);
@@ -96,7 +95,7 @@ BOOLEAN CheckProtectedOperation(HANDLE Source, HANDLE Destination)
 		return FALSE;
 	}
 
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&g_processTableLock);
 
 	if (!destInfo.protected)
 		return FALSE;
@@ -178,7 +177,6 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 {
 	ProcessTableEntry lookup;
 	ULONG inheritType;
-	KLOCK_QUEUE_HANDLE lockHandle;
 	BOOLEAN result;
 
 	RtlZeroMemory(&lookup, sizeof(lookup));
@@ -203,9 +201,9 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 	{
 		lookup.processId = ParentId;
 
-		KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+		ExAcquireFastMutex(&g_processTableLock);
 		result = GetProcessInProcessTable(&lookup);
-		KeReleaseInStackQueuedSpinLock(&lockHandle);
+		ExReleaseFastMutex(&g_processTableLock);
 
 		if (result)
 		{
@@ -236,9 +234,9 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 	{
 		lookup.processId = ParentId;
 
-		KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+		ExAcquireFastMutex(&g_processTableLock);
 		result = GetProcessInProcessTable(&lookup);
-		KeReleaseInStackQueuedSpinLock(&lockHandle);
+		ExReleaseFastMutex(&g_processTableLock);
 
 		if (result)
 		{
@@ -259,7 +257,6 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE_NOTIFY_INFO CreateInfo)
 {
 	ProcessTableEntry entry;
-	KLOCK_QUEUE_HANDLE lockHandle;
 	BOOLEAN result;
 
 	UNREFERENCED_PARAMETER(Process);
@@ -304,9 +301,9 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 		if (entry.protected)
 			DbgPrint("FsFilter1!" __FUNCTION__ ": protected process:%d\n", ProcessId);
 
-		KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+		ExAcquireFastMutex(&g_processTableLock);
 		result = AddProcessToProcessTable(&entry);
-		KeReleaseInStackQueuedSpinLock(&lockHandle);
+		ExReleaseFastMutex(&g_processTableLock);
 
 		if (!result)
 			DbgPrint("FsFilter1!" __FUNCTION__ ": can't add process(pid:%d) to process table\n", ProcessId);
@@ -315,9 +312,9 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 	}
 	else
 	{
-		KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+		ExAcquireFastMutex(&g_processTableLock);
 		result = RemoveProcessFromProcessTable(&entry);
-		KeReleaseInStackQueuedSpinLock(&lockHandle);
+		ExReleaseFastMutex(&g_processTableLock);
 
 		if (!result)
 			DbgPrint("FsFilter1!" __FUNCTION__ ": can't remove process(pid:%d) from process table\n", ProcessId);
@@ -328,14 +325,13 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 BOOLEAN IsProcessExcluded(HANDLE ProcessId)
 {
 	ProcessTableEntry entry;
-	KLOCK_QUEUE_HANDLE lockHandle;
 	BOOLEAN result;
 
 	entry.processId = ProcessId;
 
-	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	ExAcquireFastMutex(&g_processTableLock);
 	result = GetProcessInProcessTable(&entry);
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&g_processTableLock);
 
 	if (!result)
 		return FALSE;
@@ -347,14 +343,13 @@ BOOLEAN IsProcessExcluded(HANDLE ProcessId)
 BOOLEAN IsProcessProtected(HANDLE ProcessId)
 {
 	ProcessTableEntry entry;
-	KLOCK_QUEUE_HANDLE lockHandle;
 	BOOLEAN result;
 
 	entry.processId = ProcessId;
 
-	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	ExAcquireFastMutex(&g_processTableLock);
 	result = GetProcessInProcessTable(&entry);
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&g_processTableLock);
 
 	if (!result)
 		return FALSE;
@@ -535,7 +530,7 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 
 	// Process table
 
-	KeInitializeSpinLock(&g_processTableLock);
+	ExInitializeFastMutex(&g_processTableLock);
 
 	status = InitializeProcessTable(CheckProcessFlags);
 	if (!NT_SUCCESS(status))
@@ -591,8 +586,6 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 
 NTSTATUS DestroyPsMonitor()
 {
-	KLOCK_QUEUE_HANDLE lockHandle;
-
 	if (!g_psMonitorInited)
 		return STATUS_ALREADY_DISCONNECTED;
 
@@ -607,9 +600,9 @@ NTSTATUS DestroyPsMonitor()
 	DestroyPsRuleListContext(g_excludeProcessRules);
 	DestroyPsRuleListContext(g_protectProcessRules);
 
-	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	ExAcquireFastMutex(&g_processTableLock);
 	DestroyProcessTable();
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&g_processTableLock);
 
 	g_psMonitorInited = FALSE;
 
@@ -638,7 +631,6 @@ NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Exclude
 		OBJECT_ATTRIBUTES attribs;
 		PUNICODE_STRING procName;
 		ProcessTableEntry entry;
-		KLOCK_QUEUE_HANDLE lockHandle;
 
 		processInfo = (PSYSTEM_PROCESS_INFORMATION)((SIZE_T)processInfo + offset);
 
@@ -678,7 +670,7 @@ NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Exclude
 			// Spinlock is locked once for both Get\Update process table functions
 			// because we want to prevent situations when another thread can change 
 			// any state of process beetwen get and update functions on this place
-			KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+			ExAcquireFastMutex(&g_processTableLock);
 			
 			if (GetProcessInProcessTable(&entry))
 			{
@@ -698,7 +690,7 @@ NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Exclude
 					result = FALSE;
 			}
 
-			KeReleaseInStackQueuedSpinLock(&lockHandle);
+			ExReleaseFastMutex(&g_processTableLock);
 
 			if (!result)
 				DbgPrint("FsFilter1!" __FUNCTION__ ": can't update process %d\n", processInfo->ProcessId);
@@ -750,14 +742,13 @@ NTSTATUS AddProtectedImage(PUNICODE_STRING ImagePath, ULONG InheritType, BOOLEAN
 NTSTATUS GetProtectedProcessState(HANDLE ProcessId, PULONG InheritType, PBOOLEAN Enable)
 {
 	ProcessTableEntry entry;
-	KLOCK_QUEUE_HANDLE lockHandle;
 	BOOLEAN result;
 
 	entry.processId = ProcessId;
 
-	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	ExAcquireFastMutex(&g_processTableLock);
 	result = GetProcessInProcessTable(&entry);
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&g_processTableLock);
 
 	if (!result)
 		return STATUS_NOT_FOUND;
@@ -772,14 +763,13 @@ NTSTATUS SetProtectedProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN E
 {
 	NTSTATUS status = STATUS_SUCCESS;
 	ProcessTableEntry entry;
-	KLOCK_QUEUE_HANDLE lockHandle;
 	BOOLEAN result;
 
 	entry.processId = ProcessId;
 
-	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	ExAcquireFastMutex(&g_processTableLock);
 	result = GetProcessInProcessTable(&entry);
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&g_processTableLock);
 
 	if (!result)
 		return STATUS_NOT_FOUND;
@@ -794,9 +784,9 @@ NTSTATUS SetProtectedProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN E
 		entry.protected = FALSE;
 	}
 
-	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	ExAcquireFastMutex(&g_processTableLock);
 	result = UpdateProcessInProcessTable(&entry);
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&g_processTableLock);
 
 	if (!result)
 		return STATUS_NOT_FOUND;
@@ -852,14 +842,13 @@ NTSTATUS AddExcludedImage(PUNICODE_STRING ImagePath, ULONG InheritType, BOOLEAN 
 NTSTATUS GetExcludedProcessState(HANDLE ProcessId, PULONG InheritType, PBOOLEAN Enable)
 {
 	ProcessTableEntry entry;
-	KLOCK_QUEUE_HANDLE lockHandle;
 	BOOLEAN result;
 
 	entry.processId = ProcessId;
 
-	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	ExAcquireFastMutex(&g_processTableLock);
 	result = GetProcessInProcessTable(&entry);
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&g_processTableLock);
 
 	if (!result)
 		return STATUS_NOT_FOUND;
@@ -874,14 +863,13 @@ NTSTATUS SetExcludedProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN En
 {
 	NTSTATUS status = STATUS_SUCCESS;
 	ProcessTableEntry entry;
-	KLOCK_QUEUE_HANDLE lockHandle;
 	BOOLEAN result;
 
 	entry.processId = ProcessId;
 
-	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	ExAcquireFastMutex(&g_processTableLock);
 	result = GetProcessInProcessTable(&entry);
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&g_processTableLock);
 
 	if (!result)
 		return STATUS_NOT_FOUND;
@@ -896,9 +884,9 @@ NTSTATUS SetExcludedProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN En
 		entry.excluded = FALSE;
 	}
 
-	KeAcquireInStackQueuedSpinLock(&g_processTableLock, &lockHandle);
+	ExAcquireFastMutex(&g_processTableLock);
 	result = UpdateProcessInProcessTable(&entry);
-	KeReleaseInStackQueuedSpinLock(&lockHandle);
+	ExReleaseFastMutex(&g_processTableLock);
 
 	if (!result)
 		return STATUS_NOT_FOUND;
