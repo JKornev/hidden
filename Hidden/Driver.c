@@ -8,6 +8,7 @@
 #include "Device.h"
 #include "Driver.h"
 #include "Configs.h"
+#include "Helper.h"
 
 PDRIVER_OBJECT g_driverObject = NULL;
 
@@ -27,13 +28,47 @@ BOOLEAN IsDriverEnabled()
 
 // =========================================================================================
 
-NTSTATUS InitializeStealthMode(PUNICODE_STRING RegistryPath)
+ULONGLONG g_hiddenRegConfigId = 0;
+ULONGLONG g_hiddenDriverFileId = 0;
+
+NTSTATUS InitializeStealthMode(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
+	PLDR_DATA_TABLE_ENTRY LdrEntry;
+	UNICODE_STRING normalized;
+	NTSTATUS status;
+
 	if (!CfgGetStealthState())
 		return STATUS_SUCCESS;
+	
+	LdrEntry = (PLDR_DATA_TABLE_ENTRY)DriverObject->DriverSection;
 
-	//TODO: implement me
-	UNREFERENCED_PARAMETER(RegistryPath);
+	normalized.Length = 0;
+	normalized.MaximumLength = LdrEntry->FullModuleName.Length + NORMALIZE_INCREAMENT;
+	normalized.Buffer = (PWCH)ExAllocatePool(PagedPool, normalized.MaximumLength);
+	
+	if (!normalized.Buffer)
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": error, can't allocate buffer\n");
+		return STATUS_MEMORY_NOT_ALLOCATED;
+	}
+
+	status = NormalizeDevicePath(&LdrEntry->FullModuleName, &normalized);
+	if (!NT_SUCCESS(status))
+	{
+		DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, &LdrEntry->FullModuleName);
+		ExFreePool(normalized.Buffer);
+		return status;
+	}
+
+	status = AddHiddenFile(&normalized, &g_hiddenDriverFileId);
+	if (!NT_SUCCESS(status))
+		DbgPrint("FsFilter1!" __FUNCTION__ ": can't hide self registry key\n");
+
+	ExFreePool(normalized.Buffer);
+
+	status = AddHiddenRegKey(RegistryPath, &g_hiddenRegConfigId);
+	if (!NT_SUCCESS(status))
+		DbgPrint("FsFilter1!" __FUNCTION__ ": can't hide self registry key\n");
 
 	return STATUS_SUCCESS;
 }
@@ -80,7 +115,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 	if (!NT_SUCCESS(status))
 		DbgPrint("FsFilter1!" __FUNCTION__ ": can't create device\n");
 
-	status = InitializeStealthMode(RegistryPath);
+	status = InitializeStealthMode(DriverObject, RegistryPath);
 	if (!NT_SUCCESS(status))
 		DbgPrint("FsFilter1!" __FUNCTION__ ": can't activate stealth mode\n");
 
