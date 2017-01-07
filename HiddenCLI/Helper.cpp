@@ -100,16 +100,43 @@ DWORD Handle::Error()
 
 // =================
 
-RegistryKey::RegistryKey(std::wstring regKey) : m_hkey(NULL)
+RegistryKey::RegistryKey(std::wstring regKey, HKEY root, REGSAM access, bool newKey) : m_hkey(NULL)
 {
-	LONG status = RegOpenKeyExW(HKEY_LOCAL_MACHINE, regKey.c_str(), 0, KEY_ALL_ACCESS | KEY_WOW64_64KEY, &m_hkey);
-	if (status != ERROR_SUCCESS)
-		throw WException(status, L"Error, can't open registry key");
+	if (newKey)
+	{
+		LONG status = RegCreateKeyExW(root, regKey.c_str(), 0, NULL, 0, access, NULL, &m_hkey, NULL);
+		if (status != ERROR_SUCCESS)
+			throw WException(status, L"Error, can't create registry key");
+	}
+	else
+	{
+		LONG status = RegOpenKeyExW(root, regKey.c_str(), 0, access, &m_hkey);
+		if (status != ERROR_SUCCESS)
+			throw WException(status, L"Error, can't open registry key");
+	}
 }
 
 RegistryKey::~RegistryKey()
 {
 	RegCloseKey(m_hkey);
+}
+
+void RegistryKey::CopyTreeFrom(RegistryKey& src)
+{
+	LONG status;
+
+	status = RegCopyTree(src.m_hkey, NULL, m_hkey);
+	if (status != ERROR_SUCCESS)
+		throw WException(status, L"Error, can't copy registry tree");
+}
+
+void RegistryKey::DeleteKey(std::wstring regKey, HKEY root)
+{
+	LONG status;
+
+	status = RegDeleteTreeW(root, regKey.c_str());
+	if (status != ERROR_SUCCESS)
+		throw WException(status, L"Error, can't copy registry tree");
 }
 
 void RegistryKey::SetDwordValue(const wchar_t* name, DWORD value)
@@ -138,6 +165,47 @@ DWORD RegistryKey::GetDwordValue(const wchar_t* name, DWORD defValue)
 	return value;
 }
 
+void RegistryKey::SetStrValue(const wchar_t* name, std::wstring& value, bool expanded)
+{
+	LONG status;
+
+	status = RegSetValueExW(m_hkey, name, NULL, (expanded ? REG_EXPAND_SZ : REG_SZ), (LPBYTE)value.c_str(), (DWORD)(value.size() + 1) * sizeof(wchar_t));
+	if (status != ERROR_SUCCESS)
+		throw WException(status, L"Error, can't set registry value");
+}
+
+void RegistryKey::GetStrValue(const wchar_t* name, std::wstring& value, const wchar_t* defValue)
+{
+	DWORD size = 0, type = REG_SZ;
+	LONG status;
+
+	status = RegQueryValueExW(m_hkey, name, NULL, &type, NULL, &size);
+	if (status != ERROR_SUCCESS)
+	{
+		if (status != ERROR_FILE_NOT_FOUND)
+			throw WException(status, L"Error, can't query registry value");
+
+		value = defValue;
+		return;
+	}
+
+	if (type != REG_SZ && type != REG_EXPAND_SZ)
+		throw WException(status, L"Error, invalid registry key type");
+
+	if (size == 0)
+		return;
+
+	value.clear();
+	value.insert(0, size / sizeof(wchar_t), L'\0');
+
+	status = RegQueryValueExW(m_hkey, name, NULL, &type, (LPBYTE)value.c_str(), &size);
+	if (status != ERROR_SUCCESS)
+		throw WException(status, L"Error, can't query registry value");
+
+	while (value.size() > 0 && value[value.size() - 1] == L'\0')
+		value.pop_back();
+}
+
 void RegistryKey::SetMultiStrValue(const wchar_t* name, const std::vector<std::wstring>& strs)
 {
 	DWORD size = 0, offset = 0;
@@ -147,14 +215,14 @@ void RegistryKey::SetMultiStrValue(const wchar_t* name, const std::vector<std::w
 	for (auto it = strs.begin(); it != strs.end(); it++)
 	{
 		if (it->size() > 0)
-			size += (it->size() + 1) * sizeof(wchar_t);
+			size += (DWORD)(it->size() + 1) * sizeof(wchar_t);
 	}
 
 	if (size == 0)
 	{
 		WCHAR value = 0;
 		status = RegSetValueExW(m_hkey, name, NULL, REG_MULTI_SZ, (LPBYTE)&value, 2);
-		if(status != ERROR_SUCCESS)
+		if (status != ERROR_SUCCESS)
 			throw WException(status, L"Error, can't set registry value");
 
 		return;
@@ -168,7 +236,7 @@ void RegistryKey::SetMultiStrValue(const wchar_t* name, const std::vector<std::w
 		if (it->size() == 0)
 			continue;
 
-		DWORD strSize = (it->size() + 1) * sizeof(wchar_t);
+		DWORD strSize = (DWORD)(it->size() + 1) * sizeof(wchar_t);
 		memcpy(buffer.get() + offset, it->c_str(), strSize);
 		offset += strSize;
 	}
@@ -187,7 +255,7 @@ void RegistryKey::GetMultiStrValue(const wchar_t* name, std::vector<std::wstring
 
 	strs.clear();
 
-	status = RegQueryValueEx(m_hkey, name, NULL, &type, NULL, &size);
+	status = RegQueryValueExW(m_hkey, name, NULL, &type, NULL, &size);
 	if (status != ERROR_SUCCESS)
 	{
 		if (status != ERROR_FILE_NOT_FOUND)
@@ -196,13 +264,16 @@ void RegistryKey::GetMultiStrValue(const wchar_t* name, std::vector<std::wstring
 		return;
 	}
 
+	if (type != REG_MULTI_SZ)
+		throw WException(status, L"Error, invalid registry key type");
+
 	if (size == 0)
 		return;
 
 	buffer.reset(new BYTE[size + sizeof(WCHAR)]);
 	memset(buffer.get(), 0, size + sizeof(WCHAR));
 
-	status = RegQueryValueEx(m_hkey, name, NULL, &type, buffer.get(), &size);
+	status = RegQueryValueExW(m_hkey, name, NULL, &type, buffer.get(), &size);
 	if (status != ERROR_SUCCESS)
 		throw WException(status, L"Error, can't query registry value");
 
@@ -231,7 +302,7 @@ void RegistryKey::GetMultiStrValue(const wchar_t* name, std::vector<std::wstring
 
 void RegistryKey::RemoveValue(const wchar_t* name)
 {
-	LONG status = RegDeleteKeyValue(m_hkey, NULL, name);
+	LONG status = RegDeleteKeyValueW(m_hkey, NULL, name);
 	if (status != ERROR_SUCCESS)
 		throw WException(status, L"Error, can't delete registry value");
 }

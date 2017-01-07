@@ -65,16 +65,23 @@ private:
 
 public:
 
-	RegistryKey(std::wstring regKey);
+	RegistryKey(std::wstring regKey, HKEY root = HKEY_LOCAL_MACHINE, REGSAM access = KEY_ALL_ACCESS | KEY_WOW64_64KEY, bool newKey = false);
 	~RegistryKey();
+
+	void CopyTreeFrom(RegistryKey& src);
 
 	void SetDwordValue(const wchar_t* name, DWORD value);
 	DWORD GetDwordValue(const wchar_t* name, DWORD defValue);
-	
+
+	void SetStrValue(const wchar_t* name, std::wstring& value, bool expanded = false);
+	void GetStrValue(const wchar_t* name, std::wstring& value, const wchar_t* defValue);
+
 	void SetMultiStrValue(const wchar_t* name, const std::vector<std::wstring>& strs);
 	void GetMultiStrValue(const wchar_t* name, std::vector<std::wstring>& strs);
 
 	void RemoveValue(const wchar_t* name);
+
+	static void DeleteKey(std::wstring regKey, HKEY root = HKEY_LOCAL_MACHINE);
 };
 
 enum EObjTypes {
