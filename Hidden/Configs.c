@@ -15,7 +15,7 @@ typedef struct _HidConfigContext {
 
 PHidConfigContext g_configContext = NULL;
 
-NTSTATUS ReleaseConfigContext(PHidConfigContext context);
+VOID ReleaseConfigContext(PHidConfigContext context);
 
 NTSTATUS GetRegistryDWORD(HANDLE hKey, LPCWSTR Value, PULONG Data, ULONG Default);
 NTSTATUS QueryAndAllocRegistryData(HANDLE hKey, LPCWSTR Value, ULONG Type, PUNICODE_STRING Data, PUNICODE_STRING Default);
@@ -79,7 +79,10 @@ NTSTATUS DestroyConfigs()
 	if (!g_configContext)
 		return STATUS_NOT_FOUND;
 
-	return ReleaseConfigContext(g_configContext);
+	ReleaseConfigContext(g_configContext);
+	ExFreePoolWithTag(g_configContext, CONFIG_ALLOC_TAG);
+
+	return STATUS_SUCCESS;
 }
 
 // =========================================================================================
@@ -168,7 +171,7 @@ NTSTATUS CfgEnumConfigsTable(enum CfgMultiStringTables Table, CfgMultiStringCall
 
 // =========================================================================================
 
-NTSTATUS ReleaseConfigContext(PHidConfigContext context)
+VOID ReleaseConfigContext(PHidConfigContext context)
 {
 	ReleaseRegistryData(&context->hideFSDirs);
 	ReleaseRegistryData(&context->hideFSFiles);
@@ -176,8 +179,6 @@ NTSTATUS ReleaseConfigContext(PHidConfigContext context)
 	ReleaseRegistryData(&context->hideRegValues);
 	ReleaseRegistryData(&context->ignoreImages);
 	ReleaseRegistryData(&context->protectImages);
-
-	return STATUS_SUCCESS;
 }
 
 NTSTATUS GetRegistryDWORD(HANDLE hKey, LPCWSTR Value, PULONG Data, ULONG Default)

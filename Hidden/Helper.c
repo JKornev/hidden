@@ -149,6 +149,7 @@ NTSTATUS NormalizeDevicePath(PCUNICODE_STRING Path, PUNICODE_STRING Normalized)
 
 		subPath.Buffer = Path->Buffer;
 		subPath.Length += globalPrefix.Length;
+		subPath.MaximumLength = subPath.Length;
 
 		// Open symlink
 
@@ -173,6 +174,7 @@ NTSTATUS NormalizeDevicePath(PCUNICODE_STRING Path, PUNICODE_STRING Normalized)
 
 		subPath.Buffer = (PWCH)((PUCHAR)Path->Buffer + subPath.Length);
 		subPath.Length = Path->Length - subPath.Length;
+		subPath.MaximumLength = subPath.Length;
 
 		status = RtlAppendUnicodeStringToString(Normalized, &subPath);
 		if (!NT_SUCCESS(status))

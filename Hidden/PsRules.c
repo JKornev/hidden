@@ -10,8 +10,8 @@ typedef struct _PsRulesInternalContext {
 
 RTL_GENERIC_COMPARE_RESULTS ComparePsRuleEntry(struct _RTL_AVL_TABLE  *Table, PVOID  FirstStruct, PVOID  SecondStruct)
 {
-	PPsRuleEntry first = (PPsRuleEntry)FirstStruct;
-	PPsRuleEntry second = (PPsRuleEntry)SecondStruct;
+	PPsRuleEntry first = *(PPsRuleEntry*)FirstStruct;
+	PPsRuleEntry second = *(PPsRuleEntry*)SecondStruct;
 	INT res;
 
 	UNREFERENCED_PARAMETER(Table);
@@ -35,7 +35,9 @@ PVOID AllocatePsRuleEntry(struct _RTL_AVL_TABLE  *Table, CLONG  ByteSize)
 
 VOID FreePsRuleEntry(struct _RTL_AVL_TABLE  *Table, PVOID  Buffer)
 {
+	//PVOID entry = *(PVOID*)Buffer;
 	UNREFERENCED_PARAMETER(Table);
+	//ExFreePoolWithTag(entry, PSRULE_ALLOC_TAG);
 	ExFreePoolWithTag(Buffer, PSRULE_ALLOC_TAG);
 }
 
@@ -99,7 +101,7 @@ NTSTATUS AddRuleToPsRuleList(PsRulesContext RuleContext, PUNICODE_STRING ImgPath
 	ExAcquireFastMutex(&context->tableLock);
 	guid = context->idCounter++;
 	entry->guid = guid;
-	buf = RtlInsertElementGenericTableAvl(&context->table, entry, entryLen, &newElem);
+	buf = RtlInsertElementGenericTableAvl(&context->table, &entry, sizeof(&entry)/*entryLen*/, &newElem);
 	ExReleaseFastMutex(&context->tableLock);
 
 	if (!buf)
@@ -122,19 +124,22 @@ NTSTATUS RemoveRuleFromPsRuleList(PsRulesContext RuleContext, PsRuleEntryId Entr
 {
 	PPsRulesInternalContext context = (PPsRulesInternalContext)RuleContext;
 	NTSTATUS status = STATUS_NOT_FOUND;
-	PPsRuleEntry entry;
+	PPsRuleEntry entry, *pentry;
 	PVOID restartKey = NULL;
 
 	ExAcquireFastMutex(&context->tableLock);
 
-	for (entry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey);
-		entry != NULL;
-		entry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey))
+	for (pentry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey);
+		 pentry != NULL;
+		 pentry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey))
 	{
+		entry = *pentry;
 		if (entry->guid == EntryId)
 		{
-			if (!RtlDeleteElementGenericTableAvl(&context->table, entry))
+			if (!RtlDeleteElementGenericTableAvl(&context->table, pentry))
 				DbgPrint("FsFilter1!" __FUNCTION__ ": can't remove element from process rules table, looks like memory leak\n");
+			else
+				ExFreePoolWithTag(entry, PSRULE_ALLOC_TAG);
 
 			status = STATUS_SUCCESS;
 			break;
@@ -150,17 +155,20 @@ NTSTATUS RemoveAllRulesFromPsRuleList(PsRulesContext RuleContext)
 {
 	PPsRulesInternalContext context = (PPsRulesInternalContext)RuleContext;
 	NTSTATUS status = STATUS_SUCCESS;
-	PPsRuleEntry entry;
+	PPsRuleEntry entry, *pentry;
 	PVOID restartKey = NULL;
 
 	ExAcquireFastMutex(&context->tableLock);
 
-	for (entry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey);
-		entry != NULL;
-		entry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey))
+	for (pentry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey);
+		 pentry != NULL;
+		 pentry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey))
 	{
-		if (!RtlDeleteElementGenericTableAvl(&context->table, entry))
+		entry = *pentry;
+		if (!RtlDeleteElementGenericTableAvl(&context->table, pentry))
 			DbgPrint("FsFilter1!" __FUNCTION__ ": can't remove element from process rules table, looks like memory leak\n");
+		else
+			ExFreePoolWithTag(entry, PSRULE_ALLOC_TAG);
 
 		restartKey = NULL; // reset enum
 	}
@@ -174,15 +182,16 @@ NTSTATUS CheckInPsRuleList(PsRulesContext RuleContext, PCUNICODE_STRING ImgPath,
 {
 	PPsRulesInternalContext context = (PPsRulesInternalContext)RuleContext;
 	NTSTATUS status = STATUS_NOT_FOUND;
-	PPsRuleEntry entry;
+	PPsRuleEntry entry, *pentry;
 	PVOID restartKey = NULL;
 
 	ExAcquireFastMutex(&context->tableLock);
 
-	for (entry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey);
-		 entry != NULL;
-		 entry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey))
+	for (pentry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey);
+		 pentry != NULL;
+		 pentry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey))
 	{
+		entry = *pentry;
 		if (RtlCompareUnicodeString(&entry->imagePath, ImgPath, TRUE) == 0)
 		{
 			*OutSize = entry->len;
@@ -207,16 +216,17 @@ NTSTATUS CheckInPsRuleList(PsRulesContext RuleContext, PCUNICODE_STRING ImgPath,
 BOOLEAN FindInheritanceInPsRuleList(PsRulesContext RuleContext, PCUNICODE_STRING ImgPath, PULONG pInheritance)
 {
 	PPsRulesInternalContext context = (PPsRulesInternalContext)RuleContext;
-	PPsRuleEntry entry;
+	PPsRuleEntry entry, *pentry;
 	PVOID restartKey = NULL;
 	BOOLEAN result = FALSE;
 
 	ExAcquireFastMutex(&context->tableLock);
 
-	for (entry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey);
-		 entry != NULL;
-		 entry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey))
+	for (pentry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey);
+		 pentry != NULL;
+		 pentry = RtlEnumerateGenericTableWithoutSplayingAvl(&context->table, &restartKey))
 	{
+		entry = *pentry;
 		if (RtlCompareUnicodeString(&entry->imagePath, ImgPath, TRUE) == 0)
 		{
 			*pInheritance = entry->inheritType;
