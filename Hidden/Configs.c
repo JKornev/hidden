@@ -259,7 +259,10 @@ NTSTATUS QueryAndAllocRegistryData(HANDLE hKey, LPCWSTR Value, ULONG Type, PUNIC
 	dataLength = info->DataLength;
 	dataBuffer = ExAllocatePoolWithTag(NonPagedPool, dataLength, CONFIG_ALLOC_TAG);
 	if (!dataBuffer)
+	{
+		ExFreePoolWithTag(info, CONFIG_ALLOC_TAG);
 		return STATUS_NO_MEMORY;
+	}
 
 	RtlCopyMemory(dataBuffer, info->Data, dataLength);
 

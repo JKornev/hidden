@@ -253,6 +253,7 @@ NTSTATUS RegPostEnumKey(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 		HANDLE Key;
 		ULONG resLen, i;
 		BOOLEAN infinite = TRUE;
+		PVOID tempBuffer;
 
 		status = ObOpenObjectByPointer(info->Object, OBJ_KERNEL_HANDLE, NULL, KEY_ALL_ACCESS, *CmKeyObjectType, KernelMode, &Key);
 		if (!NT_SUCCESS(status))
@@ -261,20 +262,39 @@ NTSTATUS RegPostEnumKey(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 			return STATUS_SUCCESS;
 		}
 
-		for (i = 0; infinite; i++)
+		tempBuffer = (LPWSTR)ExAllocatePoolWithTag(PagedPool, preInfo->Length, FILTER_ALLOC_TAG);
+		if (tempBuffer)
 		{
-			status = ZwEnumerateKey(Key, preInfo->Index + incIndex, preInfo->KeyInformationClass, preInfo->KeyInformation, preInfo->Length, &resLen);
-			if (!NT_SUCCESS(status))
-				break;
-
-			if (!GetNameFromEnumKeyPreInfo(preInfo->KeyInformationClass, preInfo->KeyInformation, &keyName))
-				break;
-
-			if (!CheckExcludeListRegKeyValueName(g_excludeRegKeyContext, (PUNICODE_STRING)regPath, &keyName, &incIndex))
+			for (i = 0; infinite; i++)
 			{
-				*preInfo->ResultLength = resLen;
-				break;
+				status = ZwEnumerateKey(Key, preInfo->Index + incIndex, preInfo->KeyInformationClass, tempBuffer, preInfo->Length, &resLen);
+				if (!NT_SUCCESS(status))
+					break;
+
+				if (!GetNameFromEnumKeyPreInfo(preInfo->KeyInformationClass, tempBuffer, &keyName))
+					break;
+
+				if (!CheckExcludeListRegKeyValueName(g_excludeRegKeyContext, (PUNICODE_STRING)regPath, &keyName, &incIndex))
+				{
+					*preInfo->ResultLength = resLen;
+					__try
+					{
+						RtlCopyMemory(preInfo->KeyInformation, tempBuffer, resLen);
+					}
+					__except (EXCEPTION_EXECUTE_HANDLER)
+					{
+						DbgPrint("FsFilter1!" __FUNCTION__ ": Error, can't copy new key information\n");
+					}
+
+					break;
+				}
 			}
+
+			ExFreePoolWithTag(tempBuffer, FILTER_ALLOC_TAG);
+		}
+		else
+		{
+			status = STATUS_SUCCESS;
 		}
 
 		info->ReturnStatus = status;
@@ -351,6 +371,7 @@ NTSTATUS RegPostEnumValue(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 		HANDLE Key;
 		ULONG resLen, i;
 		BOOLEAN infinite = TRUE;
+		PVOID tempBuffer;
 
 		status = ObOpenObjectByPointer(info->Object, OBJ_KERNEL_HANDLE, NULL, KEY_ALL_ACCESS, *CmKeyObjectType, KernelMode, &Key);
 		if (!NT_SUCCESS(status))
@@ -359,20 +380,40 @@ NTSTATUS RegPostEnumValue(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 			return STATUS_SUCCESS;
 		}
 
-		for (i = 0; infinite; i++)
+		tempBuffer = (LPWSTR)ExAllocatePoolWithTag(PagedPool, preInfo->Length, FILTER_ALLOC_TAG);
+		if (tempBuffer)
 		{
-			status = ZwEnumerateValueKey(Key, preInfo->Index + incIndex, preInfo->KeyInformationClass, preInfo->KeyInformation, preInfo->Length, &resLen);
-			if (!NT_SUCCESS(status))
-				break;
 
-			if (!GetNameFromEnumValuePreInfo(preInfo->KeyInformationClass, preInfo->KeyInformation, &keyName))
-				break;
-
-			if (!CheckExcludeListRegKeyValueName(g_excludeRegValueContext, (PUNICODE_STRING)regPath, &keyName, &incIndex))
+			for (i = 0; infinite; i++)
 			{
-				*preInfo->ResultLength = resLen;
-				break;
+				status = ZwEnumerateValueKey(Key, preInfo->Index + incIndex, preInfo->KeyInformationClass, tempBuffer, preInfo->Length, &resLen);
+				if (!NT_SUCCESS(status))
+					break;
+
+				if (!GetNameFromEnumValuePreInfo(preInfo->KeyInformationClass, tempBuffer, &keyName))
+					break;
+
+				if (!CheckExcludeListRegKeyValueName(g_excludeRegValueContext, (PUNICODE_STRING)regPath, &keyName, &incIndex))
+				{
+					*preInfo->ResultLength = resLen;
+					__try
+					{
+						RtlCopyMemory(preInfo->KeyInformation, tempBuffer, resLen);
+					}
+					__except (EXCEPTION_EXECUTE_HANDLER)
+					{
+						DbgPrint("FsFilter1!" __FUNCTION__ ": Error, can't copy new key information\n");
+					}
+
+					break;
+				}
 			}
+
+			ExFreePoolWithTag(tempBuffer, FILTER_ALLOC_TAG);
+		}
+		else
+		{
+			status = STATUS_SUCCESS;
 		}
 
 		info->ReturnStatus = status;
