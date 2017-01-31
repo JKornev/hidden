@@ -35,9 +35,7 @@ PVOID AllocatePsRuleEntry(struct _RTL_AVL_TABLE  *Table, CLONG  ByteSize)
 
 VOID FreePsRuleEntry(struct _RTL_AVL_TABLE  *Table, PVOID  Buffer)
 {
-	//PVOID entry = *(PVOID*)Buffer;
 	UNREFERENCED_PARAMETER(Table);
-	//ExFreePoolWithTag(entry, PSRULE_ALLOC_TAG);
 	ExFreePoolWithTag(Buffer, PSRULE_ALLOC_TAG);
 }
 
@@ -106,12 +104,14 @@ NTSTATUS AddRuleToPsRuleList(PsRulesContext RuleContext, PUNICODE_STRING ImgPath
 
 	if (!buf)
 	{
+		ExFreePoolWithTag(entry, PSRULE_ALLOC_TAG);
 		DbgPrint("FsFilter1!" __FUNCTION__ ": can't allocate memory for a new element\n");
 		return STATUS_MEMORY_NOT_ALLOCATED;
 	}
 
 	if (!newElem)
 	{
+		ExFreePoolWithTag(entry, PSRULE_ALLOC_TAG);
 		DbgPrint("FsFilter1!" __FUNCTION__ ": this path already in a rules list\n");
 		return STATUS_DUPLICATE_NAME;
 	}
