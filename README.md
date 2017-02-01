@@ -11,4 +11,4 @@ Features:
 
 and so on
 
-Keep in mind that for building solution you should install WDK 8.1
+**Keep in mind that for building solution you should install WDK 8.1**
