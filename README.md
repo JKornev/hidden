@@ -11,4 +11,6 @@ Features:
 
 and so on
 
-**Keep in mind that for building solution you should install WDK 8.1**
+Recommended build environment:
+- Visual Studio 2013 and above
+- Windows Driver Kit 8.1
