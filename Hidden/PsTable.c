@@ -5,6 +5,7 @@
 
 RTL_AVL_TABLE  g_processTable;
 
+_Function_class_(RTL_AVL_COMPARE_ROUTINE)
 RTL_GENERIC_COMPARE_RESULTS CompareProcessTableEntry(struct _RTL_AVL_TABLE  *Table, PVOID  FirstStruct, PVOID  SecondStruct)
 {
 	PProcessTableEntry first = (PProcessTableEntry)FirstStruct;
@@ -21,12 +22,14 @@ RTL_GENERIC_COMPARE_RESULTS CompareProcessTableEntry(struct _RTL_AVL_TABLE  *Tab
 	return GenericEqual;
 }
 
+_Function_class_(RTL_AVL_ALLOCATE_ROUTINE)
 PVOID AllocateProcessTableEntry(struct _RTL_AVL_TABLE  *Table, CLONG  ByteSize)
 {
 	UNREFERENCED_PARAMETER(Table);
 	return ExAllocatePoolWithTag(NonPagedPool, ByteSize, PSTREE_ALLOC_TAG);
 }
 
+_Function_class_(RTL_AVL_FREE_ROUTINE)
 VOID FreeProcessTableEntry(struct _RTL_AVL_TABLE  *Table, PVOID  Buffer)
 {
 	UNREFERENCED_PARAMETER(Table);
@@ -122,7 +125,7 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 		status = ZwOpenProcess(&hProcess, 0x1000/*PROCESS_QUERY_LIMITED_INFORMATION*/, &attribs, &clientId);
 		if (!NT_SUCCESS(status))
 		{
-			DbgPrint("FsFilter1!" __FUNCTION__ ": can't open process (pid:%d) failed with code:%08x\n", processInfo->ProcessId, status);
+			DbgPrint("FsFilter1!" __FUNCTION__ ": can't open process (pid:%p) failed with code:%08x\n", processInfo->ProcessId, status);
 			offset = processInfo->NextEntryOffset;
 			continue;
 		}
@@ -132,7 +135,7 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 
 		if (!NT_SUCCESS(status))
 		{
-			DbgPrint("FsFilter1!" __FUNCTION__ ": query process information(pid:%d) failed with code:%08x\n", processInfo->ProcessId, status);
+			DbgPrint("FsFilter1!" __FUNCTION__ ": query process information(pid:%p) failed with code:%08x\n", processInfo->ProcessId, status);
 			offset = processInfo->NextEntryOffset;
 			continue;
 		}
@@ -142,20 +145,20 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 		RtlZeroMemory(&entry, sizeof(entry));
 		entry.processId = processInfo->ProcessId;
 
-		DbgPrint("FsFilter1!" __FUNCTION__ ": add process: %d, %wZ\n", processInfo->ProcessId, procName);
+		DbgPrint("FsFilter1!" __FUNCTION__ ": add process: %p, %wZ\n", processInfo->ProcessId, procName);
 
 		InitProcessEntryCallback(&entry, procName, processInfo->InheritedFromProcessId);
 		if (!AddProcessToProcessTable(&entry))
-			DbgPrint("FsFilter1!" __FUNCTION__ ": can't add process(pid:%d) to process table\n", processInfo->ProcessId);
+			DbgPrint("FsFilter1!" __FUNCTION__ ": can't add process(pid:%p) to process table\n", processInfo->ProcessId);
 
 		if (entry.excluded)
-			DbgPrint("FsFilter1!" __FUNCTION__ ": excluded process:%d\n", entry.processId);
+			DbgPrint("FsFilter1!" __FUNCTION__ ": excluded process:%p\n", entry.processId);
 
 		if (entry.protected)
-			DbgPrint("FsFilter1!" __FUNCTION__ ": protected process:%d\n", entry.processId);
+			DbgPrint("FsFilter1!" __FUNCTION__ ": protected process:%p\n", entry.processId);
 
 		if (entry.subsystem)
-			DbgPrint("FsFilter1!" __FUNCTION__ ": subsystem process:%d\n", entry.processId);
+			DbgPrint("FsFilter1!" __FUNCTION__ ": subsystem process:%p\n", entry.processId);
 
 		// Go to next
 

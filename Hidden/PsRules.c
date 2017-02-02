@@ -8,6 +8,7 @@ typedef struct _PsRulesInternalContext {
 	FAST_MUTEX    tableLock;
 } PsRulesInternalContext, *PPsRulesInternalContext;
 
+_Function_class_(RTL_AVL_COMPARE_ROUTINE)
 RTL_GENERIC_COMPARE_RESULTS ComparePsRuleEntry(struct _RTL_AVL_TABLE  *Table, PVOID  FirstStruct, PVOID  SecondStruct)
 {
 	PPsRuleEntry first = *(PPsRuleEntry*)FirstStruct;
@@ -27,12 +28,14 @@ RTL_GENERIC_COMPARE_RESULTS ComparePsRuleEntry(struct _RTL_AVL_TABLE  *Table, PV
 	return GenericEqual;
 }
 
+_Function_class_(RTL_AVL_ALLOCATE_ROUTINE)
 PVOID AllocatePsRuleEntry(struct _RTL_AVL_TABLE  *Table, CLONG  ByteSize)
 {
 	UNREFERENCED_PARAMETER(Table);
 	return ExAllocatePoolWithTag(NonPagedPool, ByteSize, PSRULE_ALLOC_TAG);
 }
 
+_Function_class_(RTL_AVL_FREE_ROUTINE)
 VOID FreePsRuleEntry(struct _RTL_AVL_TABLE  *Table, PVOID  Buffer)
 {
 	UNREFERENCED_PARAMETER(Table);

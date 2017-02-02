@@ -10,6 +10,8 @@
 #include "Configs.h"
 #include "Helper.h"
 
+#define DRIVER_ALLOC_TAG 'nddH'
+
 PDRIVER_OBJECT g_driverObject = NULL;
 
 volatile LONG g_driverActive = FALSE;
@@ -44,7 +46,7 @@ NTSTATUS InitializeStealthMode(PDRIVER_OBJECT DriverObject, PUNICODE_STRING Regi
 
 	normalized.Length = 0;
 	normalized.MaximumLength = LdrEntry->FullModuleName.Length + NORMALIZE_INCREAMENT;
-	normalized.Buffer = (PWCH)ExAllocatePool(PagedPool, normalized.MaximumLength);
+	normalized.Buffer = (PWCH)ExAllocatePoolWithQuotaTag(PagedPool, normalized.MaximumLength, DRIVER_ALLOC_TAG);
 	
 	if (!normalized.Buffer)
 	{
@@ -56,7 +58,7 @@ NTSTATUS InitializeStealthMode(PDRIVER_OBJECT DriverObject, PUNICODE_STRING Regi
 	if (!NT_SUCCESS(status))
 	{
 		DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, &LdrEntry->FullModuleName);
-		ExFreePool(normalized.Buffer);
+		ExFreePoolWithTag(normalized.Buffer, DRIVER_ALLOC_TAG);
 		return status;
 	}
 
@@ -64,7 +66,7 @@ NTSTATUS InitializeStealthMode(PDRIVER_OBJECT DriverObject, PUNICODE_STRING Regi
 	if (!NT_SUCCESS(status))
 		DbgPrint("FsFilter1!" __FUNCTION__ ": can't hide self registry key\n");
 
-	ExFreePool(normalized.Buffer);
+	ExFreePoolWithTag(normalized.Buffer, DRIVER_ALLOC_TAG);
 
 	status = AddHiddenRegKey(RegistryPath, &g_hiddenRegConfigId);
 	if (!NT_SUCCESS(status))
@@ -75,6 +77,7 @@ NTSTATUS InitializeStealthMode(PDRIVER_OBJECT DriverObject, PUNICODE_STRING Regi
 
 // =========================================================================================
 
+_Function_class_(DRIVER_UNLOAD)
 VOID DriverUnload(PDRIVER_OBJECT DriverObject)
 {
 	UNREFERENCED_PARAMETER(DriverObject);
@@ -85,6 +88,7 @@ VOID DriverUnload(PDRIVER_OBJECT DriverObject)
 	DestroyPsMonitor();
 }
 
+_Function_class_(DRIVER_INITIALIZE)
 NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 {
 	NTSTATUS status;

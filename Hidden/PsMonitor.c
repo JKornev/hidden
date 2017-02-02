@@ -6,6 +6,8 @@
 #include "Driver.h"
 #include "Configs.h"
 
+#define PSMON_ALLOC_TAG 'nMsP'
+
 #define PROCESS_QUERY_LIMITED_INFORMATION      0x1000
 #define SYSTEM_PROCESS_ID (HANDLE)4
 
@@ -90,7 +92,7 @@ BOOLEAN CheckProtectedOperation(HANDLE Source, HANDLE Destination)
 		ExReleaseFastMutex(&g_processTableLock);
 
 		if (!result)
-			DbgPrint("FsFilter1!" __FUNCTION__ ": can't update initial state for process: %d\n", destInfo.processId);
+			DbgPrint("FsFilter1!" __FUNCTION__ ": can't update initial state for process: %p\n", destInfo.processId);
 
 		return FALSE;
 	}
@@ -119,7 +121,7 @@ OB_PREOP_CALLBACK_STATUS ProcessPreCallback(PVOID RegistrationContext, POB_PRE_O
 	if (OperationInformation->KernelHandle)
 		return OB_PREOP_SUCCESS;
 	
-	//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! Process: %d(%d:%d), Oper: %s, Space: %s\n",
+	//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! Process: %p(%p:%p), Oper: %s, Space: %s\n",
 	//	PsGetProcessId(OperationInformation->Object), PsGetCurrentProcessId(), PsGetCurrentThreadId(),
 	//	(OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE ? "create" : "dup"),
 	//	(OperationInformation->KernelHandle ? "kernel" : "user")
@@ -127,11 +129,11 @@ OB_PREOP_CALLBACK_STATUS ProcessPreCallback(PVOID RegistrationContext, POB_PRE_O
 
 	if (!CheckProtectedOperation(PsGetCurrentProcessId(), PsGetProcessId(OperationInformation->Object)))
 	{
-		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! allow protected process %d\n", PsGetCurrentProcessId());
+		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! allow protected process %p\n", PsGetCurrentProcessId());
 		return OB_PREOP_SUCCESS;
 	}
 
-	DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! disallow protected process %d\n", PsGetCurrentProcessId());
+	DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! disallow protected process %p\n", PsGetCurrentProcessId());
 
 	if (OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE)
 		OperationInformation->Parameters->CreateHandleInformation.DesiredAccess = (SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION);
@@ -151,7 +153,7 @@ OB_PREOP_CALLBACK_STATUS ThreadPreCallback(PVOID RegistrationContext, POB_PRE_OP
 	if (OperationInformation->KernelHandle)
 		return OB_PREOP_SUCCESS;
 
-	//DbgPrint("FsFilter1!" __FUNCTION__ ": Thread: %d(%d:%d), Oper: %s, Space: %s\n",
+	//DbgPrint("FsFilter1!" __FUNCTION__ ": Thread: %p(%p:%p), Oper: %s, Space: %s\n",
 	//	PsGetThreadId(OperationInformation->Object), PsGetCurrentProcessId(), PsGetCurrentThreadId(),
 	//	(OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE ? "create" : "dup"),
 	//	(OperationInformation->KernelHandle ? "kernel" : "user")
@@ -159,11 +161,11 @@ OB_PREOP_CALLBACK_STATUS ThreadPreCallback(PVOID RegistrationContext, POB_PRE_OP
 
 	if (!CheckProtectedOperation(PsGetCurrentProcessId(), PsGetProcessId(OperationInformation->Object)))
 	{
-		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! allow protected thread %d\n", PsGetCurrentProcessId());
+		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! allow protected thread %p\n", PsGetCurrentProcessId());
 		return OB_PREOP_SUCCESS;
 	}
 
-	DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! disallow protected thread %d\n", PsGetCurrentProcessId());
+	DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! disallow protected thread %p\n", PsGetCurrentProcessId());
 
 	if (OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE)
 		OperationInformation->Parameters->CreateHandleInformation.DesiredAccess = (SYNCHRONIZE | THREAD_QUERY_LIMITED_INFORMATION);
@@ -262,9 +264,9 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 	UNREFERENCED_PARAMETER(Process);
 
 	if (CreateInfo)
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! new process: %d (%d:%d), %wZ\n", ProcessId, PsGetCurrentProcessId(), PsGetCurrentThreadId(), CreateInfo->ImageFileName);
+		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! new process: %p (%p:%p), %wZ\n", ProcessId, PsGetCurrentProcessId(), PsGetCurrentThreadId(), CreateInfo->ImageFileName);
 	else
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! destroy process: %d (%d:%d)\n", ProcessId, PsGetCurrentProcessId(), PsGetCurrentThreadId());
+		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! destroy process: %p (%p:%p)\n", ProcessId, PsGetCurrentProcessId(), PsGetCurrentThreadId());
 
 	RtlZeroMemory(&entry, sizeof(entry));
 	entry.processId = ProcessId;
@@ -275,7 +277,7 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 		UNICODE_STRING normalized;
 		NTSTATUS status;
 
-		normalized.Buffer = (PWCH)ExAllocatePool(PagedPool, maxBufSize);
+		normalized.Buffer = (PWCH)ExAllocatePoolWithTag(PagedPool, maxBufSize, PSMON_ALLOC_TAG);
 		normalized.Length = 0;
 		normalized.MaximumLength = maxBufSize;
 
@@ -289,26 +291,26 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 		if (!NT_SUCCESS(status))
 		{
 			DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, CreateInfo->ImageFileName);
-			ExFreePool(normalized.Buffer);
+			ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
 			return;
 		}
 
 		CheckProcessFlags(&entry, &normalized, PsGetCurrentProcessId()/*CreateInfo->ParentProcessId*/);
 
 		if (entry.excluded)
-			DbgPrint("FsFilter1!" __FUNCTION__ ": excluded process:%d\n", ProcessId);
+			DbgPrint("FsFilter1!" __FUNCTION__ ": excluded process:%p\n", ProcessId);
 
 		if (entry.protected)
-			DbgPrint("FsFilter1!" __FUNCTION__ ": protected process:%d\n", ProcessId);
+			DbgPrint("FsFilter1!" __FUNCTION__ ": protected process:%p\n", ProcessId);
 
 		ExAcquireFastMutex(&g_processTableLock);
 		result = AddProcessToProcessTable(&entry);
 		ExReleaseFastMutex(&g_processTableLock);
 
 		if (!result)
-			DbgPrint("FsFilter1!" __FUNCTION__ ": can't add process(pid:%d) to process table\n", ProcessId);
+			DbgPrint("FsFilter1!" __FUNCTION__ ": can't add process(pid:%p) to process table\n", ProcessId);
 
-		ExFreePool(normalized.Buffer);
+		ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
 	}
 	else
 	{
@@ -317,7 +319,7 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 		ExReleaseFastMutex(&g_processTableLock);
 
 		if (!result)
-			DbgPrint("FsFilter1!" __FUNCTION__ ": can't remove process(pid:%d) from process table\n", ProcessId);
+			DbgPrint("FsFilter1!" __FUNCTION__ ": can't remove process(pid:%p) from process table\n", ProcessId);
 	}
 
 }
@@ -460,7 +462,7 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 
 	// Init normalization buffer
 
-	normalized.Buffer = (PWCH)ExAllocatePool(NonPagedPool, maxBufSize);
+	normalized.Buffer = (PWCH)ExAllocatePoolWithTag(NonPagedPool, maxBufSize, PSMON_ALLOC_TAG);
 	normalized.Length = 0;
 	normalized.MaximumLength = maxBufSize;
 	if (!normalized.Buffer)
@@ -477,7 +479,7 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 	if (!NT_SUCCESS(status))
 	{
 		DbgPrint("FsFilter1!" __FUNCTION__ ": excluded process rules initialization failed with code:%08x\n", status);
-		ExFreePool(normalized.Buffer);
+		ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
 		return status;
 	}
 
@@ -506,7 +508,7 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 	{
 		DbgPrint("FsFilter1!" __FUNCTION__ ": protected process rules initialization failed with code:%08x\n", status);
 		DestroyPsRuleListContext(g_excludeProcessRules);
-		ExFreePool(normalized.Buffer);
+		ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
 		return status;
 	}
 
@@ -537,11 +539,11 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 	{
 		DestroyPsRuleListContext(g_excludeProcessRules);
 		DestroyPsRuleListContext(g_protectProcessRules);
-		ExFreePool(normalized.Buffer);
+		ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
 		return status;
 	}
 
-	ExFreePool(normalized.Buffer);
+	ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
 
 	g_psMonitorInited = TRUE;
 
@@ -647,7 +649,7 @@ NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Exclude
 		status = ZwOpenProcess(&hProcess, 0x1000/*PROCESS_QUERY_LIMITED_INFORMATION*/, &attribs, &clientId);
 		if (!NT_SUCCESS(status))
 		{
-			DbgPrint("FsFilter1!" __FUNCTION__ ": can't open process (pid:%d) failed with code:%08x\n", processInfo->ProcessId, status);
+			DbgPrint("FsFilter1!" __FUNCTION__ ": can't open process (pid:%p) failed with code:%08x\n", processInfo->ProcessId, status);
 			offset = processInfo->NextEntryOffset;
 			continue;
 		}
@@ -657,7 +659,7 @@ NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Exclude
 
 		if (!NT_SUCCESS(status))
 		{
-			DbgPrint("FsFilter1!" __FUNCTION__ ": query process information(pid:%d) failed with code:%08x\n", processInfo->ProcessId, status);
+			DbgPrint("FsFilter1!" __FUNCTION__ ": query process information(pid:%p) failed with code:%08x\n", processInfo->ProcessId, status);
 			offset = processInfo->NextEntryOffset;
 			continue;
 		}
@@ -693,7 +695,7 @@ NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Exclude
 			ExReleaseFastMutex(&g_processTableLock);
 
 			if (!result)
-				DbgPrint("FsFilter1!" __FUNCTION__ ": can't update process %d\n", processInfo->ProcessId);
+				DbgPrint("FsFilter1!" __FUNCTION__ ": can't update process %p\n", processInfo->ProcessId);
 		}
 
 		FreeInformation(procName);
@@ -710,7 +712,7 @@ NTSTATUS AddProtectedImage(PUNICODE_STRING ImagePath, ULONG InheritType, BOOLEAN
 	UNICODE_STRING normalized;
 	NTSTATUS status;
 
-	normalized.Buffer = (PWCH)ExAllocatePool(PagedPool, maxBufSize);
+	normalized.Buffer = (PWCH)ExAllocatePoolWithTag(PagedPool, maxBufSize, PSMON_ALLOC_TAG);
 	normalized.Length = 0;
 	normalized.MaximumLength = maxBufSize;
 
@@ -724,7 +726,7 @@ NTSTATUS AddProtectedImage(PUNICODE_STRING ImagePath, ULONG InheritType, BOOLEAN
 	if (!NT_SUCCESS(status))
 	{
 		DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, ImagePath);
-		ExFreePool(normalized.Buffer);
+		ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
 		return status;
 	}
 
@@ -734,7 +736,7 @@ NTSTATUS AddProtectedImage(PUNICODE_STRING ImagePath, ULONG InheritType, BOOLEAN
 	if (ApplyForProcesses)
 		SetStateForProcessesByImage(&normalized, FALSE, TRUE);
 
-	ExFreePool(normalized.Buffer);
+	ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
 
 	return status;
 }
@@ -810,7 +812,7 @@ NTSTATUS AddExcludedImage(PUNICODE_STRING ImagePath, ULONG InheritType, BOOLEAN 
 	UNICODE_STRING normalized;
 	NTSTATUS status;
 
-	normalized.Buffer = (PWCH)ExAllocatePool(PagedPool, maxBufSize);
+	normalized.Buffer = (PWCH)ExAllocatePoolWithTag(PagedPool, maxBufSize, PSMON_ALLOC_TAG);
 	normalized.Length = 0;
 	normalized.MaximumLength = maxBufSize;
 
@@ -824,7 +826,7 @@ NTSTATUS AddExcludedImage(PUNICODE_STRING ImagePath, ULONG InheritType, BOOLEAN 
 	if (!NT_SUCCESS(status))
 	{
 		DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, ImagePath);
-		ExFreePool(normalized.Buffer);
+		ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
 		return status;
 	}
 
@@ -834,7 +836,7 @@ NTSTATUS AddExcludedImage(PUNICODE_STRING ImagePath, ULONG InheritType, BOOLEAN 
 	if (ApplyForProcesses)
 		SetStateForProcessesByImage(&normalized, TRUE, FALSE);
 
-	ExFreePool(normalized.Buffer);
+	ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
 
 	return status;
 }

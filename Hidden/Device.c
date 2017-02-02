@@ -10,6 +10,8 @@ PDEVICE_OBJECT g_deviceObject = NULL;
 
 // =========================================================================================
 
+_Function_class_(DRIVER_DISPATCH)
+_Dispatch_type_(IRP_MJ_CREATE)
 NTSTATUS IrpDeviceCreate(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 {
 	UNREFERENCED_PARAMETER(DeviceObject);
@@ -21,6 +23,8 @@ NTSTATUS IrpDeviceCreate(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 	return STATUS_SUCCESS;
 }
 
+_Function_class_(DRIVER_DISPATCH)
+_Dispatch_type_(IRP_MJ_CLOSE)
 NTSTATUS IrpDeviceClose(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 {
 	UNREFERENCED_PARAMETER(DeviceObject);
@@ -31,6 +35,9 @@ NTSTATUS IrpDeviceClose(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 
 	return STATUS_SUCCESS;
 }
+
+_Function_class_(DRIVER_DISPATCH)
+_Dispatch_type_(IRP_MJ_CLEANUP)
 NTSTATUS IrpDeviceCleanup(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 {
 	UNREFERENCED_PARAMETER(DeviceObject);
@@ -334,6 +341,8 @@ NTSTATUS GetDriverStateObject(PHid_DriverStatus Packet, USHORT Size, PULONG stat
 	return STATUS_SUCCESS;
 }
 
+_Function_class_(DRIVER_DISPATCH)
+_Dispatch_type_(IRP_MJ_DEVICE_CONTROL)
 NTSTATUS IrpDeviceControlHandler(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 {
 	PIO_STACK_LOCATION irpStack;

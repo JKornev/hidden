@@ -10,6 +10,8 @@
 #include "Driver.h"
 #include "Configs.h"
 
+#define FSFILTER_ALLOC_TAG 'DHlF'
+
 NTSTATUS FilterSetup(PCFLT_RELATED_OBJECTS FltObjects, FLT_INSTANCE_SETUP_FLAGS Flags, DEVICE_TYPE VolumeDeviceType, FLT_FILESYSTEM_TYPE VolumeFilesystemType);
 
 FLT_PREOP_CALLBACK_STATUS FltCreatePreOperation(PFLT_CALLBACK_DATA Data, PCFLT_RELATED_OBJECTS FltObjects, PVOID *CompletionContext);
@@ -78,8 +80,6 @@ NTSTATUS FilterSetup(PCFLT_RELATED_OBJECTS FltObjects, FLT_INSTANCE_SETUP_FLAGS 
 	UNREFERENCED_PARAMETER(VolumeDeviceType);
 	UNREFERENCED_PARAMETER(VolumeFilesystemType);
 
-	PAGED_CODE();
-
 	DbgPrint("FsFilter1!" __FUNCTION__ ": Entered %d\n", (UINT32)KeGetCurrentIrql());
 
 	return STATUS_SUCCESS;
@@ -142,7 +142,7 @@ FLT_PREOP_CALLBACK_STATUS FltCreatePreOperation(
 
 	if (neededPrevent)
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Create file\\dir operation canceled for: %wZ, %d\n", &Data->Iopb->TargetFileObject->FileName, PsGetCurrentProcessId());
+		DbgPrint("FsFilter1!" __FUNCTION__ ": Create file\\dir operation canceled for: %wZ, %p\n", &Data->Iopb->TargetFileObject->FileName, PsGetCurrentProcessId());
 		Data->IoStatus.Status = STATUS_NO_SUCH_FILE;
 		return FLT_PREOP_COMPLETE;
 	}
@@ -155,8 +155,6 @@ FLT_PREOP_CALLBACK_STATUS FltDirCtrlPreOperation(PFLT_CALLBACK_DATA Data, PCFLT_
 	UNREFERENCED_PARAMETER(FltObjects);
 	UNREFERENCED_PARAMETER(CompletionContext);
 	
-	PAGED_CODE();
-
 	if (!IsDriverEnabled())
 		return FLT_POSTOP_FINISHED_PROCESSING;
 
@@ -192,8 +190,6 @@ FLT_POSTOP_CALLBACK_STATUS FltDirCtrlPostOperation(PFLT_CALLBACK_DATA Data, PCFL
 	UNREFERENCED_PARAMETER(CompletionContext);
 	UNREFERENCED_PARAMETER(Flags);
 
-	PAGED_CODE();
-
 	if (!IsDriverEnabled())
 		return FLT_POSTOP_FINISHED_PROCESSING;
 
@@ -205,7 +201,7 @@ FLT_POSTOP_CALLBACK_STATUS FltDirCtrlPostOperation(PFLT_CALLBACK_DATA Data, PCFL
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
+		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %p\n", PsGetCurrentProcessId());
 		return FLT_POSTOP_FINISHED_PROCESSING;
 	}
 
@@ -292,7 +288,7 @@ NTSTATUS CleanFileFullDirectoryInformation(PFILE_FULL_DIR_INFORMATION info, PFLT
 					retn = TRUE;
 				}
 
-				RtlFillMemory(info, sizeof(info), 0);
+				RtlFillMemory(info, sizeof(FILE_FULL_DIR_INFORMATION), 0);
 			}
 			else
 			{
@@ -376,7 +372,7 @@ NTSTATUS CleanFileBothDirectoryInformation(PFILE_BOTH_DIR_INFORMATION info, PFLT
 					retn = TRUE;
 				}
 
-				RtlFillMemory(info, sizeof(info), 0);
+				RtlFillMemory(info, sizeof(FILE_BOTH_DIR_INFORMATION), 0);
 			}
 			else
 			{
@@ -460,7 +456,7 @@ NTSTATUS CleanFileDirectoryInformation(PFILE_DIRECTORY_INFORMATION info, PFLT_FI
 					retn = TRUE;
 				}
 
-				RtlFillMemory(info, sizeof(info), 0);
+				RtlFillMemory(info, sizeof(FILE_DIRECTORY_INFORMATION), 0);
 			}
 			else
 			{
@@ -544,7 +540,7 @@ NTSTATUS CleanFileIdFullDirectoryInformation(PFILE_ID_FULL_DIR_INFORMATION info,
 					retn = TRUE;
 				}
 
-				RtlFillMemory(info, sizeof(info), 0);
+				RtlFillMemory(info, sizeof(FILE_ID_FULL_DIR_INFORMATION), 0);
 			}
 			else
 			{
@@ -628,7 +624,7 @@ NTSTATUS CleanFileIdBothDirectoryInformation(PFILE_ID_BOTH_DIR_INFORMATION info,
 					retn = TRUE;
 				}
 
-				RtlFillMemory(info, sizeof(info), 0);
+				RtlFillMemory(info, sizeof(FILE_ID_BOTH_DIR_INFORMATION), 0);
 			}
 			else
 			{
@@ -708,7 +704,7 @@ NTSTATUS CleanFileNamesInformation(PFILE_NAMES_INFORMATION info, PFLT_FILE_NAME_
 					retn = TRUE;
 				}
 
-				RtlFillMemory(info, sizeof(info), 0);
+				RtlFillMemory(info, sizeof(FILE_NAMES_INFORMATION), 0);
 			}
 			else
 			{
@@ -856,7 +852,7 @@ NTSTATUS AddHiddenFile(PUNICODE_STRING FilePath, PULONGLONG ObjId)
 	UNICODE_STRING normalized;
 	NTSTATUS status;
 
-	normalized.Buffer = (PWCH)ExAllocatePool(PagedPool, maxBufSize);
+	normalized.Buffer = (PWCH)ExAllocatePoolWithTag(PagedPool, maxBufSize, FSFILTER_ALLOC_TAG);
 	normalized.Length = 0;
 	normalized.MaximumLength = maxBufSize;
 
@@ -870,14 +866,14 @@ NTSTATUS AddHiddenFile(PUNICODE_STRING FilePath, PULONGLONG ObjId)
 	if (!NT_SUCCESS(status))
 	{
 		DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, FilePath);
-		ExFreePool(normalized.Buffer);
+		ExFreePoolWithTag(normalized.Buffer, FSFILTER_ALLOC_TAG);
 		return status;
 	}
 
 	DbgPrint("FsFilter1!" __FUNCTION__ ": add file:%wZ\n", &normalized);
 	status = AddExcludeListFile(g_excludeFileContext, &normalized, ObjId);
 
-	ExFreePool(normalized.Buffer);
+	ExFreePoolWithTag(normalized.Buffer, FSFILTER_ALLOC_TAG);
 
 	return status;
 }
@@ -898,7 +894,7 @@ NTSTATUS AddHiddenDir(PUNICODE_STRING DirPath, PULONGLONG ObjId)
 	UNICODE_STRING normalized;
 	NTSTATUS status;
 
-	normalized.Buffer = (PWCH)ExAllocatePool(PagedPool, maxBufSize);
+	normalized.Buffer = (PWCH)ExAllocatePoolWithTag(PagedPool, maxBufSize, FSFILTER_ALLOC_TAG);
 	normalized.Length = 0;
 	normalized.MaximumLength = maxBufSize;
 
@@ -912,13 +908,13 @@ NTSTATUS AddHiddenDir(PUNICODE_STRING DirPath, PULONGLONG ObjId)
 	if (!NT_SUCCESS(status))
 	{
 		DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, DirPath);
-		ExFreePool(normalized.Buffer);
+		ExFreePoolWithTag(normalized.Buffer, FSFILTER_ALLOC_TAG);
 		return status;
 	}
 
 	DbgPrint("FsFilter1!" __FUNCTION__ ": add dir:%wZ\n", &normalized);
 	status = AddExcludeListDirectory(g_excludeDirectoryContext, &normalized, ObjId);
-	ExFreePool(normalized.Buffer);
+	ExFreePoolWithTag(normalized.Buffer, FSFILTER_ALLOC_TAG);
 
 	return status;
 }

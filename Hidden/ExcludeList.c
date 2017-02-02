@@ -377,8 +377,14 @@ BOOLEAN FillDirectoryFromPath(PEXCULE_FILE_PATH path, PUNICODE_STRING filePath)
 	LPWSTR buffer = filePath->Buffer;
 
 	count = filePath->Length / sizeof(WCHAR);
-	for (i = count - 1; i < count; i--)
+	if (count < 1)
+		return FALSE;
+
+	i = count;
+	do
 	{
+		i--;
+
 		if (buffer[i] == L'\\')
 		{
 			if (i + 1 >= count)
@@ -397,6 +403,7 @@ BOOLEAN FillDirectoryFromPath(PEXCULE_FILE_PATH path, PUNICODE_STRING filePath)
 			return TRUE;
 		}
 	}
+	while (i > 0);
 
 	return FALSE;
 }

@@ -551,6 +551,7 @@ NTSTATUS RegPreQueryMultipleValue(PVOID context, PREG_QUERY_MULTIPLE_VALUE_KEY_I
 	return STATUS_SUCCESS;
 }
 
+_Function_class_(EX_CALLBACK_FUNCTION)
 NTSTATUS RegistryFilterCallback(PVOID CallbackContext, PVOID Argument1, PVOID Argument2)
 {
 	REG_NOTIFY_CLASS notifyClass = (REG_NOTIFY_CLASS)(ULONG_PTR)Argument1;
