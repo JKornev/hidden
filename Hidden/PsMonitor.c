@@ -184,9 +184,9 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 	RtlZeroMemory(&lookup, sizeof(lookup));
 
 	Entry->inited = (!g_psMonitorInited ? TRUE : FALSE);
-	//if (Entry->processId == (HANDLE)4)
-	//	Entry->subsystem = TRUE;
-	//else
+	if (Entry->processId == (HANDLE)4)
+		Entry->subsystem = TRUE;
+	else
 		Entry->subsystem = RtlEqualUnicodeString(&g_csrssPath, ImgPath, TRUE);
 
 	// Check exclude flag
@@ -328,6 +328,10 @@ BOOLEAN IsProcessExcluded(HANDLE ProcessId)
 {
 	ProcessTableEntry entry;
 	BOOLEAN result;
+
+	// Exclude system process because we don't want affect to kernel-mode threads
+	if (ProcessId == (HANDLE)4)
+		return TRUE;
 
 	entry.processId = ProcessId;
 
