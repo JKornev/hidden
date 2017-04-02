@@ -783,7 +783,7 @@ NTSTATUS InitializeFSMiniFilter(PDRIVER_OBJECT DriverObject)
 	for (i = 0; g_excludeFiles[i]; i++)
 	{
 		RtlInitUnicodeString(&str, g_excludeFiles[i]);
-		AddExcludeListFile(g_excludeFileContext, &str, &id);
+		AddExcludeListFile(g_excludeFileContext, &str, &id, 0);
 	}
 
 	CfgEnumConfigsTable(HideFilesTable, &LoadConfigFilesCallback, NULL);
@@ -799,7 +799,7 @@ NTSTATUS InitializeFSMiniFilter(PDRIVER_OBJECT DriverObject)
 	for (i = 0; g_excludeDirs[i]; i++)
 	{
 		RtlInitUnicodeString(&str, g_excludeDirs[i]);
-		AddExcludeListDirectory(g_excludeDirectoryContext, &str, &id);
+		AddExcludeListDirectory(g_excludeDirectoryContext, &str, &id, 0);
 	}
 
 	CfgEnumConfigsTable(HideDirsTable, &LoadConfigDirsCallback, NULL);
@@ -871,7 +871,7 @@ NTSTATUS AddHiddenFile(PUNICODE_STRING FilePath, PULONGLONG ObjId)
 	}
 
 	DbgPrint("FsFilter1!" __FUNCTION__ ": add file:%wZ\n", &normalized);
-	status = AddExcludeListFile(g_excludeFileContext, &normalized, ObjId);
+	status = AddExcludeListFile(g_excludeFileContext, &normalized, ObjId, 0);
 
 	ExFreePoolWithTag(normalized.Buffer, FSFILTER_ALLOC_TAG);
 
@@ -913,7 +913,7 @@ NTSTATUS AddHiddenDir(PUNICODE_STRING DirPath, PULONGLONG ObjId)
 	}
 
 	DbgPrint("FsFilter1!" __FUNCTION__ ": add dir:%wZ\n", &normalized);
-	status = AddExcludeListDirectory(g_excludeDirectoryContext, &normalized, ObjId);
+	status = AddExcludeListDirectory(g_excludeDirectoryContext, &normalized, ObjId, 0);
 	ExFreePoolWithTag(normalized.Buffer, FSFILTER_ALLOC_TAG);
 
 	return status;

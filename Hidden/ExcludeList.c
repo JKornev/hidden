@@ -12,6 +12,7 @@ typedef struct _EXCULE_FILE_PATH {
 typedef struct _EXCLUDE_FILE_LIST_ENTRY {
 	LIST_ENTRY       list;
 	ULONGLONG        guid;
+	ULONGLONG        parentGuid;
 	EXCULE_FILE_PATH path;
 } EXCLUDE_FILE_LIST_ENTRY, *PEXCLUDE_FILE_LIST_ENTRY;
 
@@ -19,10 +20,11 @@ typedef struct _EXCLUDE_FILE_CONTEXT {
 	LIST_ENTRY       listHead;
 	FAST_MUTEX       listLock;
 	ULONGLONG        guidCounter;
+	UINT32           childCounter;
 	UINT32           type;
 } EXCLUDE_FILE_CONTEXT, *PEXCLUDE_FILE_CONTEXT;
 
-NTSTATUS AddExcludeListEntry(ExcludeContext Context, PUNICODE_STRING FilePath, UINT32 Type, PExcludeEntryId EntryId);
+NTSTATUS AddExcludeListEntry(ExcludeContext Context, PUNICODE_STRING FilePath, UINT32 Type, PExcludeEntryId EntryId, ExcludeEntryId ParentId);
 
 BOOLEAN FillDirectoryFromPath(PEXCULE_FILE_PATH path, PUNICODE_STRING filePath);
 
@@ -56,6 +58,7 @@ NTSTATUS InitializeExcludeListContext(PExcludeContext Context, UINT32 Type)
 	InitializeListHead(&cntx->listHead);
 	ExInitializeFastMutex(&cntx->listLock);
 	cntx->guidCounter = 1;
+	cntx->childCounter = 0;
 	cntx->type = Type;
 
 	*Context = cntx;
@@ -70,35 +73,33 @@ VOID DestroyExcludeListContext(ExcludeContext Context)
 	ExFreePoolWithTag(cntx, EXCLUDE_ALLOC_TAG);
 }
 
-NTSTATUS AddExcludeListFile(ExcludeContext Context, PUNICODE_STRING FilePath, PExcludeEntryId EntryId)
+NTSTATUS AddExcludeListFile(ExcludeContext Context, PUNICODE_STRING FilePath, PExcludeEntryId EntryId, ExcludeEntryId ParentId)
 {
-	return AddExcludeListEntry(Context, FilePath, ExcludeFile, EntryId);
+	return AddExcludeListEntry(Context, FilePath, ExcludeFile, EntryId, ParentId);
 }
 
-NTSTATUS AddExcludeListDirectory(ExcludeContext Context, PUNICODE_STRING DirPath, PExcludeEntryId EntryId)
+NTSTATUS AddExcludeListDirectory(ExcludeContext Context, PUNICODE_STRING DirPath, PExcludeEntryId EntryId, ExcludeEntryId ParentId)
 {
-	return AddExcludeListEntry(Context, DirPath, ExcludeDirectory, EntryId);
+	return AddExcludeListEntry(Context, DirPath, ExcludeDirectory, EntryId, ParentId);
 }
 
-NTSTATUS AddExcludeListRegistryKey(ExcludeContext Context, PUNICODE_STRING KeyPath, PExcludeEntryId EntryId)
+NTSTATUS AddExcludeListRegistryKey(ExcludeContext Context, PUNICODE_STRING KeyPath, PExcludeEntryId EntryId, ExcludeEntryId ParentId)
 {
-	return AddExcludeListEntry(Context, KeyPath, ExcludeRegKey, EntryId);
+	return AddExcludeListEntry(Context, KeyPath, ExcludeRegKey, EntryId, ParentId);
 }
 
-NTSTATUS AddExcludeListRegistryValue(ExcludeContext Context, PUNICODE_STRING ValuePath, PExcludeEntryId EntryId)
+NTSTATUS AddExcludeListRegistryValue(ExcludeContext Context, PUNICODE_STRING ValuePath, PExcludeEntryId EntryId, ExcludeEntryId ParentId)
 {
-	return AddExcludeListEntry(Context, ValuePath, ExcludeRegValue, EntryId);
+	return AddExcludeListEntry(Context, ValuePath, ExcludeRegValue, EntryId, ParentId);
 }
 
-NTSTATUS AddExcludeListEntry(ExcludeContext Context, PUNICODE_STRING FilePath, UINT32 Type, PExcludeEntryId EntryId)
+NTSTATUS AddExcludeListEntry(ExcludeContext Context, PUNICODE_STRING FilePath, UINT32 Type, PExcludeEntryId EntryId, ExcludeEntryId ParentId)
 {
 	enum { MAX_PATH_SIZE = 1024 };
 	PEXCLUDE_FILE_CONTEXT cntx = (PEXCLUDE_FILE_CONTEXT)Context;
 	PEXCLUDE_FILE_LIST_ENTRY entry, head;
 	UNICODE_STRING temp;
 	SIZE_T size;
-
-	UNREFERENCED_PARAMETER(Type);
 
 	if (cntx->type != Type)
 	{
@@ -156,10 +157,20 @@ NTSTATUS AddExcludeListEntry(ExcludeContext Context, PUNICODE_STRING FilePath, U
 	{
 		head = (PEXCLUDE_FILE_LIST_ENTRY)&cntx->listHead;
 	}
+
+	// Parent GUID is used when we want to link few entries in a group with one master,
+	// in this case parent GUID should be any valid entry GUID. When we remove parent entry
+	// all it's children will be removed too
+	entry->parentGuid = ParentId;
 	
 	ExAcquireFastMutex(&cntx->listLock);
+	
+	if (entry->parentGuid)
+		cntx->childCounter++;
+
 	entry->guid = cntx->guidCounter++;
 	InsertTailList((PLIST_ENTRY)head, (PLIST_ENTRY)entry);
+	
 	ExReleaseFastMutex(&cntx->listLock);
 
 	*EntryId = entry->guid;
@@ -188,6 +199,25 @@ NTSTATUS RemoveExcludeListEntry(ExcludeContext Context, ExcludeEntryId EntryId)
 
 		entry = (PEXCLUDE_FILE_LIST_ENTRY)entry->list.Flink;
 	}
+	
+	if (cntx->childCounter)
+	{
+		entry = (PEXCLUDE_FILE_LIST_ENTRY)cntx->listHead.Flink;
+		while (entry != (PEXCLUDE_FILE_LIST_ENTRY)&cntx->listHead)
+		{
+			PEXCLUDE_FILE_LIST_ENTRY remove = entry;
+			entry = (PEXCLUDE_FILE_LIST_ENTRY)entry->list.Flink;
+
+			if (EntryId == remove->parentGuid)
+			{
+				ASSERT(cntx->childCounter > 0);
+				cntx->childCounter--;
+				RemoveEntryList((PLIST_ENTRY)remove);
+				ExFreePoolWithTag(remove, EXCLUDE_ALLOC_TAG);
+			}
+			
+		}
+	}
 
 	ExReleaseFastMutex(&cntx->listLock);
 
@@ -206,9 +236,16 @@ NTSTATUS RemoveAllExcludeListEntries(ExcludeContext Context)
 	{
 		PEXCLUDE_FILE_LIST_ENTRY remove = entry;
 		entry = (PEXCLUDE_FILE_LIST_ENTRY)entry->list.Flink;
+		if (remove->parentGuid)
+		{
+			ASSERT(cntx->childCounter > 0);
+			cntx->childCounter--;
+		}
 		RemoveEntryList((PLIST_ENTRY)remove);
 		ExFreePoolWithTag(remove, EXCLUDE_ALLOC_TAG);
 	}
+
+	ASSERT(cntx->childCounter == 0);
 
 	ExReleaseFastMutex(&cntx->listLock);
 

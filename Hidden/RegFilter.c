@@ -7,6 +7,7 @@
 #include "PsMonitor.h"
 #include "Configs.h"
 #include "Driver.h"
+#include <Ntstrsafe.h>
 
 #define FILTER_ALLOC_TAG 'FRlF'
 
@@ -600,18 +601,84 @@ NTSTATUS RegistryFilterCallback(PVOID CallbackContext, PVOID Argument1, PVOID Ar
 	return status;
 }
 
+NTSTATUS AddCurrentControlSetVariants(PUNICODE_STRING KeyPath, ExcludeContext Context, ULONGLONG ObjId,
+	NTSTATUS(*AddRoutine)(ExcludeContext, PUNICODE_STRING, PExcludeEntryId, ExcludeEntryId))
+{
+	UNICODE_STRING currVersion, currVersionXXX, tail;
+	ULONGLONG objIds[2];
+	NTSTATUS status;
+	BOOLEAN tailed;
+
+	RtlInitUnicodeString(&currVersion, L"\\REGISTRY\\MACHINE\\SYSTEM\\CurrentControlSet");
+	if (!RtlPrefixUnicodeString(&currVersion, KeyPath, TRUE))
+		return STATUS_SUCCESS;
+
+	tailed = (KeyPath->Length >= currVersion.Length + sizeof(WCHAR));
+
+	// Does the path contain a valid CurrentControlSet\\ and not CurrentControlXYZ... ?
+	if (tailed && KeyPath->Buffer[currVersion.Length / sizeof(WCHAR)] != L'\\')
+		return STATUS_SUCCESS;
+
+	currVersionXXX.Buffer = (LPWSTR)ExAllocatePoolWithTag(NonPagedPool, KeyPath->Length, FILTER_ALLOC_TAG);
+	currVersionXXX.Length = 0;
+	currVersionXXX.MaximumLength = KeyPath->Length;
+
+	if (!currVersionXXX.Buffer)
+		return STATUS_NO_MEMORY;
+
+	__try
+	{
+		// ControlSet001
+
+		if (tailed)
+		{
+			tail.Buffer = KeyPath->Buffer + (currVersion.Length / sizeof(WCHAR)) + 1;
+			tail.MaximumLength = tail.Length = KeyPath->Length - currVersion.Length - sizeof(WCHAR);
+			RtlUnicodeStringPrintf(&currVersionXXX, L"\\REGISTRY\\MACHINE\\SYSTEM\\ControlSet001\\%wZ", &tail);
+		}
+		else
+		{
+			RtlInitUnicodeString(&currVersionXXX, L"\\REGISTRY\\MACHINE\\SYSTEM\\ControlSet001");
+		}
+
+		status = AddRoutine(Context, &currVersionXXX, &objIds[0], ObjId);
+		if (!NT_SUCCESS(status))
+			return status;
+
+		// ControlSet002
+
+		if (tailed)
+			RtlUnicodeStringPrintf(&currVersionXXX, L"\\REGISTRY\\MACHINE\\SYSTEM\\ControlSet002\\%wZ", &tail);
+		else
+			RtlInitUnicodeString(&currVersionXXX, L"\\REGISTRY\\MACHINE\\SYSTEM\\ControlSet002");
+
+		status = AddRoutine(Context, &currVersionXXX, &objIds[1], ObjId);
+		if (!NT_SUCCESS(status))
+		{
+			RemoveExcludeListEntry(Context, objIds[0]);
+			return status;
+		}
+	}
+	__finally
+	{
+		ExFreePoolWithTag(currVersionXXX.Buffer, FILTER_ALLOC_TAG);
+	}
+
+	return STATUS_SUCCESS;
+}
+
 VOID LoadConfigRegKeysCallback(PUNICODE_STRING Str, PVOID Params)
 {
-	ExcludeContext context = (ExcludeContext)Params;
 	ExcludeEntryId id;
-	AddExcludeListRegistryKey(context, Str, &id);
+	UNREFERENCED_PARAMETER(Params);
+	AddHiddenRegKey(Str, &id);
 }
 
 VOID LoadConfigRegValuesCallback(PUNICODE_STRING Str, PVOID Params)
 {
-	ExcludeContext context = (ExcludeContext)Params;
 	ExcludeEntryId id;
-	AddExcludeListRegistryValue(context, Str, &id);
+	UNREFERENCED_PARAMETER(Params);
+	AddHiddenRegValue(Str, &id);
 }
 
 NTSTATUS InitializeRegistryFilter(PDRIVER_OBJECT DriverObject)
@@ -633,10 +700,10 @@ NTSTATUS InitializeRegistryFilter(PDRIVER_OBJECT DriverObject)
 	for (i = 0; g_excludeRegKeys[i]; i++)
 	{
 		RtlInitUnicodeString(&str, g_excludeRegKeys[i]);
-		AddExcludeListRegistryKey(g_excludeRegKeyContext, &str, &id);
+		AddHiddenRegKey(&str, &id);
 	}
 
-	CfgEnumConfigsTable(HideRegKeysTable, &LoadConfigRegKeysCallback, g_excludeRegKeyContext);
+	CfgEnumConfigsTable(HideRegKeysTable, &LoadConfigRegKeysCallback, NULL);
 
 	status = InitializeExcludeListContext(&g_excludeRegValueContext, ExcludeRegValue);
 	if (!NT_SUCCESS(status))
@@ -649,10 +716,10 @@ NTSTATUS InitializeRegistryFilter(PDRIVER_OBJECT DriverObject)
 	for (i = 0; g_excludeRegValues[i]; i++)
 	{
 		RtlInitUnicodeString(&str, g_excludeRegValues[i]);
-		AddExcludeListRegistryValue(g_excludeRegValueContext, &str, &id);
+		AddHiddenRegValue(&str, &id);
 	}
 
-	CfgEnumConfigsTable(HideRegValuesTable, &LoadConfigRegValuesCallback, g_excludeRegValueContext);
+	CfgEnumConfigsTable(HideRegValuesTable, &LoadConfigRegValuesCallback, NULL);
 
 	// Register registry filter
 
@@ -692,7 +759,17 @@ NTSTATUS DestroyRegistryFilter()
 
 NTSTATUS AddHiddenRegKey(PUNICODE_STRING KeyPath, PULONGLONG ObjId)
 {
-	return AddExcludeListRegistryKey(g_excludeRegKeyContext, KeyPath, ObjId);
+	NTSTATUS status;
+	
+	status = AddExcludeListRegistryKey(g_excludeRegKeyContext, KeyPath, ObjId, 0);
+	if (NT_SUCCESS(status))
+	{
+		status = AddCurrentControlSetVariants(KeyPath, g_excludeRegKeyContext, *ObjId, &AddExcludeListRegistryKey);
+		if (!NT_SUCCESS(status))
+			RemoveHiddenRegKey(*ObjId);
+	}
+
+	return status;
 }
 
 NTSTATUS RemoveHiddenRegKey(ULONGLONG ObjId)
@@ -707,7 +784,17 @@ NTSTATUS RemoveAllHiddenRegKeys()
 
 NTSTATUS AddHiddenRegValue(PUNICODE_STRING ValuePath, PULONGLONG ObjId)
 {
-	return AddExcludeListRegistryValue(g_excludeRegValueContext, ValuePath, ObjId);
+	NTSTATUS status;
+
+	status = AddExcludeListRegistryValue(g_excludeRegValueContext, ValuePath, ObjId, 0);
+	if (NT_SUCCESS(status))
+	{
+		status = AddCurrentControlSetVariants(ValuePath, g_excludeRegValueContext, *ObjId, &AddExcludeListRegistryValue);
+		if (!NT_SUCCESS(status))
+			RemoveHiddenRegValue(*ObjId);
+	}
+
+	return status;
 }
 
 NTSTATUS RemoveHiddenRegValue(ULONGLONG ObjId)
