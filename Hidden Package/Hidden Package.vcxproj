@@ -17,116 +17,20 @@
       <Configuration>Release</Configuration>
       <Platform>x64</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Win8.1 Debug|Win32">
-      <Configuration>Win8.1 Debug</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Win8.1 Release|Win32">
-      <Configuration>Win8.1 Release</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Win8 Debug|Win32">
-      <Configuration>Win8 Debug</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Win8 Release|Win32">
-      <Configuration>Win8 Release</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Win7 Debug|Win32">
-      <Configuration>Win7 Debug</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Win7 Release|Win32">
-      <Configuration>Win7 Release</Configuration>
-      <Platform>Win32</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Win8.1 Debug|x64">
-      <Configuration>Win8.1 Debug</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Win8.1 Release|x64">
-      <Configuration>Win8.1 Release</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Win8 Debug|x64">
-      <Configuration>Win8 Debug</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Win8 Release|x64">
-      <Configuration>Win8 Release</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Win7 Debug|x64">
-      <Configuration>Win7 Debug</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Win7 Release|x64">
-      <Configuration>Win7 Release</Configuration>
-      <Platform>x64</Platform>
-    </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{D6C8BE8B-D2E2-40BA-ADAC-E23FD8062E93}</ProjectGuid>
     <TemplateGuid>{4605da2c-74a5-4865-98e1-152ef136825f}</TemplateGuid>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <MinimumVisualStudioVersion>11.0</MinimumVisualStudioVersion>
-    <Configuration>Win8.1 Debug</Configuration>
+    <Configuration>Debug</Configuration>
     <Platform Condition="'$(Platform)' == ''">Win32</Platform>
     <RootNamespace>Hidden_Package</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8.1 Debug|Win32'" Label="Configuration">
-    <TargetVersion>WindowsV6.3</TargetVersion>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>WindowsKernelModeDriver8.1</PlatformToolset>
-    <ConfigurationType>Utility</ConfigurationType>
-    <DriverType>Package</DriverType>
-    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8.1 Release|Win32'" Label="Configuration">
-    <TargetVersion>WindowsV6.3</TargetVersion>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>WindowsKernelModeDriver8.1</PlatformToolset>
-    <ConfigurationType>Utility</ConfigurationType>
-    <DriverType>Package</DriverType>
-    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8 Debug|Win32'" Label="Configuration">
-    <TargetVersion>Windows8</TargetVersion>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>WindowsKernelModeDriver8.1</PlatformToolset>
-    <ConfigurationType>Utility</ConfigurationType>
-    <DriverType>Package</DriverType>
-    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8 Release|Win32'" Label="Configuration">
-    <TargetVersion>Windows8</TargetVersion>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>WindowsKernelModeDriver8.1</PlatformToolset>
-    <ConfigurationType>Utility</ConfigurationType>
-    <DriverType>Package</DriverType>
-    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win7 Debug|Win32'" Label="Configuration">
-    <TargetVersion>Windows7</TargetVersion>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>WindowsKernelModeDriver8.1</PlatformToolset>
-    <ConfigurationType>Utility</ConfigurationType>
-    <DriverType>Package</DriverType>
-    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <TargetVersion>Windows7</TargetVersion>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>WindowsKernelModeDriver8.1</PlatformToolset>
-    <ConfigurationType>Utility</ConfigurationType>
-    <DriverType>Package</DriverType>
-    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win7 Release|Win32'" Label="Configuration">
-    <TargetVersion>Windows7</TargetVersion>
-    <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>WindowsKernelModeDriver8.1</PlatformToolset>
     <ConfigurationType>Utility</ConfigurationType>
     <DriverType>Package</DriverType>
@@ -140,57 +44,9 @@
     <DriverType>Package</DriverType>
     <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8.1 Debug|x64'" Label="Configuration">
-    <TargetVersion>WindowsV6.3</TargetVersion>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>WindowsKernelModeDriver8.1</PlatformToolset>
-    <ConfigurationType>Utility</ConfigurationType>
-    <DriverType>Package</DriverType>
-    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8.1 Release|x64'" Label="Configuration">
-    <TargetVersion>WindowsV6.3</TargetVersion>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>WindowsKernelModeDriver8.1</PlatformToolset>
-    <ConfigurationType>Utility</ConfigurationType>
-    <DriverType>Package</DriverType>
-    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8 Debug|x64'" Label="Configuration">
-    <TargetVersion>Windows8</TargetVersion>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>WindowsKernelModeDriver8.1</PlatformToolset>
-    <ConfigurationType>Utility</ConfigurationType>
-    <DriverType>Package</DriverType>
-    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8 Release|x64'" Label="Configuration">
-    <TargetVersion>Windows8</TargetVersion>
-    <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>WindowsKernelModeDriver8.1</PlatformToolset>
-    <ConfigurationType>Utility</ConfigurationType>
-    <DriverType>Package</DriverType>
-    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win7 Debug|x64'" Label="Configuration">
-    <TargetVersion>Windows7</TargetVersion>
-    <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>WindowsKernelModeDriver8.1</PlatformToolset>
-    <ConfigurationType>Utility</ConfigurationType>
-    <DriverType>Package</DriverType>
-    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <TargetVersion>Windows7</TargetVersion>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>WindowsKernelModeDriver8.1</PlatformToolset>
-    <ConfigurationType>Utility</ConfigurationType>
-    <DriverType>Package</DriverType>
-    <DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win7 Release|x64'" Label="Configuration">
-    <TargetVersion>Windows7</TargetVersion>
-    <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>WindowsKernelModeDriver8.1</PlatformToolset>
     <ConfigurationType>Utility</ConfigurationType>
     <DriverType>Package</DriverType>
@@ -212,85 +68,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8.1 Debug|Win32'">
-    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <EnableDeployment>False</EnableDeployment>
-    <RemoveDriver>True</RemoveDriver>
-    <HardwareIdString />
-    <CommandLine />
-    <DeployFiles />
-    <EnableVerifier>False</EnableVerifier>
-    <AllDrivers>False</AllDrivers>
-    <VerifyProjectOutput>True</VerifyProjectOutput>
-    <VerifyDrivers />
-    <VerifyFlags>133563</VerifyFlags>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8.1 Release|Win32'">
-    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <EnableDeployment>False</EnableDeployment>
-    <RemoveDriver>True</RemoveDriver>
-    <HardwareIdString />
-    <CommandLine />
-    <DeployFiles />
-    <EnableVerifier>False</EnableVerifier>
-    <AllDrivers>False</AllDrivers>
-    <VerifyProjectOutput>True</VerifyProjectOutput>
-    <VerifyDrivers />
-    <VerifyFlags>133563</VerifyFlags>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8 Debug|Win32'">
-    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <EnableDeployment>False</EnableDeployment>
-    <RemoveDriver>True</RemoveDriver>
-    <HardwareIdString />
-    <CommandLine />
-    <DeployFiles />
-    <EnableVerifier>False</EnableVerifier>
-    <AllDrivers>False</AllDrivers>
-    <VerifyProjectOutput>True</VerifyProjectOutput>
-    <VerifyDrivers />
-    <VerifyFlags>133563</VerifyFlags>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8 Release|Win32'">
-    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <EnableDeployment>False</EnableDeployment>
-    <RemoveDriver>True</RemoveDriver>
-    <HardwareIdString />
-    <CommandLine />
-    <DeployFiles />
-    <EnableVerifier>False</EnableVerifier>
-    <AllDrivers>False</AllDrivers>
-    <VerifyProjectOutput>True</VerifyProjectOutput>
-    <VerifyDrivers />
-    <VerifyFlags>133563</VerifyFlags>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win7 Debug|Win32'">
-    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <EnableDeployment>False</EnableDeployment>
-    <RemoveDriver>True</RemoveDriver>
-    <HardwareIdString />
-    <CommandLine />
-    <DeployFiles />
-    <EnableVerifier>False</EnableVerifier>
-    <AllDrivers>False</AllDrivers>
-    <VerifyProjectOutput>True</VerifyProjectOutput>
-    <VerifyDrivers />
-    <VerifyFlags>133563</VerifyFlags>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <EnableDeployment>False</EnableDeployment>
-    <RemoveDriver>True</RemoveDriver>
-    <HardwareIdString />
-    <CommandLine />
-    <DeployFiles />
-    <EnableVerifier>False</EnableVerifier>
-    <AllDrivers>False</AllDrivers>
-    <VerifyProjectOutput>True</VerifyProjectOutput>
-    <VerifyDrivers />
-    <VerifyFlags>133563</VerifyFlags>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win7 Release|Win32'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
     <EnableDeployment>False</EnableDeployment>
     <RemoveDriver>True</RemoveDriver>
@@ -316,85 +94,7 @@
     <VerifyDrivers />
     <VerifyFlags>133563</VerifyFlags>
   </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8.1 Debug|x64'">
-    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <EnableDeployment>False</EnableDeployment>
-    <RemoveDriver>True</RemoveDriver>
-    <HardwareIdString />
-    <CommandLine />
-    <DeployFiles />
-    <EnableVerifier>False</EnableVerifier>
-    <AllDrivers>False</AllDrivers>
-    <VerifyProjectOutput>True</VerifyProjectOutput>
-    <VerifyDrivers />
-    <VerifyFlags>133563</VerifyFlags>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8.1 Release|x64'">
-    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <EnableDeployment>False</EnableDeployment>
-    <RemoveDriver>True</RemoveDriver>
-    <HardwareIdString />
-    <CommandLine />
-    <DeployFiles />
-    <EnableVerifier>False</EnableVerifier>
-    <AllDrivers>False</AllDrivers>
-    <VerifyProjectOutput>True</VerifyProjectOutput>
-    <VerifyDrivers />
-    <VerifyFlags>133563</VerifyFlags>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8 Debug|x64'">
-    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <EnableDeployment>False</EnableDeployment>
-    <RemoveDriver>True</RemoveDriver>
-    <HardwareIdString />
-    <CommandLine />
-    <DeployFiles />
-    <EnableVerifier>False</EnableVerifier>
-    <AllDrivers>False</AllDrivers>
-    <VerifyProjectOutput>True</VerifyProjectOutput>
-    <VerifyDrivers />
-    <VerifyFlags>133563</VerifyFlags>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win8 Release|x64'">
-    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <EnableDeployment>False</EnableDeployment>
-    <RemoveDriver>True</RemoveDriver>
-    <HardwareIdString />
-    <CommandLine />
-    <DeployFiles />
-    <EnableVerifier>False</EnableVerifier>
-    <AllDrivers>False</AllDrivers>
-    <VerifyProjectOutput>True</VerifyProjectOutput>
-    <VerifyDrivers />
-    <VerifyFlags>133563</VerifyFlags>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win7 Debug|x64'">
-    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <EnableDeployment>False</EnableDeployment>
-    <RemoveDriver>True</RemoveDriver>
-    <HardwareIdString />
-    <CommandLine />
-    <DeployFiles />
-    <EnableVerifier>False</EnableVerifier>
-    <AllDrivers>False</AllDrivers>
-    <VerifyProjectOutput>True</VerifyProjectOutput>
-    <VerifyDrivers />
-    <VerifyFlags>133563</VerifyFlags>
-  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
-    <EnableDeployment>False</EnableDeployment>
-    <RemoveDriver>True</RemoveDriver>
-    <HardwareIdString />
-    <CommandLine />
-    <DeployFiles />
-    <EnableVerifier>False</EnableVerifier>
-    <AllDrivers>False</AllDrivers>
-    <VerifyProjectOutput>True</VerifyProjectOutput>
-    <VerifyDrivers />
-    <VerifyFlags>133563</VerifyFlags>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Win7 Release|x64'">
     <DebuggerFlavor>DbgengKernelDebugger</DebuggerFlavor>
     <EnableDeployment>False</EnableDeployment>
     <RemoveDriver>True</RemoveDriver>
@@ -420,17 +120,7 @@
     <VerifyDrivers />
     <VerifyFlags>133563</VerifyFlags>
   </PropertyGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Win7 Debug|Win32'">
-    <Inf2Cat>
-      <UseLocalTime>true</UseLocalTime>
-    </Inf2Cat>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <Inf2Cat>
-      <UseLocalTime>true</UseLocalTime>
-    </Inf2Cat>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Win7 Debug|x64'">
     <Inf2Cat>
       <UseLocalTime>true</UseLocalTime>
     </Inf2Cat>
