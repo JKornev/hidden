@@ -106,7 +106,7 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 		CLIENT_ID clientId;
 		OBJECT_ATTRIBUTES attribs;
 		HANDLE hProcess;
-		SIZE_T size;
+		//SIZE_T size;
 
 		// Get process path
 
