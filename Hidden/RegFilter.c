@@ -7,6 +7,7 @@
 #include "PsMonitor.h"
 #include "Configs.h"
 #include "Driver.h"
+#include "Helper.h"
 #include <Ntstrsafe.h>
 
 #define FILTER_ALLOC_TAG 'FRlF'
@@ -43,7 +44,6 @@ BOOLEAN CheckRegistryKeyInExcludeList(PVOID RootObject, PUNICODE_STRING keyPath)
 	if (keyPath->Length > sizeof(WCHAR) && keyPath->Buffer[0] == L'\\')
 	{
 		// Check absolute path
-		//DbgPrint("FsFilter1!" __FUNCTION__ ": absolute %wZ\n", keyPath);
 		found = CheckExcludeListRegKey(g_excludeRegKeyContext, keyPath);
 	}
 	else
@@ -60,7 +60,7 @@ BOOLEAN CheckRegistryKeyInExcludeList(PVOID RootObject, PUNICODE_STRING keyPath)
 		status = CmCallbackGetKeyObjectID(&g_regCookie, RootObject, NULL, &regPath);
 		if (!NT_SUCCESS(status))
 		{
-			DbgPrint("FsFilter1!" __FUNCTION__ ": Registry name query failed with code:%08x\n", status);
+			LogWarning("Error, registry name query failed with code:%08x\n", status);
 			return FALSE;
 		}
 
@@ -73,7 +73,7 @@ BOOLEAN CheckRegistryKeyInExcludeList(PVOID RootObject, PUNICODE_STRING keyPath)
 			dynBuffer = (LPWSTR)ExAllocatePoolWithTag(NonPagedPool, totalSize, FILTER_ALLOC_TAG);
 			if (!dynBuffer)
 			{
-				DbgPrint("FsFilter1!" __FUNCTION__ ": Memory allocation failed with code:%08x\n", status);
+				LogWarning("Error, memory allocation failed with code:%08x\n", status);
 				return FALSE;
 			}
 
@@ -99,7 +99,6 @@ BOOLEAN CheckRegistryKeyInExcludeList(PVOID RootObject, PUNICODE_STRING keyPath)
 
 		// Compare to exclude list
 
-		//DbgPrint("FsFilter1!" __FUNCTION__ ": relative %wZ\n", &fullRegPath);
 		found = CheckExcludeListRegKey(g_excludeRegKeyContext, &fullRegPath);
 
 		if (dynBuffer)
@@ -114,16 +113,11 @@ NTSTATUS RegPreCreateKey(PVOID context, PREG_PRE_CREATE_KEY_INFORMATION info)
 	UNREFERENCED_PARAMETER(context);
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
-	{
-		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
-	}
-
-	DbgPrint("FsFilter1!" __FUNCTION__ ": RegPreCreateKey(absolute) %wZ\n", info->CompleteName);
 
 	if (CheckExcludeListRegKey(g_excludeRegKeyContext, info->CompleteName))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": found!\n");
+		LogTrace("Registry key is hidden: %wZ", info->CompleteName);
 		return STATUS_ACCESS_DENIED;
 	}
 
@@ -135,14 +129,11 @@ NTSTATUS RegPreCreateKeyEx(PVOID context, PREG_CREATE_KEY_INFORMATION info)
 	UNREFERENCED_PARAMETER(context);
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
-	{
-		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
-	}
 
 	if (CheckRegistryKeyInExcludeList(info->RootObject, info->CompleteName))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": found!\n");
+		LogTrace("Registry key is hidden: %wZ", info->CompleteName);
 		return STATUS_ACCESS_DENIED;
 	}
 
@@ -154,16 +145,11 @@ NTSTATUS RegPreOpenKey(PVOID context, PREG_PRE_OPEN_KEY_INFORMATION info)
 	UNREFERENCED_PARAMETER(context);
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
-	{
-		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
-	}
-
-	DbgPrint("FsFilter1!" __FUNCTION__ ": RegPreCreateKey(absolute) %wZ\n", info->CompleteName);
 
 	if (CheckExcludeListRegKey(g_excludeRegKeyContext, info->CompleteName))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": found!\n");
+		LogTrace("Registry key is hidden: %wZ", info->CompleteName);
 		return STATUS_NOT_FOUND;
 	}
 
@@ -175,14 +161,11 @@ NTSTATUS RegPreOpenKeyEx(PVOID context, PREG_OPEN_KEY_INFORMATION info)
 	UNREFERENCED_PARAMETER(context);
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
-	{
-		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
-	}
 
 	if (CheckRegistryKeyInExcludeList(info->RootObject, info->CompleteName))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": found!\n");
+		LogTrace("Registry key is hidden: %wZ", info->CompleteName);
 		return STATUS_NOT_FOUND;
 	}
 
@@ -228,15 +211,12 @@ NTSTATUS RegPostEnumKey(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 		return STATUS_SUCCESS;
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
-	{
-		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
-	}
 
 	status = CmCallbackGetKeyObjectID(&g_regCookie, info->Object, NULL, &regPath);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Registry name query failed with code:%08x\n", status);
+		LogWarning("Error, registry name query failed with code:%08x", status);
 		return STATUS_SUCCESS;
 	}
 
@@ -247,7 +227,7 @@ NTSTATUS RegPostEnumKey(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 
 	incIndex = 0;
 	if (CheckExcludeListRegKeyValueName(g_excludeRegKeyContext, (PUNICODE_STRING)regPath, &keyName, &incIndex))
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! found %wZ (inc: %d)\n", regPath, incIndex);//TODO: remove it
+		LogTrace("Registry key is going to be hidden in: %wZ (inc: %d)", regPath, incIndex);
 
 	if (incIndex > 0)
 	{
@@ -259,7 +239,7 @@ NTSTATUS RegPostEnumKey(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 		status = ObOpenObjectByPointer(info->Object, OBJ_KERNEL_HANDLE, NULL, KEY_ALL_ACCESS, *CmKeyObjectType, KernelMode, &Key);
 		if (!NT_SUCCESS(status))
 		{
-			DbgPrint("FsFilter1!" __FUNCTION__ ": ObOpenObjectByPointer() failed with code:%08x\n", status);
+			LogWarning("Error, ObOpenObjectByPointer() failed with code:%08x", status);
 			return STATUS_SUCCESS;
 		}
 
@@ -284,7 +264,7 @@ NTSTATUS RegPostEnumKey(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 					}
 					__except (EXCEPTION_EXECUTE_HANDLER)
 					{
-						DbgPrint("FsFilter1!" __FUNCTION__ ": Error, can't copy new key information\n");
+						LogWarning("Warning, can't copy new key information");
 					}
 
 					break;
@@ -346,15 +326,12 @@ NTSTATUS RegPostEnumValue(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 		return STATUS_SUCCESS;
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
-	{
-		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
-	}
 
 	status = CmCallbackGetKeyObjectID(&g_regCookie, info->Object, NULL, &regPath);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Registry name query failed with code:%08x\n", status);
+		LogWarning("Error, registry name query failed with code:%08x", status);
 		return STATUS_SUCCESS;
 	}
 
@@ -365,7 +342,7 @@ NTSTATUS RegPostEnumValue(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 
 	incIndex = 0;
 	if (CheckExcludeListRegKeyValueName(g_excludeRegValueContext, (PUNICODE_STRING)regPath, &keyName, &incIndex))
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! found %wZ (inc: %d)\n", regPath, incIndex);
+		LogTrace("Registry value is going to be hidden in: %wZ (inc: %d)", regPath, incIndex);
 
 	if (incIndex > 0)
 	{
@@ -377,7 +354,7 @@ NTSTATUS RegPostEnumValue(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 		status = ObOpenObjectByPointer(info->Object, OBJ_KERNEL_HANDLE, NULL, KEY_ALL_ACCESS, *CmKeyObjectType, KernelMode, &Key);
 		if (!NT_SUCCESS(status))
 		{
-			DbgPrint("FsFilter1!" __FUNCTION__ ": ObOpenObjectByPointer() failed with code:%08x\n", status);
+			LogWarning("Error, ObOpenObjectByPointer() failed with code:%08x", status);
 			return STATUS_SUCCESS;
 		}
 
@@ -403,7 +380,7 @@ NTSTATUS RegPostEnumValue(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 					}
 					__except (EXCEPTION_EXECUTE_HANDLER)
 					{
-						DbgPrint("FsFilter1!" __FUNCTION__ ": Error, can't copy new key information\n");
+						LogWarning("Warning, can't copy new key information");
 					}
 
 					break;
@@ -434,22 +411,19 @@ NTSTATUS RegPreSetValue(PVOID context, PREG_SET_VALUE_KEY_INFORMATION info)
 	UNREFERENCED_PARAMETER(context);
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
-	{
-		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
-	}
 
 	status = CmCallbackGetKeyObjectID(&g_regCookie, info->Object, NULL, &regPath);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Registry name query failed with code:%08x\n", status);
+		LogWarning("Error, registry name query failed with code:%08x", status);
 		return STATUS_SUCCESS;
 	}
 
 	incIndex = 0;
 	if (CheckExcludeListRegKeyValueName(g_excludeRegValueContext, (PUNICODE_STRING)regPath, info->ValueName, &incIndex))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! found %wZ\\%wZ (inc: %d)\n", regPath, info->ValueName, incIndex);
+		LogTrace("Registry value has been hidden: %wZ\\%wZ (inc: %d)", regPath, info->ValueName, incIndex);
 		return STATUS_NOT_FOUND;
 	}
 
@@ -465,22 +439,19 @@ NTSTATUS RegPreDeleteValue(PVOID context, PREG_DELETE_VALUE_KEY_INFORMATION info
 	UNREFERENCED_PARAMETER(context);
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
-	{
-		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
-	}
 
 	status = CmCallbackGetKeyObjectID(&g_regCookie, info->Object, NULL, &regPath);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Registry name query failed with code:%08x\n", status);
+		LogWarning("Error, registry name query failed with code:%08x", status);
 		return STATUS_SUCCESS;
 	}
 
 	incIndex = 0;
 	if (CheckExcludeListRegKeyValueName(g_excludeRegValueContext, (PUNICODE_STRING)regPath, info->ValueName, &incIndex))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! found %wZ\\%wZ (inc: %d)\n", regPath, info->ValueName, incIndex);
+		LogTrace("Registry value has been hidden: %wZ\\%wZ (inc: %d)", regPath, info->ValueName, incIndex);
 		return STATUS_NOT_FOUND;
 	}
 
@@ -496,22 +467,19 @@ NTSTATUS RegPreQueryValue(PVOID context, PREG_QUERY_VALUE_KEY_INFORMATION info)
 	UNREFERENCED_PARAMETER(context);
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
-	{
-		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
-	}
 
 	status = CmCallbackGetKeyObjectID(&g_regCookie, info->Object, NULL, &regPath);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Registry name query failed with code:%08x\n", status);
+		LogWarning("Error, registry name query failed with code:%08x", status);
 		return STATUS_SUCCESS;
 	}
 
 	incIndex = 0;
 	if (CheckExcludeListRegKeyValueName(g_excludeRegValueContext, (PUNICODE_STRING)regPath, info->ValueName, &incIndex))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! found %wZ\\%wZ (inc: %d)\n", regPath, info->ValueName, incIndex);
+		LogTrace("Registry value has been hidden: %wZ\\%wZ (inc: %d)", regPath, info->ValueName, incIndex);
 		return STATUS_NOT_FOUND;
 	}
 
@@ -527,15 +495,12 @@ NTSTATUS RegPreQueryMultipleValue(PVOID context, PREG_QUERY_MULTIPLE_VALUE_KEY_I
 	UNREFERENCED_PARAMETER(context);
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
-	{
-		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return STATUS_SUCCESS;
-	}
 
 	status = CmCallbackGetKeyObjectID(&g_regCookie, info->Object, NULL, &regPath);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Registry name query failed with code:%08x\n", status);
+		LogWarning("Error, registry name query failed with code:%08x", status);
 		return STATUS_SUCCESS;
 	}
 
@@ -544,7 +509,7 @@ NTSTATUS RegPreQueryMultipleValue(PVOID context, PREG_QUERY_MULTIPLE_VALUE_KEY_I
 		incIndex = 0;
 		if (CheckExcludeListRegKeyValueName(g_excludeRegValueContext, (PUNICODE_STRING)regPath, info->ValueEntries[i].ValueName, &incIndex))
 		{
-			DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! found %wZ\\%wZ (inc: %d)\n", regPath, info->ValueEntries[i].ValueName, incIndex);
+			LogTrace("Registry value has been hidden: %wZ\\%wZ (inc: %d)", regPath, info->ValueEntries[i].ValueName, incIndex);
 			return STATUS_NOT_FOUND;
 		}
 	}
@@ -693,7 +658,7 @@ NTSTATUS InitializeRegistryFilter(PDRIVER_OBJECT DriverObject)
 	status = InitializeExcludeListContext(&g_excludeRegKeyContext, ExcludeRegKey);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": exclude registry key list initialization failed with code:%08x\n", status);
+		LogError("Error, exclude registry key list initialization failed with code:%08x", status);
 		return status;
 	}
 
@@ -708,7 +673,7 @@ NTSTATUS InitializeRegistryFilter(PDRIVER_OBJECT DriverObject)
 	status = InitializeExcludeListContext(&g_excludeRegValueContext, ExcludeRegValue);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": exclude registry value list initialization failed with code:%08x\n", status);
+		LogError("Error, exclude registry value list initialization failed with code:%08x", status);
 		DestroyExcludeListContext(g_excludeRegKeyContext);
 		return status;
 	}
@@ -728,13 +693,14 @@ NTSTATUS InitializeRegistryFilter(PDRIVER_OBJECT DriverObject)
 	status = CmRegisterCallbackEx(&RegistryFilterCallback, &altitude, DriverObject, NULL, &g_regCookie, NULL);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Registry filter registration failed with code:%08x\n", status);
+		LogError("Error, registry filter registration failed with code:%08x", status);
 		DestroyExcludeListContext(g_excludeRegKeyContext);
 		DestroyExcludeListContext(g_excludeRegValueContext);
 		return status;
 	}
 
 	g_regFilterInited = TRUE;
+	LogTrace("Initialization is completed");
 	return status;
 }
 
@@ -747,13 +713,13 @@ NTSTATUS DestroyRegistryFilter()
 
 	status = CmUnRegisterCallback(g_regCookie);
 	if (!NT_SUCCESS(status))
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Registry filter unregistration failed with code:%08x\n", status);
+		LogWarning("Warning, registry filter unregistration failed with code:%08x", status);
 
 	DestroyExcludeListContext(g_excludeRegKeyContext);
 	DestroyExcludeListContext(g_excludeRegValueContext);
 
 	g_regFilterInited = FALSE;
-
+	LogTrace("Deinitialization is completed");
 	return status;
 }
 

@@ -4,6 +4,7 @@
 #include "Device.h"
 #include "DeviceAPI.h"
 #include "Driver.h"
+#include "Helper.h"
 
 BOOLEAN g_deviceInited = FALSE;
 PDEVICE_OBJECT g_deviceObject = NULL;
@@ -93,7 +94,7 @@ NTSTATUS AddHiddenObject(PHid_HideObjectPacket Packet, USHORT Size, PULONGLONG O
 		status = AddHiddenDir(&path, ObjId);
 		break;
 	default:
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", Packet->objType);
+		LogWarning("Unsupported object type: %u", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
 	}
 
@@ -124,7 +125,7 @@ NTSTATUS RemoveHiddenObject(PHid_UnhideObjectPacket Packet, USHORT Size)
 		status = RemoveHiddenDir(Packet->id);
 		break;
 	default:
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", Packet->objType);
+		LogWarning("Unsupported object type: %u", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
 	}
 
@@ -155,7 +156,7 @@ NTSTATUS RemoveAllHiddenObjects(PHid_UnhideAllObjectsPacket Packet, USHORT Size)
 		status = RemoveAllHiddenDirs();
 		break;
 	default:
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", Packet->objType);
+		LogWarning("Unsupported object type: %u", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
 	}
 
@@ -200,7 +201,7 @@ NTSTATUS AddPsObject(PHid_AddPsObjectPacket Packet, USHORT Size, PULONGLONG ObjI
 		status = AddProtectedImage(&path, Packet->inheritType, (Packet->applyForProcesses ? TRUE : FALSE), ObjId);
 		break;
 	default:
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", Packet->objType);
+		LogWarning("Unsupported object type: %u", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
 	}
 
@@ -233,7 +234,7 @@ NTSTATUS GetPsObjectInfo(PHid_GetPsObjectInfoPacket Packet, USHORT Size, PHid_Ge
 		status = GetProtectedProcessState((HANDLE)Packet->procId, &inheritType, &enable);
 		break;
 	default:
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", Packet->objType);
+		LogWarning("Unsupported object type: %u", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
 	}
 
@@ -264,7 +265,7 @@ NTSTATUS SetPsObjectInfo(PHid_SetPsObjectInfoPacket Packet, USHORT Size)
 		status = SetProtectedProcessState((HANDLE)Packet->procId, Packet->inheritType, (Packet->enable ? TRUE : FALSE));
 		break;
 	default:
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", Packet->objType);
+		LogWarning("Unsupported object type: %u", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
 	}
 
@@ -289,7 +290,7 @@ NTSTATUS RemovePsObject(PHid_RemovePsObjectPacket Packet, USHORT Size)
 		status = RemoveProtectedImage(Packet->id);
 		break;
 	default:
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", Packet->objType);
+		LogWarning("Unsupported object type: %u", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
 	}
 
@@ -314,7 +315,7 @@ NTSTATUS RemoveAllPsObjects(PHid_RemoveAllPsObjectsPacket Packet, USHORT Size)
 		status = RemoveAllProtectedImages();
 		break;
 	default:
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Unsupported object type: %u\n", Packet->objType);
+		LogWarning("Unsupported object type: %u", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
 	}
 
@@ -423,7 +424,7 @@ NTSTATUS IrpDeviceControlHandler(PDEVICE_OBJECT  DeviceObject, PIRP  Irp)
 		break;
 	// Other
 	default:
-		DbgPrint("FsFilter1!" __FUNCTION__ ": unknown IOCTL code:%08x\n", ioctl);
+		LogWarning("Unknown IOCTL code:%08x", ioctl);
 		status = STATUS_INVALID_PARAMETER;
 		goto EndProc;
 	}
@@ -435,7 +436,7 @@ EndProc:
 	{
 		if (outputDataSize > outputDataMaxSize)
 		{
-			DbgPrint("FsFilter1!" __FUNCTION__ ": An internal error that looks like a stack corruption!\n");
+			LogWarning("An internal error, looks like a stack corruption!");
 			outputDataSize = outputDataMaxSize;
 			result.status = (ULONG)STATUS_PARTIAL_COPY;
 		}
@@ -467,7 +468,7 @@ NTSTATUS InitializeDevice(PDRIVER_OBJECT DriverObject)
 	status = IoCreateDevice(DriverObject, 0, &deviceName, FILE_DEVICE_UNKNOWN, 0, FALSE, &deviceObject);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": device creation failed with code:%08x\n", status);
+		LogError("Error, device creation failed with code:%08x", status);
 		return status;
 	}
 
@@ -475,7 +476,7 @@ NTSTATUS InitializeDevice(PDRIVER_OBJECT DriverObject)
 	if (!NT_SUCCESS(status))
 	{
 		IoDeleteDevice(deviceObject);
-		DbgPrint("FsFilter1!" __FUNCTION__ ": symbolic link creation failed with code:%08x\n", status);
+		LogError("Error, symbolic link creation failed with code:%08x", status);
 		return status;
 	}
 
@@ -486,6 +487,7 @@ NTSTATUS InitializeDevice(PDRIVER_OBJECT DriverObject)
 	g_deviceObject = deviceObject;
 	g_deviceInited = TRUE;
 
+	LogTrace("Initialization is completed");
 	return status;
 }
 
@@ -499,11 +501,12 @@ NTSTATUS DestroyDevice()
 
 	status = IoDeleteSymbolicLink(&dosDeviceName);
 	if (!NT_SUCCESS(status))
-		DbgPrint("FsFilter1!" __FUNCTION__ ": symbolic link deletion failed with code:%08x\n", status);
+		LogWarning("Error, symbolic link deletion failed with code:%08x", status);
 
 	IoDeleteDevice(g_deviceObject);
 
 	g_deviceInited = FALSE;
 
+	LogTrace("Deinitialization is completed");
 	return status;
 }

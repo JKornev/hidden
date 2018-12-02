@@ -80,7 +80,7 @@ NTSTATUS FilterSetup(PCFLT_RELATED_OBJECTS FltObjects, FLT_INSTANCE_SETUP_FLAGS 
 	UNREFERENCED_PARAMETER(VolumeDeviceType);
 	UNREFERENCED_PARAMETER(VolumeFilesystemType);
 
-	DbgPrint("FsFilter1!" __FUNCTION__ ": Entered %d\n", (UINT32)KeGetCurrentIrql());
+	LogTrace("Attach to a new device (flags:%x, device:%d, fs:%d)", (ULONG)Flags, (ULONG)VolumeDeviceType, (ULONG)VolumeFilesystemType);
 
 	return STATUS_SUCCESS;
 }
@@ -106,14 +106,10 @@ FLT_PREOP_CALLBACK_STATUS FltCreatePreOperation(
 	if (!IsDriverEnabled())
 		return FLT_PREOP_SUCCESS_NO_CALLBACK;
 
-	//DbgPrint("!!!!! " __FUNCTION__ ": Entered %d\n", (ULONG)KeGetCurrentIrql());
-	//DbgPrint("%wZ %x\n", &Data->Iopb->TargetFileObject->FileName, Data->Iopb->Parameters.Create.Options);
+	LogInfo("%wZ (options:%x)", &Data->Iopb->TargetFileObject->FileName, Data->Iopb->Parameters.Create.Options);
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
-	{
-		//DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %d\n", PsGetCurrentProcessId());
 		return FLT_PREOP_SUCCESS_NO_CALLBACK;
-	}
 
 	options = Data->Iopb->Parameters.Create.Options & 0x00FFFFFF;
 	disposition = (Data->Iopb->Parameters.Create.Options & 0xFF000000) >> 24;
@@ -122,7 +118,7 @@ FLT_PREOP_CALLBACK_STATUS FltCreatePreOperation(
 	if (!NT_SUCCESS(status))
 	{
 		if (status != STATUS_OBJECT_PATH_NOT_FOUND)
-			DbgPrint("FsFilter1!" __FUNCTION__ ": FltGetFileNameInformation failed with code:%08x\n", status);
+			LogWarning("FltGetFileNameInformation() failed with code:%08x", status);
 
 		return FLT_PREOP_SUCCESS_NO_CALLBACK;
 	}
@@ -142,7 +138,7 @@ FLT_PREOP_CALLBACK_STATUS FltCreatePreOperation(
 
 	if (neededPrevent)
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": Create file\\dir operation canceled for: %wZ, %p\n", &Data->Iopb->TargetFileObject->FileName, PsGetCurrentProcessId());
+		LogTrace("Operation has been cancelled for: %wZ", &Data->Iopb->TargetFileObject->FileName);
 		Data->IoStatus.Status = STATUS_NO_SUCH_FILE;
 		return FLT_PREOP_COMPLETE;
 	}
@@ -158,8 +154,7 @@ FLT_PREOP_CALLBACK_STATUS FltDirCtrlPreOperation(PFLT_CALLBACK_DATA Data, PCFLT_
 	if (!IsDriverEnabled())
 		return FLT_POSTOP_FINISHED_PROCESSING;
 
-	//DbgPrint("!!!!! " __FUNCTION__ ": Entered\n");
-	//DbgPrint("%wZ\n", &Data->Iopb->TargetFileObject->FileName);
+	LogInfo("%wZ", &Data->Iopb->TargetFileObject->FileName);
 
 	if (Data->Iopb->MinorFunction != IRP_MN_QUERY_DIRECTORY)
 		return FLT_PREOP_SUCCESS_NO_CALLBACK;
@@ -196,19 +191,18 @@ FLT_POSTOP_CALLBACK_STATUS FltDirCtrlPostOperation(PFLT_CALLBACK_DATA Data, PCFL
 	if (!NT_SUCCESS(Data->IoStatus.Status))
 		return FLT_POSTOP_FINISHED_PROCESSING;
 
-	//DbgPrint("!!!!! " __FUNCTION__ ": Entered %d\n", (UINT32)KeGetCurrentIrql());
-	//DbgPrint("%wZ\n", &Data->Iopb->TargetFileObject->FileName);
+	LogInfo("%wZ", &Data->Iopb->TargetFileObject->FileName);
 
 	if (IsProcessExcluded(PsGetCurrentProcessId()))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": !!!!! process excluded %p\n", PsGetCurrentProcessId());
+		LogTrace("Operation is skipped for excluded process");
 		return FLT_POSTOP_FINISHED_PROCESSING;
 	}
 
 	status = FltGetFileNameInformation(Data, FLT_FILE_NAME_NORMALIZED, &fltName);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": FltGetFileNameInformation failed with code:%08x\n", status);
+		LogWarning("FltGetFileNameInformation() failed with code:%08x", status);
 		return FLT_POSTOP_FINISHED_PROCESSING;
 	}
 
@@ -312,7 +306,7 @@ NTSTATUS CleanFileFullDirectoryInformation(PFILE_FULL_DIR_INFORMATION info, PFLT
 				}
 			}
 
-			DbgPrint("FsFilter1!" __FUNCTION__ ": removed: %wZ\\%wZ\n", &fltName->Name, &fileName);
+			LogTrace("Removed from query: %wZ\\%wZ", &fltName->Name, &fileName);
 
 			if (retn)
 				return status;
@@ -396,7 +390,7 @@ NTSTATUS CleanFileBothDirectoryInformation(PFILE_BOTH_DIR_INFORMATION info, PFLT
 				}
 			}
 
-			DbgPrint("FsFilter1!" __FUNCTION__ ": removed: %wZ\\%wZ\n", &fltName->Name, &fileName);
+			LogTrace("Removed from query: %wZ\\%wZ", &fltName->Name, &fileName);
 
 			if (retn)
 				return status;
@@ -480,7 +474,7 @@ NTSTATUS CleanFileDirectoryInformation(PFILE_DIRECTORY_INFORMATION info, PFLT_FI
 				}
 			}
 
-			DbgPrint("FsFilter1!" __FUNCTION__ ": removed: %wZ\\%wZ\n", &fltName->Name, &fileName);
+			LogTrace("Removed from query: %wZ\\%wZ", &fltName->Name, &fileName);
 
 			if (retn)
 				return status;
@@ -564,7 +558,7 @@ NTSTATUS CleanFileIdFullDirectoryInformation(PFILE_ID_FULL_DIR_INFORMATION info,
 				}
 			}
 
-			DbgPrint("FsFilter1!" __FUNCTION__ ": removed: %wZ\\%wZ\n", &fltName->Name, &fileName);
+			LogTrace("Removed from query: %wZ\\%wZ", &fltName->Name, &fileName);
 
 			if (retn)
 				return status;
@@ -648,7 +642,7 @@ NTSTATUS CleanFileIdBothDirectoryInformation(PFILE_ID_BOTH_DIR_INFORMATION info,
 				}
 			}
 
-			DbgPrint("FsFilter1!" __FUNCTION__ ": removed: %wZ\\%wZ\n", &fltName->Name, &fileName);
+			LogTrace("Removed from query: %wZ\\%wZ", &fltName->Name, &fileName);
 
 			if (retn)
 				return status;
@@ -685,7 +679,7 @@ NTSTATUS CleanFileNamesInformation(PFILE_NAMES_INFORMATION info, PFLT_FILE_NAME_
 		fileName.Length = (USHORT)info->FileNameLength;
 		fileName.MaximumLength = (USHORT)info->FileNameLength;
 
-		//TODO: check, are there can be directories?
+		//TODO: check, can there be directories?
 		if (CheckExcludeListDirFile(g_excludeFileContext, &fltName->Name, &fileName))
 		{
 			BOOLEAN retn = FALSE;
@@ -728,7 +722,7 @@ NTSTATUS CleanFileNamesInformation(PFILE_NAMES_INFORMATION info, PFLT_FILE_NAME_
 				}
 			}
 
-			DbgPrint("FsFilter1!" __FUNCTION__ ": removed: %wZ\\%wZ\n", &fltName->Name, &fileName);
+			LogTrace("Removed from query: %wZ\\%wZ", &fltName->Name, &fileName);
 
 			if (retn)
 				return status;
@@ -769,14 +763,12 @@ NTSTATUS InitializeFSMiniFilter(PDRIVER_OBJECT DriverObject)
 	UINT32 i;
 	ExcludeEntryId id;
 
-	DbgPrint("FsFilter1!" __FUNCTION__ ": Entered %d\n", (UINT32)KeGetCurrentIrql());
-
 	// Initialize and fill exclude file\dir lists 
 
 	status = InitializeExcludeListContext(&g_excludeFileContext, ExcludeFile);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": exclude file list initialization failed with code:%08x\n", status);
+		LogError("Exclude file list initialization failed with code:%08x", status);
 		return status;
 	}
 
@@ -791,7 +783,7 @@ NTSTATUS InitializeFSMiniFilter(PDRIVER_OBJECT DriverObject)
 	status = InitializeExcludeListContext(&g_excludeDirectoryContext, ExcludeDirectory);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": exclude file list initialization failed with code:%08x\n", status);
+		LogError("Exclude file list initialization failed with code:%08x", status);
 		DestroyExcludeListContext(g_excludeFileContext);
 		return status;
 	}
@@ -812,9 +804,13 @@ NTSTATUS InitializeFSMiniFilter(PDRIVER_OBJECT DriverObject)
 		status = FltStartFiltering(gFilterHandle);
 		if (!NT_SUCCESS(status))
 		{
-			DbgPrint("FsFilter1!" __FUNCTION__ ": can't start filtering, code:%08x\n", status);
+			LogError("Error, can't start filtering, code:%08x", status);
 			FltUnregisterFilter(gFilterHandle);
 		}
+	}
+	else
+	{
+		LogError("Error, can't register filter, code:%08x", status);
 	}
 
 	if (!NT_SUCCESS(status))
@@ -826,13 +822,12 @@ NTSTATUS InitializeFSMiniFilter(PDRIVER_OBJECT DriverObject)
 
 	g_fsMonitorInited = TRUE;
 
+	LogTrace("Initialization is completed");
 	return status;
 }
 
 NTSTATUS DestroyFSMiniFilter()
 {
-	DbgPrint("FsFilter1!" __FUNCTION__ ": Entered %d\n", (UINT32)KeGetCurrentIrql());
-
 	if (!g_fsMonitorInited)
 		return STATUS_NOT_FOUND;
 
@@ -843,6 +838,7 @@ NTSTATUS DestroyFSMiniFilter()
 	DestroyExcludeListContext(g_excludeDirectoryContext);
 	g_fsMonitorInited = FALSE;
 
+	LogTrace("Deitialization is completed");
 	return STATUS_SUCCESS;
 }
 
@@ -858,20 +854,23 @@ NTSTATUS AddHiddenFile(PUNICODE_STRING FilePath, PULONGLONG ObjId)
 
 	if (!normalized.Buffer)
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": error, can't allocate buffer\n");
+		LogWarning("Error, can't allocate buffer");
 		return STATUS_MEMORY_NOT_ALLOCATED;
 	}
 
 	status = NormalizeDevicePath(FilePath, &normalized);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, FilePath);
+		LogWarning("Path normalization failed with code:%08x, path:%wZ", status, FilePath);
 		ExFreePoolWithTag(normalized.Buffer, FSFILTER_ALLOC_TAG);
 		return status;
 	}
 
-	DbgPrint("FsFilter1!" __FUNCTION__ ": add file:%wZ\n", &normalized);
 	status = AddExcludeListFile(g_excludeFileContext, &normalized, ObjId, 0);
+	if (NT_SUCCESS(status))
+		LogTrace("Added hidden file:%wZ", &normalized);
+	else
+		LogTrace("Adding hidden file failed with code:%08x, path:%wZ", status, &normalized);
 
 	ExFreePoolWithTag(normalized.Buffer, FSFILTER_ALLOC_TAG);
 
@@ -880,12 +879,24 @@ NTSTATUS AddHiddenFile(PUNICODE_STRING FilePath, PULONGLONG ObjId)
 
 NTSTATUS RemoveHiddenFile(ULONGLONG ObjId)
 {
-	return RemoveExcludeListEntry(g_excludeFileContext, ObjId);
+	NTSTATUS status = RemoveExcludeListEntry(g_excludeFileContext, ObjId);
+	if (NT_SUCCESS(status))
+		LogTrace("Hidden file is removed, id:%lld", ObjId);
+	else
+		LogTrace("Can't remove hidden file, code:%08x, id:%lld", status, ObjId);
+
+	return status;
 }
 
 NTSTATUS RemoveAllHiddenFiles()
 {
-	return RemoveAllExcludeListEntries(g_excludeFileContext);
+	NTSTATUS status = RemoveAllExcludeListEntries(g_excludeFileContext);
+	if (NT_SUCCESS(status))
+		LogTrace("All hidden files are removed");
+	else
+		LogTrace("Can't remove all hidden files, code:%08x", status);
+
+	return status;
 }
 
 NTSTATUS AddHiddenDir(PUNICODE_STRING DirPath, PULONGLONG ObjId)
@@ -900,20 +911,24 @@ NTSTATUS AddHiddenDir(PUNICODE_STRING DirPath, PULONGLONG ObjId)
 
 	if (!normalized.Buffer)
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": error, can't allocate buffer\n");
+		LogWarning("Error, can't allocate buffer");
 		return STATUS_MEMORY_NOT_ALLOCATED;
 	}
 
 	status = NormalizeDevicePath(DirPath, &normalized);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, DirPath);
+		LogWarning("Path normalization failed with code:%08x, path:%wZ\n", status, DirPath);
 		ExFreePoolWithTag(normalized.Buffer, FSFILTER_ALLOC_TAG);
 		return status;
 	}
 
-	DbgPrint("FsFilter1!" __FUNCTION__ ": add dir:%wZ\n", &normalized);
 	status = AddExcludeListDirectory(g_excludeDirectoryContext, &normalized, ObjId, 0);
+	if (NT_SUCCESS(status))
+		LogTrace("Added hidden dir:%wZ", &normalized);
+	else
+		LogTrace("Adding hidden dir failed with code:%08x, path:%wZ", status, &normalized);
+
 	ExFreePoolWithTag(normalized.Buffer, FSFILTER_ALLOC_TAG);
 
 	return status;
@@ -921,10 +936,22 @@ NTSTATUS AddHiddenDir(PUNICODE_STRING DirPath, PULONGLONG ObjId)
 
 NTSTATUS RemoveHiddenDir(ULONGLONG ObjId)
 {
-	return RemoveExcludeListEntry(g_excludeDirectoryContext, ObjId);
+	NTSTATUS status = RemoveExcludeListEntry(g_excludeDirectoryContext, ObjId);
+	if (NT_SUCCESS(status))
+		LogTrace("Hidden dir is removed, id:%lld", ObjId);
+	else
+		LogTrace("Can't remove hidden dir, code:%08x, id:%lld", status, ObjId);
+
+	return status;
 }
 
 NTSTATUS RemoveAllHiddenDirs()
 {
-	return RemoveAllExcludeListEntries(g_excludeDirectoryContext);
+	NTSTATUS status = RemoveAllExcludeListEntries(g_excludeDirectoryContext);
+	if (NT_SUCCESS(status))
+		LogTrace("All hidden dirs are removed");
+	else
+		LogTrace("Can't remove all hidden dirs, code:%08x", status);
+
+	return status;
 }

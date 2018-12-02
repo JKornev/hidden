@@ -93,7 +93,7 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 	status = QuerySystemInformation(SystemProcessInformation, &processInfo, &size);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": query system information(pslist) failed with code:%08x\n", status);
+		LogError("Error, query system information(pslist) failed with code:%08x", status);
 		return status;
 	}
 
@@ -124,7 +124,7 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 		status = ZwOpenProcess(&hProcess, 0x1000/*PROCESS_QUERY_LIMITED_INFORMATION*/, &attribs, &clientId);
 		if (!NT_SUCCESS(status))
 		{
-			DbgPrint("FsFilter1!" __FUNCTION__ ": can't open process (pid:%p) failed with code:%08x\n", processInfo->ProcessId, status);
+			LogWarning("Warning, can't open process (pid:%p) failed with code:%08x", processInfo->ProcessId, status);
 			offset = processInfo->NextEntryOffset;
 			continue;
 		}
@@ -134,7 +134,7 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 
 		if (!NT_SUCCESS(status))
 		{
-			DbgPrint("FsFilter1!" __FUNCTION__ ": query process information(pid:%p) failed with code:%08x\n", processInfo->ProcessId, status);
+			LogWarning("Warning, query process information(pid:%p) failed with code:%08x", processInfo->ProcessId, status);
 			offset = processInfo->NextEntryOffset;
 			continue;
 		}
@@ -144,20 +144,20 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 		RtlZeroMemory(&entry, sizeof(entry));
 		entry.processId = processInfo->ProcessId;
 
-		DbgPrint("FsFilter1!" __FUNCTION__ ": add process: %p, %wZ\n", processInfo->ProcessId, procName);
+		LogTrace("New process: %p, %wZ", processInfo->ProcessId, procName);
 
 		InitProcessEntryCallback(&entry, procName, processInfo->InheritedFromProcessId);
 		if (!AddProcessToProcessTable(&entry))
-			DbgPrint("FsFilter1!" __FUNCTION__ ": can't add process(pid:%p) to process table\n", processInfo->ProcessId);
+			LogWarning("Warning, can't add process(pid:%p) to process table", processInfo->ProcessId);
 
 		if (entry.excluded)
-			DbgPrint("FsFilter1!" __FUNCTION__ ": excluded process:%p\n", entry.processId);
+			LogTrace(" excluded process:%p", entry.processId);
 
 		if (entry.protected)
-			DbgPrint("FsFilter1!" __FUNCTION__ ": protected process:%p\n", entry.processId);
+			LogTrace(" protected process:%p", entry.processId);
 
 		if (entry.subsystem)
-			DbgPrint("FsFilter1!" __FUNCTION__ ": subsystem process:%p\n", entry.processId);
+			LogTrace(" subsystem process:%p", entry.processId);
 
 		// Go to next
 
@@ -167,6 +167,7 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 	while (offset);
 
 	FreeInformation(first);
+	LogTrace("Initialization is completed");
 	return status;
 }
 
@@ -180,8 +181,9 @@ VOID DestroyProcessTable()
 		entry = RtlEnumerateGenericTableWithoutSplayingAvl(&g_processTable, &restartKey))
 	{
 		if (!RtlDeleteElementGenericTableAvl(&g_processTable, entry))
-			DbgPrint("FsFilter1!" __FUNCTION__ ": can't remove element from process table, looks like memory leak\n");
+			LogWarning("Warning, can't remove element from process table, looks like memory leak");
 
 		restartKey = NULL; // reset enum
 	}
+	LogTrace("Deinitialization is completed");
 }

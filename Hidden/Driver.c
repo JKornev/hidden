@@ -50,28 +50,29 @@ NTSTATUS InitializeStealthMode(PDRIVER_OBJECT DriverObject, PUNICODE_STRING Regi
 	
 	if (!normalized.Buffer)
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": error, can't allocate buffer\n");
+		LogError("Error, can't allocate buffer");
 		return STATUS_MEMORY_NOT_ALLOCATED;
 	}
 
 	status = NormalizeDevicePath(&LdrEntry->FullModuleName, &normalized);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": path normalization failed with code:%08x, path:%wZ\n", status, &LdrEntry->FullModuleName);
+		LogError("Error, path normalization failed with code:%08x, path:%wZ", status, &LdrEntry->FullModuleName);
 		ExFreePoolWithTag(normalized.Buffer, DRIVER_ALLOC_TAG);
 		return status;
 	}
 
 	status = AddHiddenFile(&normalized, &g_hiddenDriverFileId);
 	if (!NT_SUCCESS(status))
-		DbgPrint("FsFilter1!" __FUNCTION__ ": can't hide self registry key\n");
+		LogWarning("Error, can't hide self registry key");
 
 	ExFreePoolWithTag(normalized.Buffer, DRIVER_ALLOC_TAG);
 
 	status = AddHiddenRegKey(RegistryPath, &g_hiddenRegConfigId);
 	if (!NT_SUCCESS(status))
-		DbgPrint("FsFilter1!" __FUNCTION__ ": can't hide self registry key\n");
+		LogWarning("Error, can't hide self registry key");
 
+	LogTrace("Stealth mode has been activated");
 	return STATUS_SUCCESS;
 }
 
@@ -99,29 +100,29 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 
 	status = InitializeConfigs(RegistryPath);
 	if (!NT_SUCCESS(status))
-		DbgPrint("FsFilter1!" __FUNCTION__ ": can't initialize configs\n");
+		LogWarning("Error, can't initialize configs");
 
 	EnableDisableDriver(CfgGetDriverState());
 
 	status = InitializePsMonitor(DriverObject);
 	if (!NT_SUCCESS(status))
-		DbgPrint("FsFilter1!" __FUNCTION__ ": object monitor didn't start\n");
+		LogWarning("Error, object monitor haven't started");
 
 	status = InitializeFSMiniFilter(DriverObject);
 	if (!NT_SUCCESS(status))
-		DbgPrint("FsFilter1!" __FUNCTION__ ": file-system mini-filter didn't start\n");
+		LogWarning("Error, file-system mini-filter haven't started");
 
 	status = InitializeRegistryFilter(DriverObject);
 	if (!NT_SUCCESS(status))
-		DbgPrint("FsFilter1!" __FUNCTION__ ": registry filter didn't start\n");
+		LogWarning("Error, registry filter haven't started");
 
 	status = InitializeDevice(DriverObject);
 	if (!NT_SUCCESS(status))
-		DbgPrint("FsFilter1!" __FUNCTION__ ": can't create device\n");
+		LogWarning("Error, can't create device");
 
 	status = InitializeStealthMode(DriverObject, RegistryPath);
 	if (!NT_SUCCESS(status))
-		DbgPrint("FsFilter1!" __FUNCTION__ ": can't activate stealth mode\n");
+		LogWarning("Error, can't activate stealth mode");
 
 	DestroyConfigs();
 

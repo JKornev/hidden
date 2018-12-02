@@ -1,4 +1,5 @@
 #include "PsRules.h"
+#include "Helper.h"
 
 #define PSRULE_ALLOC_TAG 'lRsP'
 
@@ -50,7 +51,7 @@ NTSTATUS InitializePsRuleListContext(PPsRulesContext pRuleContext)
 	context = (PPsRulesInternalContext)ExAllocatePoolWithTag(NonPagedPool, sizeof(PsRulesInternalContext), PSRULE_ALLOC_TAG);
 	if (!context)
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": can't allocate memory\n");
+		LogWarning("Error, can't allocate memory");
 		return STATUS_MEMORY_NOT_ALLOCATED;
 	}
 
@@ -80,7 +81,7 @@ NTSTATUS AddRuleToPsRuleList(PsRulesContext RuleContext, PUNICODE_STRING ImgPath
 
 	if (InheritType > PsRuleTypeMax)
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": invalid inherit type: %d\n", InheritType);
+		LogWarning("Error, invalid inherit type: %d", InheritType);
 		return STATUS_INVALID_PARAMETER_3;
 	}
 
@@ -88,7 +89,7 @@ NTSTATUS AddRuleToPsRuleList(PsRulesContext RuleContext, PUNICODE_STRING ImgPath
 	entry = (PPsRuleEntry)ExAllocatePoolWithTag(NonPagedPool, entryLen, PSRULE_ALLOC_TAG);
 	if (!entry)
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": can't allocate memory\n");
+		LogWarning("Error, can't allocate memory");
 		return STATUS_MEMORY_NOT_ALLOCATED;
 	}
 
@@ -108,14 +109,14 @@ NTSTATUS AddRuleToPsRuleList(PsRulesContext RuleContext, PUNICODE_STRING ImgPath
 	if (!buf)
 	{
 		ExFreePoolWithTag(entry, PSRULE_ALLOC_TAG);
-		DbgPrint("FsFilter1!" __FUNCTION__ ": can't allocate memory for a new element\n");
+		LogWarning("Error, can't allocate memory for a new element");
 		return STATUS_MEMORY_NOT_ALLOCATED;
 	}
 
 	if (!newElem)
 	{
 		ExFreePoolWithTag(entry, PSRULE_ALLOC_TAG);
-		DbgPrint("FsFilter1!" __FUNCTION__ ": this path already in a rules list\n");
+		LogWarning("Error, this path already in a rules list");
 		return STATUS_DUPLICATE_NAME;
 	}
 
@@ -140,7 +141,7 @@ NTSTATUS RemoveRuleFromPsRuleList(PsRulesContext RuleContext, PsRuleEntryId Entr
 		if (entry->guid == EntryId)
 		{
 			if (!RtlDeleteElementGenericTableAvl(&context->table, pentry))
-				DbgPrint("FsFilter1!" __FUNCTION__ ": can't remove element from process rules table, looks like memory leak\n");
+				LogWarning("Error, can't remove element from process rules table, looks like memory leak");
 			else
 				ExFreePoolWithTag(entry, PSRULE_ALLOC_TAG);
 
@@ -169,7 +170,7 @@ NTSTATUS RemoveAllRulesFromPsRuleList(PsRulesContext RuleContext)
 	{
 		entry = *pentry;
 		if (!RtlDeleteElementGenericTableAvl(&context->table, pentry))
-			DbgPrint("FsFilter1!" __FUNCTION__ ": can't remove element from process rules table, looks like memory leak\n");
+			LogWarning("Error, can't remove element from process rules table, looks like memory leak");
 		else
 			ExFreePoolWithTag(entry, PSRULE_ALLOC_TAG);
 

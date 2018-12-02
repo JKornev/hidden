@@ -1,4 +1,5 @@
 #include "ExcludeList.h"
+#include "Helper.h"
 //#include <Ntifs.h>
 
 #define EXCLUDE_ALLOC_TAG 'LcxE'
@@ -44,14 +45,14 @@ NTSTATUS InitializeExcludeListContext(PExcludeContext Context, UINT32 Type)
 
 	if (Type >= ExcludeMaxType)
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": error, invalid exclude list type: %d\n", Type);
+		LogWarning("Error, invalid exclude list type: %d", Type);
 		return STATUS_INVALID_MEMBER;
 	}
 
 	cntx = (PEXCLUDE_FILE_CONTEXT)ExAllocatePoolWithTag(NonPagedPool, sizeof(EXCLUDE_FILE_CONTEXT), EXCLUDE_ALLOC_TAG);
 	if (!cntx)
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": error, can't allocate memory for context: %p\n", Context);
+		LogWarning("Error, can't allocate memory for context: %p", Context);
 		return STATUS_ACCESS_DENIED;
 	}
 
@@ -103,13 +104,13 @@ NTSTATUS AddExcludeListEntry(ExcludeContext Context, PUNICODE_STRING FilePath, U
 
 	if (cntx->type != Type)
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": warning, type isn't equal: %d != %d\n", cntx->type, Type);
+		LogWarning("Warning, type isn't equal: %d != %d", cntx->type, Type);
 		return STATUS_INVALID_MEMBER;
 	}
 
 	if (FilePath->Length == 0 || FilePath->Length >= MAX_PATH_SIZE)
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": warning, invalid string size : %d\n", (UINT32)FilePath->Length);
+		LogWarning("Warning, invalid string size : %d", (UINT32)FilePath->Length);
 		return STATUS_ACCESS_DENIED;
 	}
 
@@ -119,7 +120,7 @@ NTSTATUS AddExcludeListEntry(ExcludeContext Context, PUNICODE_STRING FilePath, U
 	entry = ExAllocatePoolWithTag(NonPagedPool, size, EXCLUDE_ALLOC_TAG);
 	if (entry == NULL)
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": warning, exclude file list is not NULL : %p\n", cntx);
+		LogWarning("Warning, exclude file list is not NULL : %p", cntx);
 		return STATUS_ACCESS_DENIED;
 	}
 
@@ -134,7 +135,7 @@ NTSTATUS AddExcludeListEntry(ExcludeContext Context, PUNICODE_STRING FilePath, U
 	if (!FillDirectoryFromPath(&entry->path, &temp))
 	{
 		ExFreePoolWithTag(entry, EXCLUDE_ALLOC_TAG);
-		DbgPrint("FsFilter1!" __FUNCTION__ ": warning, exclude file list is not NULL : %p\n", cntx);
+		LogWarning("Warning, exclude file list is not NULL : %p", cntx);
 		return STATUS_ACCESS_DENIED;
 	}
 

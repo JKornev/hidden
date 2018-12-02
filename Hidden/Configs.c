@@ -1,4 +1,5 @@
 #include "Configs.h"
+#include "Helper.h"
 
 #define CONFIG_ALLOC_TAG 'gfnC'
 
@@ -41,7 +42,7 @@ NTSTATUS InitializeConfigs(PUNICODE_STRING RegistryPath)
 	status = ZwOpenKey(&hkey, KEY_ALL_ACCESS, &attribs);
 	if (!NT_SUCCESS(status))
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": can't open config registry key, code:%08x\n", status);
+		LogError("Error, can't open config registry key, code:%08x", status);
 		return status;
 	}
 
@@ -64,13 +65,14 @@ NTSTATUS InitializeConfigs(PUNICODE_STRING RegistryPath)
 	g_configContext = (PHidConfigContext)ExAllocatePoolWithTag(NonPagedPool, sizeof(config), CONFIG_ALLOC_TAG);
 	if (!g_configContext)
 	{
-		DbgPrint("FsFilter1!" __FUNCTION__ ": can't allocate memory for the config context\n");
+		LogError("Error, can't allocate memory for the config context");
 		ReleaseConfigContext(&config);
 		return STATUS_NO_MEMORY;
 	}
 
 	RtlCopyMemory(g_configContext, &config, sizeof(config));
 
+	LogTrace("Config is initialized");
 	return STATUS_SUCCESS;
 }
 
@@ -82,6 +84,7 @@ NTSTATUS DestroyConfigs()
 	ReleaseConfigContext(g_configContext);
 	ExFreePoolWithTag(g_configContext, CONFIG_ALLOC_TAG);
 
+	LogTrace("Config is destroyed");
 	return STATUS_SUCCESS;
 }
 
