@@ -153,7 +153,7 @@ OB_PREOP_CALLBACK_STATUS ThreadPreCallback(PVOID RegistrationContext, POB_PRE_OP
 	if (OperationInformation->KernelHandle)
 		return OB_PREOP_SUCCESS;
 
-	LogInfo("Thread object operation, destPid:%d, destTid:%d, srcTid:%d, oper:%s, space:%s",
+	LogInfo("Thread object operation, destPid:%d, destTid:%d, srcPid:%d, oper:%s, space:%s",
 		(ULONG)PsGetThreadProcessId(OperationInformation->Object), 
 		(ULONG)PsGetThreadId(OperationInformation->Object), 
 		(ULONG)PsGetCurrentProcessId(),
@@ -161,7 +161,7 @@ OB_PREOP_CALLBACK_STATUS ThreadPreCallback(PVOID RegistrationContext, POB_PRE_OP
 		(OperationInformation->KernelHandle ? "kernel" : "user")
 	);
 
-	if (!CheckProtectedOperation(PsGetCurrentProcessId(), PsGetProcessId(OperationInformation->Object)))
+	if (!CheckProtectedOperation(PsGetCurrentProcessId(), PsGetThreadProcessId(OperationInformation->Object)))
 	{
 		LogInfo("Allow protected thread access from %d to %d", (ULONG)PsGetCurrentProcessId(), (ULONG)PsGetThreadProcessId(OperationInformation->Object));
 		return OB_PREOP_SUCCESS;
