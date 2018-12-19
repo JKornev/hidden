@@ -207,6 +207,7 @@ NTSTATUS NormalizeDevicePath(PCUNICODE_STRING Path, PUNICODE_STRING Normalized)
 			return status;
 
 		// \Device\Harddisk0\Partition0\Windows -> \Device\Harddisk0\Partition0
+		// Win10: \Device\BootDevice\Windows -> \Device\BootDevice
 
 		winDir.Length = 0;
 		for (i = (resolvedLink.Length - sizeof(WCHAR)) / sizeof(WCHAR); i >= 0; i--)
@@ -222,6 +223,7 @@ NTSTATUS NormalizeDevicePath(PCUNICODE_STRING Path, PUNICODE_STRING Normalized)
 		}
 
 		// \Device\Harddisk0\Partition0 -> \Device\HarddiskVolume1
+		// Win10: \Device\BootDevice -> \Device\HarddiskVolume2
 
 		status = ResolveSymbolicLink(&resolvedLink, Normalized);
 		if (!NT_SUCCESS(status))
