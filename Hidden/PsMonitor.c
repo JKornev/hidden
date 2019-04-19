@@ -129,7 +129,7 @@ OB_PREOP_CALLBACK_STATUS ProcessPreCallback(PVOID RegistrationContext, POB_PRE_O
 
 	if (!CheckProtectedOperation(PsGetCurrentProcessId(), PsGetProcessId(OperationInformation->Object)))
 	{
-		LogInfo("Allow protected process access from %d to %d", (ULONG)PsGetCurrentProcessId(), (ULONG)PsGetThreadProcessId(OperationInformation->Object));
+		LogInfo("Allow protected process access from %d to %d", (ULONG)PsGetCurrentProcessId(), (ULONG)PsGetProcessId(OperationInformation->Object));
 		return OB_PREOP_SUCCESS;
 	}
 
