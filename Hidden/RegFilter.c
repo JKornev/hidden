@@ -314,7 +314,7 @@ BOOLEAN GetNameFromEnumValuePreInfo(KEY_VALUE_INFORMATION_CLASS infoClass, PVOID
 
 NTSTATUS RegPostEnumValue(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 {
-	PREG_ENUMERATE_KEY_INFORMATION preInfo;
+    PREG_ENUMERATE_VALUE_KEY_INFORMATION preInfo;
 	PCUNICODE_STRING regPath;
 	UNICODE_STRING keyName;
 	UINT32 incIndex;
@@ -335,13 +335,13 @@ NTSTATUS RegPostEnumValue(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 		return STATUS_SUCCESS;
 	}
 
-	preInfo = (PREG_ENUMERATE_KEY_INFORMATION)info->PreInformation;
+    preInfo = (PREG_ENUMERATE_VALUE_KEY_INFORMATION)info->PreInformation;
 
-	if (!GetNameFromEnumValuePreInfo(preInfo->KeyInformationClass, preInfo->KeyInformation, &keyName))
+    if (!GetNameFromEnumValuePreInfo(preInfo->KeyValueInformationClass, preInfo->KeyValueInformation, &keyName))
 		return STATUS_SUCCESS;
 
 	incIndex = 0;
-	if (CheckExcludeListRegKeyValueName(g_excludeRegValueContext, (PUNICODE_STRING)regPath, &keyName, &incIndex))
+    if (CheckExcludeListRegKeyValueName(g_excludeRegValueContext, (PUNICODE_STRING)regPath, &keyName, &incIndex))
 		LogTrace("Registry value is going to be hidden in: %wZ (inc: %d)", regPath, incIndex);
 
 	if (incIndex > 0)
@@ -364,11 +364,11 @@ NTSTATUS RegPostEnumValue(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 
 			for (i = 0; infinite; i++)
 			{
-				status = ZwEnumerateValueKey(Key, preInfo->Index + incIndex, preInfo->KeyInformationClass, tempBuffer, preInfo->Length, &resLen);
+                status = ZwEnumerateValueKey(Key, preInfo->Index + incIndex, preInfo->KeyValueInformationClass, tempBuffer, preInfo->Length, &resLen);
 				if (!NT_SUCCESS(status))
 					break;
 
-				if (!GetNameFromEnumValuePreInfo(preInfo->KeyInformationClass, tempBuffer, &keyName))
+                if (!GetNameFromEnumValuePreInfo(preInfo->KeyValueInformationClass, tempBuffer, &keyName))
 					break;
 
 				if (!CheckExcludeListRegKeyValueName(g_excludeRegValueContext, (PUNICODE_STRING)regPath, &keyName, &incIndex))
@@ -376,7 +376,7 @@ NTSTATUS RegPostEnumValue(PVOID context, PREG_POST_OPERATION_INFORMATION info)
 					*preInfo->ResultLength = resLen;
 					__try
 					{
-						RtlCopyMemory(preInfo->KeyInformation, tempBuffer, resLen);
+                        RtlCopyMemory(preInfo->KeyValueInformation, tempBuffer, resLen);
 					}
 					__except (EXCEPTION_EXECUTE_HANDLER)
 					{
