@@ -22,11 +22,11 @@ and so on
 Following guide explains how to make a release win32 build
 1. Open Hidden.sln using Visual Studio 2013
 2. Build **Hidden Package** project with configurations Release, Win32
-3. Open build results folder **%ProjectDir%\Release**
+3. Open build results folder **\<ProjectDir\>\Release**
 
 **Installing**
 
 1. Disable a digital signature enforcement on a test machine (bcdedit /set TESTSIGNING ON)
-2. Copy files from **%ProjectDir%\Release\Hidden Package** to a test machine
+2. Copy files from **\<ProjectDir\>\Release\Hidden Package** to a test machine
 3. Right mouse click on **Hidden.inf** and choose **Install**
 4. Start a driver (sc start hidden)
