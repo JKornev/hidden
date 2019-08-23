@@ -33,7 +33,7 @@ Following guide explains how to make a release win32 build
 
 **Hiding**
 
-A command line tool **hiddencli** is used for managing a driver. You are able to use it for hidding and unhidding objects, changing a driver state and so on.
+A command line tool **hiddencli** is used for managing a driver. You are able to use it for hiding and unhiding objects, changing a driver state and so on.
 
 To hide a calc.exe try this one
 ```
