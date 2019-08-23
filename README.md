@@ -30,3 +30,27 @@ Following guide explains how to make a release win32 build
 2. Copy files from **\<ProjectDir\>\Release\Hidden Package** to a test machine
 3. Right mouse click on **Hidden.inf** and choose **Install**
 4. Start a driver (sc start hidden)
+
+**Hiding**
+
+A command line tool **hiddencli** is used for managing a driver. You are able to use it for hidding and unhidding objects, changing a driver state and so on.
+
+To hide a calc.exe try this one
+```
+hiddencli /hide file c:\Windows\calc.exe
+```
+
+Wanted to hide directory? No problems
+```
+hiddencli /hide dir "c:\Program Files\VMWare"
+```
+
+Registry key?
+```
+hiddencli /hide regkey "HKCU\Software\VMware, Inc."
+```
+
+To get a full help just type
+```
+hiddencli /help
+```
