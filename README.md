@@ -40,7 +40,7 @@ To hide a calc.exe try this one
 hiddencli /hide file c:\Windows\calc.exe
 ```
 
-Wanted to hide directory? No problems
+Want to hide directory? No problems
 ```
 hiddencli /hide dir "c:\Program Files\VMWare"
 ```
