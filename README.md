@@ -37,7 +37,7 @@ A command line tool **hiddencli** is used for managing a driver. You are able to
 
 To hide a calc.exe try this one
 ```
-hiddencli /hide file c:\Windows\calc.exe
+hiddencli /hide file c:\Windows\System32\calc.exe
 ```
 
 Want to hide directory? No problems
