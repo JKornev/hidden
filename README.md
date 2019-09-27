@@ -12,6 +12,9 @@ This toolset is developed like a solution for my reverse engineering and researc
 
 and so on
 
+**System requirements**
+Works on Windows Vista and above, x86 and x64
+
 **Recommended build environment**
 
 - Visual Studio 2013 and above
