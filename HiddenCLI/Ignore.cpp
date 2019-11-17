@@ -31,7 +31,7 @@ void CommandIgnore::LoadArgs(Arguments& args, CommandModeType mode)
 	}
 	else if (object == L"pid")
 	{
-		if (!CommandModeType::Execute)
+		if (mode != CommandModeType::Execute)
 			throw WException(ERROR_INVALID_PARAMETER, L"Error, target 'pid' isn't allowed");
 
 		m_procType = EProcTypes::TypeProcessId;
