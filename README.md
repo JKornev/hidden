@@ -36,6 +36,8 @@ Following guide explains how to make a release win32 build
 4. Start a driver (sc start hidden)
 5. Make sure service is running (sc query hidden)
 
+Important: Keep in mind that the driver bitness have to be the same to an OS bitness
+
 **Hiding**
 
 A command line tool **hiddencli** is used for managing a driver. You are able to use it for hiding and unhiding objects, changing a driver state and so on.
