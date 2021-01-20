@@ -18,8 +18,8 @@ Works on Windows Vista and above, x86 and x64
 
 **Recommended build environment**
 
-- Visual Studio 2013 and above
-- Windows Driver Kit 8.1 and above
+- Visual Studio 2019
+- Windows Driver Kit 10
 
 **Building**
 
