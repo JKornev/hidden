@@ -129,11 +129,11 @@ OB_PREOP_CALLBACK_STATUS ProcessPreCallback(PVOID RegistrationContext, POB_PRE_O
 
 	if (!CheckProtectedOperation(PsGetCurrentProcessId(), PsGetProcessId(OperationInformation->Object)))
 	{
-		LogInfo("Allow protected process access from %d to %d", (ULONG)PsGetCurrentProcessId(), (ULONG)PsGetProcessId(OperationInformation->Object));
+		LogInfo("Allow protected process access from %tu to %tu", (ULONG_PTR)PsGetCurrentProcessId(), (ULONG_PTR)PsGetProcessId(OperationInformation->Object));
 		return OB_PREOP_SUCCESS;
 	}
 
-	LogTrace("Disallow protected process access from %d to %d", (ULONG)PsGetCurrentProcessId(), (ULONG)PsGetProcessId(OperationInformation->Object));
+	LogTrace("Disallow protected process access from %tu to %tu", (ULONG_PTR)PsGetCurrentProcessId(), (ULONG_PTR)PsGetProcessId(OperationInformation->Object));
 
 	if (OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE)
 		OperationInformation->Parameters->CreateHandleInformation.DesiredAccess = (SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION);
@@ -153,21 +153,21 @@ OB_PREOP_CALLBACK_STATUS ThreadPreCallback(PVOID RegistrationContext, POB_PRE_OP
 	if (OperationInformation->KernelHandle)
 		return OB_PREOP_SUCCESS;
 
-	LogInfo("Thread object operation, destPid:%d, destTid:%d, srcPid:%d, oper:%s, space:%s",
-		(ULONG)PsGetThreadProcessId(OperationInformation->Object), 
-		(ULONG)PsGetThreadId(OperationInformation->Object), 
-		(ULONG)PsGetCurrentProcessId(),
+	LogInfo("Thread object operation, destPid:%tu, destTid:%tu, srcPid:%tu, oper:%s, space:%s",
+		(ULONG_PTR)PsGetThreadProcessId(OperationInformation->Object),
+		(ULONG_PTR)PsGetThreadId(OperationInformation->Object),
+		(ULONG_PTR)PsGetCurrentProcessId(),
 		(OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE ? "create" : "dup"),
 		(OperationInformation->KernelHandle ? "kernel" : "user")
 	);
 
 	if (!CheckProtectedOperation(PsGetCurrentProcessId(), PsGetThreadProcessId(OperationInformation->Object)))
 	{
-		LogInfo("Allow protected thread access from %d to %d", (ULONG)PsGetCurrentProcessId(), (ULONG)PsGetThreadProcessId(OperationInformation->Object));
+		LogInfo("Allow protected thread access from %tu to %tu", (ULONG_PTR)PsGetCurrentProcessId(), (ULONG_PTR)PsGetThreadProcessId(OperationInformation->Object));
 		return OB_PREOP_SUCCESS;
 	}
 
-	LogTrace("Disallow protected thread access from %d to %d", (ULONG)PsGetCurrentProcessId(), (ULONG)PsGetThreadProcessId(OperationInformation->Object));
+	LogTrace("Disallow protected thread access from %tu to %tu", (ULONG_PTR)PsGetCurrentProcessId(), (ULONG_PTR)PsGetThreadProcessId(OperationInformation->Object));
 
 	if (OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE)
 		OperationInformation->Parameters->CreateHandleInformation.DesiredAccess = (SYNCHRONIZE | THREAD_QUERY_LIMITED_INFORMATION);
