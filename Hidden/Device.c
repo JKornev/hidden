@@ -185,8 +185,8 @@ NTSTATUS AddPsObject(PHid_AddPsObjectPacket Packet, USHORT Size, PULONGLONG ObjI
 	// Just checking for zero-end string ends in the middle
 	count = Packet->dataSize / sizeof(WCHAR);
 	for (i = 0; i < count; i++)
-	if (path.Buffer[i] == L'\0')
-		break;
+		if (path.Buffer[i] == L'\0')
+			break;
 
 	path.Length = i * sizeof(WCHAR);
 

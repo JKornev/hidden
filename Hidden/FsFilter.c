@@ -152,7 +152,7 @@ FLT_PREOP_CALLBACK_STATUS FltDirCtrlPreOperation(PFLT_CALLBACK_DATA Data, PCFLT_
 	UNREFERENCED_PARAMETER(CompletionContext);
 	
 	if (!IsDriverEnabled())
-		return FLT_POSTOP_FINISHED_PROCESSING;
+		return FLT_PREOP_SUCCESS_NO_CALLBACK;
 
 	LogInfo("%wZ", &Data->Iopb->TargetFileObject->FileName);
 
