@@ -2,15 +2,11 @@
 
 #include "Commands.h"
 
-class CommandProtect : public ICommand
+class CommandProtect : public ICommand, public ProcessParametersParser
 {
 	const wchar_t* m_command = nullptr;
 
 	EProcTypes   m_procType;
-	std::wstring m_targetImage;
-	HidProcId    m_targetProcId;
-	HidPsInheritTypes m_inheritType;
-	bool         m_applyByDefault;
 
 public:
 

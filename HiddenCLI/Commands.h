@@ -4,7 +4,7 @@
 #include "Connection.h"
 #include <memory>
 
-enum CommandModeType {
+enum class CommandModeType {
 	Execute,
 	Install,
 	Uninstall
@@ -40,6 +40,22 @@ public:
 
 	CommandModeType GetModeType();
 	const std::wstring& GetConfigRegistryKeyPath();
+};
+
+class ProcessParametersParser
+{
+protected:
+	std::wstring m_image;
+	HidProcId    m_procId;
+	HidPsInheritTypes m_inheritType;
+	bool         m_applyByDefault;
+
+public:
+	ProcessParametersParser();
+	virtual ~ProcessParametersParser() {}
+
+	void LoadImageParameters(Arguments& args, CommandModeType mode);
+	void LoadProcessIdParameters(Arguments& args);
 };
 
 class ICommandTemplate

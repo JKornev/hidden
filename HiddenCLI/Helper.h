@@ -84,14 +84,16 @@ public:
 	static void DeleteKey(std::wstring regKey, HKEY root = HKEY_LOCAL_MACHINE);
 };
 
-enum EObjTypes {
+enum class EObjTypes {
 	TypeFile,
 	TypeDir,
 	TypeRegKey,
 	TypeRegVal,
+	TypePsId,
+	TypePsImg,
 };
 
-enum EProcTypes {
+enum class EProcTypes {
 	TypeProcessId,
 	TypeImage,
 };

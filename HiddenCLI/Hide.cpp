@@ -37,30 +37,47 @@ void CommandHide::LoadArgs(Arguments& args, CommandModeType mode)
 	if (!args.GetNext(object))
 		throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched argument #1 for command 'hide'");
 
-	if (!args.GetNext(m_path))
-		throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched argument #2 for command 'hide'");
 
-	if (object == L"file")
+	if (object == L"image")
 	{
-		m_hideType = EObjTypes::TypeFile;
+		m_hideType = EObjTypes::TypePsImg;
+		ProcessParametersParser::LoadImageParameters(args, mode);
 	}
-	else if (object == L"dir")
+	else if (object == L"pid")
 	{
-		m_hideType = EObjTypes::TypeDir;
-	}
-	else if (object == L"regkey")
-	{
-		m_hideType = EObjTypes::TypeRegKey;
-		m_regRootType = GetTypeAndNormalizeRegPath(m_path);
-	}
-	else if (object == L"regval")
-	{
-		m_hideType = EObjTypes::TypeRegVal;
-		m_regRootType = GetTypeAndNormalizeRegPath(m_path);
+		if (mode != CommandModeType::Execute)
+			throw WException(ERROR_INVALID_PARAMETER, L"Error, target 'pid' isn't allowed");
+
+		m_hideType = EObjTypes::TypePsId;
+		ProcessParametersParser::LoadProcessIdParameters(args);
 	}
 	else
 	{
-		throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid argument for command 'hide'");
+		if (!args.GetNext(m_path))
+			throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched argument #2 for command 'hide'");
+
+		if (object == L"file")
+		{
+			m_hideType = EObjTypes::TypeFile;
+		}
+		else if (object == L"dir")
+		{
+			m_hideType = EObjTypes::TypeDir;
+		}
+		else if (object == L"regkey")
+		{
+			m_hideType = EObjTypes::TypeRegKey;
+			m_regRootType = GetTypeAndNormalizeRegPath(m_path);
+		}
+		else if (object == L"regval")
+		{
+			m_hideType = EObjTypes::TypeRegVal;
+			m_regRootType = GetTypeAndNormalizeRegPath(m_path);
+		}
+		else
+		{
+			throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid argument for command 'hide'");
+		}
 	}
 }
 
@@ -83,6 +100,12 @@ void CommandHide::PerformCommand(Connection& connection)
 	case EObjTypes::TypeRegVal:
 		status = Hid_AddHiddenRegValue(connection.GetContext(), m_regRootType, m_path.c_str(), &objId);
 		break;
+	case EObjTypes::TypePsImg:
+		status = Hid_AddHiddenImage(connection.GetContext(), m_image.c_str(), m_inheritType, m_applyByDefault, &objId);
+		break;
+	case EObjTypes::TypePsId:
+		status = Hid_AttachHiddenState(connection.GetContext(), m_procId, m_inheritType);
+		break;
 	default:
 		throw WException(ERROR_UNKNOWN_COMPONENT, L"Internal error, invalid type for command 'hide'");
 	}
@@ -91,7 +114,8 @@ void CommandHide::PerformCommand(Connection& connection)
 		throw WException(HID_STATUS_CODE(status), L"Error, command 'hide' rejected");
 
 	g_stderr << L"Command 'hide' successful" << endl;
-	g_stdout << L"ruleid:" << objId << endl;
+	if (m_hideType != EObjTypes::TypePsId)
+		g_stdout << L"ruleid:" << objId << endl;
 }
 
 void CommandHide::InstallCommand(RegistryKey& configKey)
@@ -120,6 +144,10 @@ void CommandHide::InstallCommand(RegistryKey& configKey)
 	case EObjTypes::TypeRegVal:
 		valueName = L"Hid_HideRegValues";
 		status = Hid_NormalizeRegistryPath(m_regRootType, m_path.c_str(), const_cast<wchar_t*>(entry.c_str()), entry.size());
+		break;
+	case EObjTypes::TypePsImg:
+		valueName = L"Hid_HidePsImages";
+		status = Hid_NormalizeFilePath(m_image.c_str(), const_cast<wchar_t*>(entry.c_str()), entry.size());
 		break;
 	default:
 		throw WException(ERROR_UNKNOWN_COMPONENT, L"Internal error, invalid type for command 'hide'");
@@ -152,9 +180,12 @@ CommandPtr CommandHide::CreateInstance()
 
 // =================
 
-CommandUnhide::CommandUnhide() : m_command(L"/unhide")
+CommandUnhide::CommandUnhide() : 
+	m_command(L"/unhide"),
+	m_hideType(EObjTypes::TypeFile),
+	m_targetAll(false),
+	m_targetId(0)
 {
-	m_targetId = 0;
 }
 
 CommandUnhide::~CommandUnhide()
@@ -192,6 +223,14 @@ void CommandUnhide::LoadArgs(Arguments& args, CommandModeType mode)
 	{
 		m_hideType = EObjTypes::TypeRegVal;
 	}
+	else if (object == L"image")
+	{
+		m_hideType = EObjTypes::TypePsImg;
+	}
+	else if (object == L"pid")
+	{
+		m_hideType = EObjTypes::TypePsId;
+	}
 	else
 	{
 		throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid argument for command 'unhide'");
@@ -204,6 +243,9 @@ void CommandUnhide::LoadArgs(Arguments& args, CommandModeType mode)
 		if (!m_targetId)
 			throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid target objid for command 'unhide'");
 	}
+
+	if (m_targetAll && m_hideType == EObjTypes::TypePsId)
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, parameter 'pid' can't be applied for all");
 }
 
 void CommandUnhide::PerformCommand(Connection& connection)
@@ -226,6 +268,9 @@ void CommandUnhide::PerformCommand(Connection& connection)
 		case EObjTypes::TypeRegVal:
 			status = Hid_RemoveAllHiddenRegValues(connection.GetContext());
 			break;
+		case EObjTypes::TypePsImg:
+			status = Hid_RemoveAllHiddenImages(connection.GetContext());
+			break;
 		default:
 			throw WException(ERROR_UNKNOWN_COMPONENT, L"Internal error #1, invalid type for command 'unhide'");
 		}
@@ -245,6 +290,12 @@ void CommandUnhide::PerformCommand(Connection& connection)
 			break;
 		case EObjTypes::TypeRegVal:
 			status = Hid_RemoveHiddenRegValue(connection.GetContext(), m_targetId);
+			break;
+		case EObjTypes::TypePsImg:
+			status = Hid_RemoveHiddenImage(connection.GetContext(), m_targetId);
+			break;
+		case EObjTypes::TypePsId:
+			status = Hid_RemoveHiddenState(connection.GetContext(), static_cast<HidProcId>(m_targetId));
 			break;
 		default:
 			throw WException(ERROR_UNKNOWN_COMPONENT, L"Internal error #2, invalid type for command 'unhide'");

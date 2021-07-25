@@ -2,7 +2,7 @@
 
 #include "Commands.h"
 
-class CommandHide : public ICommand
+class CommandHide : public ICommand, public ProcessParametersParser
 {
 	const wchar_t* m_command = nullptr;
 

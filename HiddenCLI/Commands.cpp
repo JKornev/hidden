@@ -94,6 +94,41 @@ const wstring& CommandMode::GetConfigRegistryKeyPath()
 
 // =================
 
+ProcessParametersParser::ProcessParametersParser() :
+	m_procId(0),
+	m_inheritType(HidPsInheritTypes::WithoutInherit),
+	m_applyByDefault(false)
+{
+}
+
+void ProcessParametersParser::LoadImageParameters(Arguments& args, CommandModeType mode)
+{
+	m_inheritType = LoadInheritOption(args, HidPsInheritTypes::WithoutInherit);
+
+	m_applyByDefault = false;
+	if (mode == CommandModeType::Execute)
+		m_applyByDefault = LoadApplyOption(args, m_applyByDefault);
+
+	if (!args.GetNext(m_image))
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched process image argument");
+}
+
+void ProcessParametersParser::LoadProcessIdParameters(Arguments& args)
+{
+	wstring target;
+
+	m_inheritType = LoadInheritOption(args, HidPsInheritTypes::WithoutInherit);
+
+	if (!args.GetNext(target))
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched process id argument");
+
+	m_procId = _wtol(target.c_str());
+	if (!m_procId)
+		throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid target pid for command");
+}
+
+// =================
+
 SingleCommand::SingleCommand(Arguments& args, CommandModeType mode)
 {
 	wstring arg;

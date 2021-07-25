@@ -18,7 +18,7 @@ typedef unsigned long long HidObjId;
 
 typedef unsigned long HidProcId;
 
-enum HidActiveState 
+enum class HidActiveState
 {
 	StateDisabled = 0,
 	StateEnabled
@@ -26,7 +26,7 @@ enum HidActiveState
 
 // Important note:
 // This enum should be equal to PsRuleInheritTypes (PsRules.h)
-enum HidPsInheritTypes
+enum class HidPsInheritTypes
 {
 	WithoutInherit = 0,
 	InheritAlways,
@@ -34,7 +34,7 @@ enum HidPsInheritTypes
 	InheritMax
 };
 
-enum HidRegRootTypes
+enum class HidRegRootTypes
 {
 	RegHKCU,
 	RegHKLM,
@@ -81,6 +81,13 @@ HidStatus _API Hid_RemoveAllProtectedImages(HidContext context);
 HidStatus _API Hid_GetProtectedState(HidContext context, HidProcId procId, HidActiveState* state, HidPsInheritTypes* inheritType);
 HidStatus _API Hid_AttachProtectedState(HidContext context, HidProcId procId, HidPsInheritTypes inheritType);
 HidStatus _API Hid_RemoveProtectedState(HidContext context, HidProcId procId);
+
+HidStatus _API Hid_AddHiddenImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, bool applyForProcess, HidObjId* objId);
+HidStatus _API Hid_RemoveHiddenImage(HidContext context, HidObjId objId);
+HidStatus _API Hid_RemoveAllHiddenImages(HidContext context);
+HidStatus _API Hid_GetHiddenState(HidContext context, HidProcId procId, HidActiveState* state, HidPsInheritTypes* inheritType);
+HidStatus _API Hid_AttachHiddenState(HidContext context, HidProcId procId, HidPsInheritTypes inheritType);
+HidStatus _API Hid_RemoveHiddenState(HidContext context, HidProcId procId);
 
 // Misc
 

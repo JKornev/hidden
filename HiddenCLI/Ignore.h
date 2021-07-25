@@ -2,15 +2,11 @@
 
 #include "Commands.h"
 
-class CommandIgnore : public ICommand
+class CommandIgnore : public ICommand, public ProcessParametersParser
 {
 	const wchar_t* m_command = nullptr;
 
 	EProcTypes   m_procType;
-	std::wstring m_targetImage;
-	HidProcId    m_targetProcId;
-	HidPsInheritTypes m_inheritType;
-	bool         m_applyByDefault;
 
 public:
 
@@ -30,7 +26,7 @@ class CommandUnignore : public ICommand
 {
 	const wchar_t* m_command = nullptr;
 
-	enum ETargetIdType {
+	enum class ETargetIdType {
 		RuleId,
 		ProcId,
 		All

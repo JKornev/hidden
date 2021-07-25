@@ -28,6 +28,7 @@ void CommandProtect::LoadArgs(Arguments& args, CommandModeType mode)
 	if (object == L"image")
 	{
 		m_procType = EProcTypes::TypeImage;
+		ProcessParametersParser::LoadImageParameters(args, mode);
 	}
 	else if (object == L"pid")
 	{
@@ -35,30 +36,11 @@ void CommandProtect::LoadArgs(Arguments& args, CommandModeType mode)
 			throw WException(ERROR_INVALID_PARAMETER, L"Error, target 'pid' isn't allowed");
 
 		m_procType = EProcTypes::TypeProcessId;
+		ProcessParametersParser::LoadProcessIdParameters(args);
 	}
 	else
 	{
 		throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid object type in command 'protect'");
-	}
-
-	m_inheritType = LoadInheritOption(args, HidPsInheritTypes::WithoutInherit);
-
-	m_applyByDefault = false;
-	if (m_procType == EProcTypes::TypeImage && mode == CommandModeType::Execute)
-		m_applyByDefault = LoadApplyOption(args, m_applyByDefault);
-
-	if (!args.GetNext(target))
-		throw WException(ERROR_INVALID_PARAMETER, L"Error, mismatched argument #2 for command 'protect'");
-
-	if (m_procType == EProcTypes::TypeImage)
-	{
-		m_targetImage = target;
-	}
-	else
-	{
-		m_targetProcId = _wtol(target.c_str());
-		if (!m_targetProcId)
-			throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid target pid for command 'protect'");
 	}
 }
 
@@ -70,10 +52,10 @@ void CommandProtect::PerformCommand(Connection& connection)
 	switch (m_procType)
 	{
 	case EProcTypes::TypeProcessId:
-		status = Hid_AttachProtectedState(connection.GetContext(), m_targetProcId, m_inheritType);
+		status = Hid_AttachProtectedState(connection.GetContext(), m_procId, m_inheritType);
 		break;
 	case EProcTypes::TypeImage:
-		status = Hid_AddProtectedImage(connection.GetContext(), m_targetImage.c_str(), m_inheritType, m_applyByDefault, &objId);
+		status = Hid_AddProtectedImage(connection.GetContext(), m_image.c_str(), m_inheritType, m_applyByDefault, &objId);
 		break;
 	default:
 		throw WException(ERROR_UNKNOWN_COMPONENT, L"Internal error, invalid type for command 'protect'");
@@ -93,9 +75,9 @@ void CommandProtect::InstallCommand(RegistryKey& configKey)
 	wstring temp, entry;
 	HidStatus status;
 
-	temp.insert(0, m_targetImage.size() + HID_NORMALIZATION_OVERHEAD, L'\0');
+	temp.insert(0, m_image.size() + HID_NORMALIZATION_OVERHEAD, L'\0');
 
-	status = Hid_NormalizeFilePath(m_targetImage.c_str(), const_cast<wchar_t*>(temp.c_str()), temp.size());
+	status = Hid_NormalizeFilePath(m_image.c_str(), const_cast<wchar_t*>(temp.c_str()), temp.size());
 	if (!HID_STATUS_SUCCESSFUL(status))
 		throw WException(HID_STATUS_CODE(status), L"Error, can't normalize path, 'protect' rejected");
 

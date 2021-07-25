@@ -78,8 +78,8 @@ void CommandQuery::PerformCommand(Connection& connection)
 		g_stderr << L"Protected state:" << (protectedState == HidActiveState::StateEnabled ? L"true" : L"false")
 			<< L", inherit:" << ConvertInheritTypeToUnicode(protectedInherit) << endl;
 
-		g_stdout << L"ignored:" << excludeState << L"," << excludedInherit
-			<< L";protected:" << protectedState << L"," << protectedInherit << endl;
+		g_stdout << L"ignored:" << static_cast<unsigned short>(excludeState) << L"," << static_cast<unsigned short>(excludedInherit)
+			<< L";protected:" << static_cast<unsigned short>(protectedState) << L"," << static_cast<unsigned short>(protectedInherit) << endl;
 	}
 }
 

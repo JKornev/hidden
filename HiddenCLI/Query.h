@@ -4,7 +4,7 @@
 
 class CommandQuery : public ICommand
 {
-	enum EQueryType {
+	enum class EQueryType {
 		QueryProcess,
 		QueryState,
 	};

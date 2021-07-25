@@ -476,7 +476,7 @@ void do_psmon_prot_tests(HidContext context)
 
 		if (state != HidActiveState::StateDisabled)
 		{
-			wcout << L"Error, state isn't StateDisabled, state: " << state << " " << inheritType << endl;
+			wcout << L"Error, state isn't StateDisabled, state: " << (UINT)state << " " << (UINT)inheritType << endl;
 			throw exception();
 		}
 
@@ -496,7 +496,7 @@ void do_psmon_prot_tests(HidContext context)
 
 		if (state != HidActiveState::StateEnabled || inheritType != HidPsInheritTypes::WithoutInherit)
 		{
-			wcout << L"Error, state isn't StateEnabled, state: " << state << " " << inheritType << endl;
+			wcout << L"Error, state isn't StateEnabled, state: " << (UINT)state << " " << (UINT)inheritType << endl;
 			throw exception();
 		}
 
@@ -516,7 +516,7 @@ void do_psmon_prot_tests(HidContext context)
 
 		if (state != HidActiveState::StateDisabled)
 		{
-			wcout << L"Error, state isn't StateDisabled, state: " << state << " " << inheritType << endl;
+			wcout << L"Error, state isn't StateDisabled, state: " << (UINT)state << " " << (UINT)inheritType << endl;
 			throw exception();
 		}
 
@@ -708,7 +708,7 @@ void do_psmon_excl_tests(HidContext context)
 
 		if (state != HidActiveState::StateDisabled)
 		{
-			wcout << L"Error, state isn't StateDisabled, state: " << state << " " << inheritType << endl;
+			wcout << L"Error, state isn't StateDisabled, state: " << (UINT)state << " " << (UINT)inheritType << endl;
 			throw exception();
 		}
 
@@ -728,7 +728,7 @@ void do_psmon_excl_tests(HidContext context)
 
 		if (state != HidActiveState::StateEnabled)
 		{
-			wcout << L"Error, state isn't StateEnabled, state: " << state << " " << inheritType << endl;
+			wcout << L"Error, state isn't StateEnabled, state: " << (UINT)state << " " << (UINT)inheritType << endl;
 			throw exception();
 		}
 

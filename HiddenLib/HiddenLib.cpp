@@ -159,7 +159,7 @@ bool NormalizeRegistryPath(HidRegRootTypes root, const wchar_t* key, wchar_t* no
 
 	keyLen = wcslen(key);
 
-	if (root == RegHKCU)
+	if (root == HidRegRootTypes::RegHKCU)
 	{
 		UNICODE_STRING currUser;
 
@@ -180,7 +180,7 @@ bool NormalizeRegistryPath(HidRegRootTypes root, const wchar_t* key, wchar_t* no
 
 		RtlFreeUnicodeString(&currUser);
 	}
-	else if (root == RegHKLM)
+	else if (root == HidRegRootTypes::RegHKLM)
 	{
 		rootLen = wcslen(hklm);
 
@@ -191,7 +191,7 @@ bool NormalizeRegistryPath(HidRegRootTypes root, const wchar_t* key, wchar_t* no
 		memcpy(normalized + rootLen, key, keyLen * sizeof(wchar_t));
 		normalized[rootLen + keyLen] = L'\0';
 	}
-	else if (root == RegHKU)
+	else if (root == HidRegRootTypes::RegHKU)
 	{
 		rootLen = wcslen(hku);
 
@@ -406,7 +406,7 @@ HidStatus SendIoctl_AddPsObjectPacket(PHidContextInternal context, const wchar_t
 	hide = (PHid_AddPsObjectPacket)_alloca(size);
 	hide->dataSize = (unsigned short)total;
 	hide->objType = type;
-	hide->inheritType = inheritType;
+	hide->inheritType = static_cast<unsigned short>(inheritType);
 	hide->applyForProcesses = applyForProcess;
 
 	memcpy((char*)hide + sizeof(Hid_AddPsObjectPacket), path, total);
@@ -526,7 +526,7 @@ HidStatus SendIoctl_SetPsStatePacket(PHidContextInternal context, HidProcId proc
 	info.objType = type;
 	info.procId = procId;
 	info.enable = (state == HidActiveState::StateEnabled);
-	info.inheritType = inheritType;
+	info.inheritType = static_cast<unsigned short>(inheritType);
 
 	// Send IOCTL to device
 
@@ -742,6 +742,46 @@ HidStatus _API Hid_AttachProtectedState(HidContext context, HidProcId procId, Hi
 HidStatus _API Hid_RemoveProtectedState(HidContext context, HidProcId procId)
 {
 	return SendIoctl_SetPsStatePacket((PHidContextInternal)context, procId, PsProtectedObject, HidActiveState::StateDisabled, HidPsInheritTypes::WithoutInherit);
+}
+
+HidStatus _API Hid_AddHiddenImage(HidContext context, const wchar_t* imagePath, HidPsInheritTypes inheritType, bool applyForProcess, HidObjId* objId)
+{
+	HidStatus status;
+	wchar_t* normalized;
+
+	status = AllocNormalizedPath(imagePath, &normalized);
+	if (!HID_STATUS_SUCCESSFUL(status))
+		return status;
+
+	status = SendIoctl_AddPsObjectPacket((PHidContextInternal)context, normalized, PsHiddenObject, inheritType, applyForProcess, objId);
+	FreeNormalizedPath(normalized);
+
+	return status;
+}
+
+HidStatus _API Hid_RemoveHiddenImage(HidContext context, HidObjId objId)
+{
+	return SendIoctl_RemovePsObjectPacket((PHidContextInternal)context, PsHiddenObject, objId);
+}
+
+HidStatus _API Hid_RemoveAllHiddenImages(HidContext context)
+{
+	return SendIoctl_RemoveAllPsObjectsPacket((PHidContextInternal)context, PsHiddenObject);
+}
+
+HidStatus _API Hid_GetHiddenState(HidContext context, HidProcId procId, HidActiveState* state, HidPsInheritTypes* inheritType)
+{
+	return SendIoctl_GetPsStatePacket((PHidContextInternal)context, procId, PsHiddenObject, state, inheritType);
+}
+
+HidStatus _API Hid_AttachHiddenState(HidContext context, HidProcId procId, HidPsInheritTypes inheritType)
+{
+	return SendIoctl_SetPsStatePacket((PHidContextInternal)context, procId, PsHiddenObject, HidActiveState::StateEnabled, inheritType);
+}
+
+HidStatus _API Hid_RemoveHiddenState(HidContext context, HidProcId procId)
+{
+	return SendIoctl_SetPsStatePacket((PHidContextInternal)context, procId, PsHiddenObject, HidActiveState::StateDisabled, HidPsInheritTypes::WithoutInherit);
 }
 
 HidStatus _API Hid_NormalizeFilePath(const wchar_t* filePath, wchar_t* normalized, size_t normalizedLen)
