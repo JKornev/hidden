@@ -19,6 +19,7 @@ OB_CALLBACK_REGISTRATION g_regCallback;
 
 PsRulesContext g_excludeProcessRules;
 PsRulesContext g_protectProcessRules;
+PsRulesContext g_hideProcessRules;
 
 FAST_MUTEX     g_processTableLock;
 
@@ -253,6 +254,39 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 			{
 				Entry->protected = TRUE;
 				Entry->inheritProtection = PsRuleTypeWithoutInherit;
+			}
+		}
+	}
+
+	// Check hidden flag
+
+	Entry->hidden = FALSE;
+	Entry->inheritStealth = PsRuleTypeWithoutInherit;
+
+	if (FindInheritanceInPsRuleList(g_hideProcessRules, ImgPath, &inheritType))
+	{
+		Entry->hidden = TRUE;
+		Entry->inheritStealth = inheritType;
+	}
+	else if (ParentId != 0)
+	{
+		lookup.processId = ParentId;
+
+		ExAcquireFastMutex(&g_processTableLock);
+		result = GetProcessInProcessTable(&lookup);
+		ExReleaseFastMutex(&g_processTableLock);
+
+		if (result)
+		{
+			if (lookup.inheritStealth == PsRuleTypeInherit)
+			{
+				Entry->hidden = TRUE;
+				Entry->inheritStealth = PsRuleTypeInherit;
+			}
+			else if (lookup.inheritStealth == PsRuleTypeInheritOnce)
+			{
+				Entry->hidden = TRUE;
+				Entry->inheritStealth = PsRuleTypeWithoutInherit;
 			}
 		}
 	}
@@ -546,6 +580,20 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 	// Load entries from the config
 	CfgEnumConfigsTable(ProtectImagesTable, &LoadProtectedRulesCallback, NULL);
 
+	// hidden
+
+	status = InitializePsRuleListContext(&g_hideProcessRules);
+	if (!NT_SUCCESS(status))
+	{
+		LogError("Error, hidden process rules initialization failed with code:%08x", status);
+		DestroyPsRuleListContext(g_excludeProcessRules);
+		DestroyPsRuleListContext(g_protectProcessRules);
+		ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
+		return status;
+	}
+
+	//TODO: load hidden config
+
 	// Process table
 
 	ExInitializeFastMutex(&g_processTableLock);
@@ -555,6 +603,7 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 	{
 		DestroyPsRuleListContext(g_excludeProcessRules);
 		DestroyPsRuleListContext(g_protectProcessRules);
+		DestroyPsRuleListContext(g_hideProcessRules);
 		ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
 		return status;
 	}
@@ -618,6 +667,7 @@ NTSTATUS DestroyPsMonitor()
 
 	DestroyPsRuleListContext(g_excludeProcessRules);
 	DestroyPsRuleListContext(g_protectProcessRules);
+	DestroyPsRuleListContext(g_hideProcessRules);
 
 	ExAcquireFastMutex(&g_processTableLock);
 	DestroyProcessTable();
@@ -629,7 +679,7 @@ NTSTATUS DestroyPsMonitor()
 	return STATUS_SUCCESS;
 }
 
-NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Excluded, BOOLEAN Protected)
+NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Excluded, BOOLEAN Protected, BOOLEAN Hidden)
 {
 	PSYSTEM_PROCESS_INFORMATION processInfo = NULL, first;
 	SIZE_T size = 0, offset;
@@ -706,6 +756,12 @@ NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Exclude
 					entry.inheritProtection = PsRuleTypeWithoutInherit;
 				}
 
+				if (Hidden)
+				{
+					entry.hidden = TRUE;
+					entry.inheritStealth = PsRuleTypeWithoutInherit;
+				}
+
 				if (!UpdateProcessInProcessTable(&entry))
 					result = FALSE;
 			}
@@ -752,7 +808,7 @@ NTSTATUS AddProtectedImage(PUNICODE_STRING ImagePath, ULONG InheritType, BOOLEAN
 	status = AddRuleToPsRuleList(g_protectProcessRules, &normalized, InheritType, ObjId);
 
 	if (ApplyForProcesses)
-		SetStateForProcessesByImage(&normalized, FALSE, TRUE);
+		SetStateForProcessesByImage(&normalized, FALSE, TRUE, FALSE);
 
 	ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
 
@@ -852,7 +908,7 @@ NTSTATUS AddExcludedImage(PUNICODE_STRING ImagePath, ULONG InheritType, BOOLEAN 
 	status = AddRuleToPsRuleList(g_excludeProcessRules, &normalized, InheritType, ObjId);
 
 	if (ApplyForProcesses)
-		SetStateForProcessesByImage(&normalized, TRUE, FALSE);
+		SetStateForProcessesByImage(&normalized, TRUE, FALSE, FALSE);
 
 	ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
 
@@ -922,4 +978,105 @@ NTSTATUS RemoveExcludedImage(ULONGLONG ObjId)
 NTSTATUS RemoveAllExcludedImages()
 {
 	return RemoveAllRulesFromPsRuleList(g_excludeProcessRules);
+}
+
+NTSTATUS AddHiddenImage(PUNICODE_STRING ImagePath, ULONG InheritType, BOOLEAN ApplyForProcesses, PULONGLONG ObjId)
+{
+	const USHORT maxBufSize = ImagePath->Length + NORMALIZE_INCREAMENT;
+	UNICODE_STRING normalized;
+	NTSTATUS status;
+
+	normalized.Buffer = (PWCH)ExAllocatePoolWithTag(PagedPool, maxBufSize, PSMON_ALLOC_TAG);
+	normalized.Length = 0;
+	normalized.MaximumLength = maxBufSize;
+
+	if (!normalized.Buffer)
+	{
+		LogWarning("Error, can't allocate buffer");
+		return STATUS_MEMORY_NOT_ALLOCATED;
+	}
+
+	status = NormalizeDevicePath(ImagePath, &normalized);
+	if (!NT_SUCCESS(status))
+	{
+		LogWarning("Error, path normalization failed with code:%08x, path:%wZ", status, ImagePath);
+		ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
+		return status;
+	}
+
+	LogTrace("Adding hidden image: %wZ", &normalized);
+	status = AddRuleToPsRuleList(g_hideProcessRules, &normalized, InheritType, ObjId);
+
+	//TODO: 
+	if (ApplyForProcesses)
+		SetStateForProcessesByImage(&normalized, FALSE, FALSE, TRUE);
+
+	ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
+
+	return status;
+}
+
+NTSTATUS GetHiddenProcessState(HANDLE ProcessId, PULONG InheritType, PBOOLEAN Enable)
+{
+	ProcessTableEntry entry;
+	BOOLEAN result;
+
+	entry.processId = ProcessId;
+
+	ExAcquireFastMutex(&g_processTableLock);
+	result = GetProcessInProcessTable(&entry);
+	ExReleaseFastMutex(&g_processTableLock);
+
+	if (!result)
+		return STATUS_NOT_FOUND;
+
+	*Enable = entry.hidden;
+	*InheritType = entry.inheritStealth;
+
+	return STATUS_SUCCESS;
+}
+
+NTSTATUS SetHiddenProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN Enable)
+{
+	NTSTATUS status = STATUS_SUCCESS;
+	ProcessTableEntry entry;
+	BOOLEAN result;
+
+	entry.processId = ProcessId;
+
+	ExAcquireFastMutex(&g_processTableLock);
+	result = GetProcessInProcessTable(&entry);
+	ExReleaseFastMutex(&g_processTableLock);
+
+	if (!result)
+		return STATUS_NOT_FOUND;
+
+	if (Enable)
+	{
+		entry.hidden = TRUE;
+		entry.inheritStealth = InheritType;
+	}
+	else
+	{
+		entry.hidden = FALSE;
+	}
+
+	ExAcquireFastMutex(&g_processTableLock);
+	result = UpdateProcessInProcessTable(&entry);
+	ExReleaseFastMutex(&g_processTableLock);
+
+	if (!result)
+		return STATUS_NOT_FOUND;
+
+	return status;
+}
+
+NTSTATUS RemoveHiddenImage(ULONGLONG ObjId)
+{
+	return RemoveRuleFromPsRuleList(g_hideProcessRules, ObjId);
+}
+
+NTSTATUS RemoveAllHiddenImages()
+{
+	return RemoveAllRulesFromPsRuleList(g_hideProcessRules);
 }

@@ -32,6 +32,7 @@ enum Hid_ObjectTypes {
 	FsDirObject,
 	PsExcludedObject,
 	PsProtectedObject,
+	PsHiddenObject
 };
 
 #pragma pack(push, 4)

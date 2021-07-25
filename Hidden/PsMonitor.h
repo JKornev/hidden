@@ -24,3 +24,9 @@ NTSTATUS GetExcludedProcessState(HANDLE ProcessId, PULONG InheritType, PBOOLEAN 
 NTSTATUS SetExcludedProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN Enable);
 NTSTATUS RemoveExcludedImage(ULONGLONG ObjId);
 NTSTATUS RemoveAllExcludedImages();
+
+NTSTATUS AddHiddenImage(PUNICODE_STRING ImagePath, ULONG InheritType, BOOLEAN ApplyForProcesses, PULONGLONG ObjId);
+NTSTATUS GetHiddenProcessState(HANDLE ProcessId, PULONG InheritType, PBOOLEAN Enable);
+NTSTATUS SetHiddenProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN Enable);
+NTSTATUS RemoveHiddenImage(ULONGLONG ObjId);
+NTSTATUS RemoveAllHiddenImages();

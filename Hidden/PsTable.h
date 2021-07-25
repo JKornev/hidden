@@ -11,6 +11,9 @@ typedef struct _ProcessTableEntry {
 	BOOLEAN protected;
 	ULONG   inheritProtection;
 
+	BOOLEAN hidden;
+	ULONG   inheritStealth;
+
 	BOOLEAN subsystem;
 	BOOLEAN inited;
 

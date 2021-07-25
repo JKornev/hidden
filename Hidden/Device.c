@@ -200,6 +200,9 @@ NTSTATUS AddPsObject(PHid_AddPsObjectPacket Packet, USHORT Size, PULONGLONG ObjI
 	case PsProtectedObject:
 		status = AddProtectedImage(&path, Packet->inheritType, (Packet->applyForProcesses ? TRUE : FALSE), ObjId);
 		break;
+	case PsHiddenObject:
+		status = AddHiddenImage(&path, Packet->inheritType, (Packet->applyForProcesses ? TRUE : FALSE), ObjId);
+		break;
 	default:
 		LogWarning("Unsupported object type: %u", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
@@ -233,6 +236,9 @@ NTSTATUS GetPsObjectInfo(PHid_GetPsObjectInfoPacket Packet, USHORT Size, PHid_Ge
 	case PsProtectedObject:
 		status = GetProtectedProcessState((HANDLE)Packet->procId, &inheritType, &enable);
 		break;
+	case PsHiddenObject:
+		status = GetHiddenProcessState((HANDLE)Packet->procId, &inheritType, &enable);
+		break;
 	default:
 		LogWarning("Unsupported object type: %u", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
@@ -264,6 +270,9 @@ NTSTATUS SetPsObjectInfo(PHid_SetPsObjectInfoPacket Packet, USHORT Size)
 	case PsProtectedObject:
 		status = SetProtectedProcessState((HANDLE)Packet->procId, Packet->inheritType, (Packet->enable ? TRUE : FALSE));
 		break;
+	case PsHiddenObject:
+		status = SetHiddenProcessState((HANDLE)Packet->procId, Packet->inheritType, (Packet->enable ? TRUE : FALSE));
+		break;
 	default:
 		LogWarning("Unsupported object type: %u", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
@@ -289,6 +298,9 @@ NTSTATUS RemovePsObject(PHid_RemovePsObjectPacket Packet, USHORT Size)
 	case PsProtectedObject:
 		status = RemoveProtectedImage(Packet->id);
 		break;
+	case PsHiddenObject:
+		status = RemoveHiddenImage(Packet->id);
+		break;
 	default:
 		LogWarning("Unsupported object type: %u", Packet->objType);
 		return STATUS_INVALID_PARAMETER;
@@ -313,6 +325,9 @@ NTSTATUS RemoveAllPsObjects(PHid_RemoveAllPsObjectsPacket Packet, USHORT Size)
 		break;
 	case PsProtectedObject:
 		status = RemoveAllProtectedImages();
+		break;
+	case PsHiddenObject:
+		status = RemoveAllHiddenImages();
 		break;
 	default:
 		LogWarning("Unsupported object type: %u", Packet->objType);
