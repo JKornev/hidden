@@ -1,6 +1,6 @@
 # Hidden
 
-This toolset is developed like a solution for my reverse engineering and researching tasks. This is a windows driver with a usermode interface which is used for hidding specific environment on VMs, like installed rce programs (ex. procmon, wireshark), vm infrastracture (ex. vmware tools) and etc. 
+Hidden has been developed like a solution for reverse engineering and researching tasks. This is a windows driver with a usermode interface which is used for hiding specific environment on your windows machine, like installed RCE programs (ex. procmon, wireshark), vm infrastracture (ex. vmware tools) and etc. 
 
 ## Features
 
@@ -9,7 +9,7 @@ This toolset is developed like a solution for my reverse engineering and researc
 - hide processes
 - protect specific processes using ObRegisterCallbacks
 - exclude specific processes from hidding and protection features
-- usermode interface (lib and cli) for working with driver
+- usermode interface (lib and cli) for working with a driver
 
 and so on
 
