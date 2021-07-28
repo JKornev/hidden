@@ -33,3 +33,17 @@ BOOLEAN RemoveProcessFromProcessTable(PProcessTableEntry entry);
 BOOLEAN GetProcessInProcessTable(PProcessTableEntry entry);
 BOOLEAN UpdateProcessInProcessTable(PProcessTableEntry entry);
 
+// Hidden processes database
+
+typedef struct _HiddenProcessTableEntry {
+	HANDLE processId;
+	PEPROCESS reference;
+} HiddenProcessTableEntry, * PHiddenProcessTableEntry;
+
+VOID InitializeHiddenProcessTable(VOID);
+VOID DestroyHiddenProcessTable();
+
+BOOLEAN AddHiddenProcessToProcessTable(PEPROCESS process);
+//BOOLEAN RemoveHiddenProcessFromProcessTable(PHiddenProcessTableEntry entry);
+BOOLEAN RemoveHiddenProcessFromProcessTable(PEPROCESS process);
+BOOLEAN GetHiddenProcessInProcessTable(PHiddenProcessTableEntry entry);

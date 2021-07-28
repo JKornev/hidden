@@ -21,7 +21,8 @@ PsRulesContext g_excludeProcessRules;
 PsRulesContext g_protectProcessRules;
 PsRulesContext g_hideProcessRules;
 
-FAST_MUTEX     g_processTableLock;
+FAST_MUTEX      g_processTableLock;
+KGUARDED_MUTEX g_activeProcListLock;
 
 typedef struct _ProcessListEntry {
 	LPCWSTR path;
@@ -46,6 +47,15 @@ CONST ProcessListEntry g_protectProcesses[] = {
 
 UNICODE_STRING g_csrssPath;
 WCHAR          g_csrssPathBuffer[CSRSS_PAHT_BUFFER_SIZE];
+
+_Must_inspect_result_
+_IRQL_requires_max_(APC_LEVEL)
+NTKERNELAPI
+NTSTATUS
+PsLookupProcessByProcessId(
+	_In_ HANDLE ProcessId,
+	_Outptr_ PEPROCESS* Process
+);
 
 BOOLEAN CheckProtectedOperation(HANDLE Source, HANDLE Destination)
 {
@@ -292,6 +302,126 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 	}
 }
 
+//TODO:
+// - Find an offset on driver initialization step
+// - Move guarded mutex to non-paged pool
+
+BOOLEAN FindActiveProcessLinksOffset(PEPROCESS Process, ULONG* Offset)
+{
+#ifdef _M_AMD64
+	ULONG peak = 0x300;
+#else
+	ULONG peak = 0x150;
+#endif
+	HANDLE* ptr = (HANDLE*)Process;
+	HANDLE processId = PsGetProcessId(Process);
+	ULONG i;
+
+	// EPROCESS ActiveProcessLinks field is next to UniqueProcessId
+	//    ...
+	//	+ 0x0b4 UniqueProcessId : Ptr32 Void
+	//	+ 0x0b8 ActiveProcessLinks : _LIST_ENTRY
+	//	+ 0x0c0 Flags2 : Uint4B
+	//    ...
+	for (i = 10; i < peak / sizeof(HANDLE); i++)
+	{
+		if (ptr[i] == processId)
+		{
+			*Offset = sizeof(HANDLE) * (i + 1);
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+VOID UnlinkProcessFromList(PLIST_ENTRY Current)
+{ // https://github.com/landhb/HideProcess/blob/master/driver/hideprocess.c
+	PLIST_ENTRY Previous, Next;
+
+	Previous = (Current->Blink);
+	Next = (Current->Flink);
+
+	// Loop over self (connect previous with next)
+	Previous->Flink = Next;
+	Next->Blink = Previous;
+
+	// Re-write the current LIST_ENTRY to point to itself (avoiding BSOD)
+	Current->Blink = (PLIST_ENTRY)&Current->Flink;
+	Current->Flink = (PLIST_ENTRY)&Current->Flink;
+}
+
+VOID UnlinkProcessFromActiveProcessLinks(PEPROCESS Process)
+{
+	ULONG eprocListOffset = 0;
+	PLIST_ENTRY CurrentList = NULL;
+
+	if (!FindActiveProcessLinksOffset(Process, &eprocListOffset))
+	{
+		LogError("Error, can't find active process list offset, eprocess:%p", Process);
+		return;
+	}
+
+	LogTrace("EPROCESS->ActiveProcessList offset is %x", eprocListOffset);
+
+	CurrentList = (PLIST_ENTRY)((ULONG_PTR)Process + eprocListOffset);
+
+	// We use g_activeProcListLock to sync our modification inside hidden and raise
+	// IRQL to disable special APC's because we want to minimize a BSOD chance because
+	// of lack of the ActiveProcessLinks syncronization
+
+	KeAcquireGuardedMutex(&g_activeProcListLock);
+	UnlinkProcessFromList(CurrentList);
+	KeReleaseGuardedMutex(&g_activeProcListLock);
+}
+
+VOID LinkProcessFromList(PLIST_ENTRY Current, PLIST_ENTRY Target)
+{
+	PLIST_ENTRY Previous, Next;
+
+	if (Current->Blink != Current->Flink)
+		return;
+
+	Previous = Target;
+	Next = Target->Flink;
+
+	Current->Blink = Previous;
+	Current->Flink = Next;
+
+	Previous->Flink = (PLIST_ENTRY)&Current->Flink;
+	Next->Blink = (PLIST_ENTRY)&Current->Flink;
+}
+
+VOID LinkProcessToActiveProcessLinks(PEPROCESS Process)
+{
+	ULONG eprocListOffset = 0;
+	PLIST_ENTRY CurrentList = NULL, TargetList = NULL;
+	PEPROCESS Target;
+	NTSTATUS status;
+
+	if (!FindActiveProcessLinksOffset(Process, &eprocListOffset))
+	{
+		LogWarning("Warning, can't find active process list offset, eprocess:%p", Process);
+		return;
+	}
+
+	LogTrace("EPROCESS->ActiveProcessList offset is %x", eprocListOffset);
+
+	status = PsLookupProcessByProcessId(SYSTEM_PROCESS_ID, &Target);
+	if (!NT_SUCCESS(status))
+	{
+		LogWarning("Warning, can't find active system process");
+		return;
+	}
+
+	CurrentList = (PLIST_ENTRY)((ULONG_PTR)Process + eprocListOffset);
+	TargetList = (PLIST_ENTRY)((ULONG_PTR)Target + eprocListOffset);
+
+	KeAcquireGuardedMutex(&g_activeProcListLock);
+	LinkProcessFromList(CurrentList, TargetList);
+	KeReleaseGuardedMutex(&g_activeProcListLock);
+}
+
 VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE_NOTIFY_INFO CreateInfo)
 {
 	ProcessTableEntry entry;
@@ -350,6 +480,16 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 		if (entry.protected)
 			LogTrace("Protected process:%p", ProcessId);
 
+		if (entry.hidden)
+		{
+			LogTrace("Hidden process:%p", ProcessId);
+			
+			if (AddHiddenProcessToProcessTable(Process))
+				UnlinkProcessFromActiveProcessLinks(Process);
+			else
+				LogWarning("Warning, can't hide a process %p", ProcessId);
+		}
+
 		ExAcquireFastMutex(&g_processTableLock);
 		result = AddProcessToProcessTable(&entry);
 		ExReleaseFastMutex(&g_processTableLock);
@@ -361,6 +501,10 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 	}
 	else
 	{
+		// We don't check is an operation successful or not to avoid extra CPU for looking a process
+		if (!RemoveHiddenProcessFromProcessTable(Process))
+			LogTrace("Process %p isn't hidden", ProcessId);
+
 		ExAcquireFastMutex(&g_processTableLock);
 		result = RemoveProcessFromProcessTable(&entry);
 		ExReleaseFastMutex(&g_processTableLock);
@@ -597,6 +741,7 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 	// Process table
 
 	ExInitializeFastMutex(&g_processTableLock);
+	KeInitializeGuardedMutex(&g_activeProcListLock);
 
 	status = InitializeProcessTable(CheckProcessFlags);
 	if (!NT_SUCCESS(status))
@@ -609,6 +754,8 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 	}
 
 	ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
+
+	InitializeHiddenProcessTable();
 
 	g_psMonitorInited = TRUE;
 
@@ -672,6 +819,8 @@ NTSTATUS DestroyPsMonitor()
 	ExAcquireFastMutex(&g_processTableLock);
 	DestroyProcessTable();
 	ExReleaseFastMutex(&g_processTableLock);
+
+	DestroyHiddenProcessTable();
 
 	g_psMonitorInited = FALSE;
 
@@ -1036,11 +1185,15 @@ NTSTATUS GetHiddenProcessState(HANDLE ProcessId, PULONG InheritType, PBOOLEAN En
 	return STATUS_SUCCESS;
 }
 
-NTSTATUS SetHiddenProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN Enable)
+NTSTATUS SetHiddenProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN Enable) 
 {
-	NTSTATUS status = STATUS_SUCCESS;
 	ProcessTableEntry entry;
 	BOOLEAN result;
+	PEPROCESS process = NULL;
+	NTSTATUS status;
+
+	if (!ProcessId || ProcessId == SYSTEM_PROCESS_ID)
+		return STATUS_NOT_SUPPORTED;
 
 	entry.processId = ProcessId;
 
@@ -1051,15 +1204,52 @@ NTSTATUS SetHiddenProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN Enab
 	if (!result)
 		return STATUS_NOT_FOUND;
 
+	status = PsLookupProcessByProcessId(ProcessId, &process);
+	if (!NT_SUCCESS(status))
+	{
+		LogWarning("Warning, process lookup failed with code:%08x, pid:%p", status, ProcessId);
+		return status;
+	}
+
 	if (Enable)
 	{
+		if (!entry.hidden)
+		{
+			if (!AddHiddenProcessToProcessTable(process))
+			{
+				LogWarning("Warning, can't insert hidden process, pid:%p", ProcessId);
+				ObDereferenceObject(process);
+				return STATUS_LINK_FAILED;
+			}
+
+			UnlinkProcessFromActiveProcessLinks(process);
+		}
+
 		entry.hidden = TRUE;
 		entry.inheritStealth = InheritType;
 	}
 	else
 	{
+		if (!entry.hidden)
+		{
+			ObDereferenceObject(process);
+			return STATUS_NOT_CAPABLE;
+		}
+
+		if (!RemoveHiddenProcessFromProcessTable(process))
+		{
+			LogWarning("Warning, can't remove hidden process, pid:%p", ProcessId);
+			ObDereferenceObject(process);
+			return STATUS_LINK_FAILED;
+		}
+
+		LinkProcessToActiveProcessLinks(process);
+
 		entry.hidden = FALSE;
+		entry.inheritStealth = 0;
 	}
+
+	ObDereferenceObject(process);
 
 	ExAcquireFastMutex(&g_processTableLock);
 	result = UpdateProcessInProcessTable(&entry);
@@ -1068,7 +1258,7 @@ NTSTATUS SetHiddenProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN Enab
 	if (!result)
 		return STATUS_NOT_FOUND;
 
-	return status;
+	return STATUS_SUCCESS;
 }
 
 NTSTATUS RemoveHiddenImage(ULONGLONG ObjId)

@@ -844,7 +844,7 @@ void do_psmon_excl_tests(HidContext context)
 
 void disable_wow64_redirection()
 {
-#ifndef _AMD64
+#ifndef _M_AMD64
 	BOOL wow64 = FALSE;
 	PVOID value;
 
