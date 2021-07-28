@@ -2,7 +2,7 @@
 
 This toolset is developed like a solution for my reverse engineering and researching tasks. This is a windows driver with a usermode interface which is used for hidding specific environment on VMs, like installed rce programs (ex. procmon, wireshark), vm infrastracture (ex. vmware tools) and etc. 
 
-**Features**
+## Features
 
 - hide registry keys and values
 - hide files and directories
@@ -13,23 +13,23 @@ This toolset is developed like a solution for my reverse engineering and researc
 
 and so on
 
-**System requirements**
+## System requirements
 
 Works on Windows Vista and above, x86 and x64
 
-**Recommended build environment**
+## Recommended build environment
 
 - Visual Studio 2019
 - Windows Driver Kit 10
 
-**Building**
+## Building
 
 Following guide explains how to make a release win32 build
 1. Open Hidden.sln using Visual Studio
 2. Build **Hidden Package** project with configurations Release, Win32
 3. Open build results folder **\<ProjectDir\>\Release**
 
-**Installing**
+## Installing
 
 1. Disable a digital signature enforcement on a test machine (bcdedit /set TESTSIGNING ON) and reboot it
 2. Copy files from **\<ProjectDir\>\Release\Hidden Package** to a test machine
@@ -39,7 +39,7 @@ Following guide explains how to make a release win32 build
 
 Important: Keep in mind that the driver bitness have to be the same to an OS bitness
 
-**Hiding**
+## Hiding
 
 A command line tool **hiddencli** is used for managing a driver. You are able to use it for hiding and unhiding objects, changing a driver state and so on.
 
@@ -65,7 +65,7 @@ hiddencli /hide pid 2340
 
 By process image name?
 ```
-hiddencli /hide image apply:forall c:\Windows\System32\calc.exe
+hiddencli /hide image apply:forall c:\Windows\Explorer.EXE
 ```
 
 To get a full help just type
