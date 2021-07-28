@@ -140,11 +140,11 @@ OB_PREOP_CALLBACK_STATUS ProcessPreCallback(PVOID RegistrationContext, POB_PRE_O
 
 	if (!CheckProtectedOperation(PsGetCurrentProcessId(), PsGetProcessId(OperationInformation->Object)))
 	{
-		LogInfo("Allow protected process access from %tu to %tu", (ULONG_PTR)PsGetCurrentProcessId(), (ULONG_PTR)PsGetProcessId(OperationInformation->Object));
+		LogInfo("Allow protected process access from %Iu to %Iu", (ULONG_PTR)PsGetCurrentProcessId(), (ULONG_PTR)PsGetProcessId(OperationInformation->Object));
 		return OB_PREOP_SUCCESS;
 	}
 
-	LogTrace("Disallow protected process access from %tu to %tu", (ULONG_PTR)PsGetCurrentProcessId(), (ULONG_PTR)PsGetProcessId(OperationInformation->Object));
+	LogTrace("Disallow protected process access from %Iu to %Iu", (ULONG_PTR)PsGetCurrentProcessId(), (ULONG_PTR)PsGetProcessId(OperationInformation->Object));
 
 	if (OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE)
 		OperationInformation->Parameters->CreateHandleInformation.DesiredAccess = (SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION);
@@ -164,7 +164,7 @@ OB_PREOP_CALLBACK_STATUS ThreadPreCallback(PVOID RegistrationContext, POB_PRE_OP
 	if (OperationInformation->KernelHandle)
 		return OB_PREOP_SUCCESS;
 
-	LogInfo("Thread object operation, destPid:%tu, destTid:%tu, srcPid:%tu, oper:%s, space:%s",
+	LogInfo("Thread object operation, destPid:%Iu, destTid:%Iu, srcPid:%Iu, oper:%s, space:%s",
 		(ULONG_PTR)PsGetThreadProcessId(OperationInformation->Object),
 		(ULONG_PTR)PsGetThreadId(OperationInformation->Object),
 		(ULONG_PTR)PsGetCurrentProcessId(),
@@ -174,11 +174,11 @@ OB_PREOP_CALLBACK_STATUS ThreadPreCallback(PVOID RegistrationContext, POB_PRE_OP
 
 	if (!CheckProtectedOperation(PsGetCurrentProcessId(), PsGetThreadProcessId(OperationInformation->Object)))
 	{
-		LogInfo("Allow protected thread access from %tu to %tu", (ULONG_PTR)PsGetCurrentProcessId(), (ULONG_PTR)PsGetThreadProcessId(OperationInformation->Object));
+		LogInfo("Allow protected thread access from %Iu to %Iu", (ULONG_PTR)PsGetCurrentProcessId(), (ULONG_PTR)PsGetThreadProcessId(OperationInformation->Object));
 		return OB_PREOP_SUCCESS;
 	}
 
-	LogTrace("Disallow protected thread access from %tu to %tu", (ULONG_PTR)PsGetCurrentProcessId(), (ULONG_PTR)PsGetThreadProcessId(OperationInformation->Object));
+	LogTrace("Disallow protected thread access from %Iu to %Iu", (ULONG_PTR)PsGetCurrentProcessId(), (ULONG_PTR)PsGetThreadProcessId(OperationInformation->Object));
 
 	if (OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE)
 		OperationInformation->Parameters->CreateHandleInformation.DesiredAccess = (SYNCHRONIZE | THREAD_QUERY_LIMITED_INFORMATION);
@@ -304,7 +304,6 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 
 //TODO:
 // - Find an offset on driver initialization step
-// - Move guarded mutex to non-paged pool
 
 BOOLEAN FindActiveProcessLinksOffset(PEPROCESS Process, ULONG* Offset)
 {
@@ -328,6 +327,7 @@ BOOLEAN FindActiveProcessLinksOffset(PEPROCESS Process, ULONG* Offset)
 		if (ptr[i] == processId)
 		{
 			*Offset = sizeof(HANDLE) * (i + 1);
+			LogInfo("EPROCESS->ActiveProcessList offset is %x", *Offset);
 			return TRUE;
 		}
 	}
@@ -361,8 +361,6 @@ VOID UnlinkProcessFromActiveProcessLinks(PEPROCESS Process)
 		LogError("Error, can't find active process list offset, eprocess:%p", Process);
 		return;
 	}
-
-	LogTrace("EPROCESS->ActiveProcessList offset is %x", eprocListOffset);
 
 	CurrentList = (PLIST_ENTRY)((ULONG_PTR)Process + eprocListOffset);
 
@@ -405,8 +403,6 @@ VOID LinkProcessToActiveProcessLinks(PEPROCESS Process)
 		return;
 	}
 
-	LogTrace("EPROCESS->ActiveProcessList offset is %x", eprocListOffset);
-
 	status = PsLookupProcessByProcessId(SYSTEM_PROCESS_ID, &Target);
 	if (!NT_SUCCESS(status))
 	{
@@ -420,6 +416,8 @@ VOID LinkProcessToActiveProcessLinks(PEPROCESS Process)
 	KeAcquireGuardedMutex(&g_activeProcListLock);
 	LinkProcessFromList(CurrentList, TargetList);
 	KeReleaseGuardedMutex(&g_activeProcListLock);
+
+	ObDereferenceObject(Target);
 }
 
 VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE_NOTIFY_INFO CreateInfo)
@@ -431,7 +429,7 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 
 	if (CreateInfo)
 		LogInfo(
-			"Create process, pid:%p, srcPid:%p, srcTid:%p, image:%wZ",
+			"Created process, pid:%p, srcPid:%p, srcTid:%p, image:%wZ",
 			ProcessId, 
 			PsGetCurrentProcessId(), 
 			PsGetCurrentThreadId(), 
@@ -439,7 +437,7 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 		);
 	else
 		LogInfo(
-			"Destroy process, pid:%p, srcPid:%p, srcTid:%p",
+			"Destroyed process, pid:%p, srcPid:%p, srcTid:%p",
 			ProcessId,
 			PsGetCurrentProcessId(),
 			PsGetCurrentThreadId()
@@ -882,9 +880,29 @@ NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Exclude
 		}
 
 		entry.processId = processInfo->ProcessId;
+
 		if (RtlCompareUnicodeString(procName, ImagePath, TRUE) == 0)
 		{
 			BOOLEAN result = TRUE;
+
+			if (Hidden)
+			{
+				PEPROCESS process = NULL;
+
+				status = PsLookupProcessByProcessId(processInfo->ProcessId, &process);
+				if (NT_SUCCESS(status))
+				{
+					if (!AddHiddenProcessToProcessTable(process))
+						LogWarning("Warning, can't insert hidden process, pid:%p", processInfo->ProcessId);
+
+					UnlinkProcessFromActiveProcessLinks(process);
+					ObDereferenceObject(process);
+				}
+				else
+				{
+					LogWarning("Warning, process lookup failed with code:%08x, pid:%p", status, processInfo->ProcessId);
+				}
+			}
 
 			// Spinlock is locked once for both Get\Update process table functions
 			// because we want to prevent situations when another thread can change 
