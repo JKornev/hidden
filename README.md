@@ -6,6 +6,7 @@ This toolset is developed like a solution for my reverse engineering and researc
 
 - hide registry keys and values
 - hide files and directories
+- hide processes
 - protect specific processes using ObRegisterCallbacks
 - exclude specific processes from hidding and protection features
 - usermode interface (lib and cli) for working with driver
@@ -55,6 +56,11 @@ hiddencli /hide dir "c:\Program Files\VMWare"
 Registry key?
 ```
 hiddencli /hide regkey "HKCU\Software\VMware, Inc."
+```
+
+Maybe process?
+```
+hiddencli /hide pid 2340
 ```
 
 To get a full help just type
