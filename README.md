@@ -63,6 +63,11 @@ Maybe process?
 hiddencli /hide pid 2340
 ```
 
+By process image name?
+```
+hiddencli /hide image apply:forall c:\Windows\System32\calc.exe
+```
+
 To get a full help just type
 ```
 hiddencli /help
