@@ -776,17 +776,17 @@ HidStatus _API Hid_RemoveAllHiddenProcesses(HidContext context)
 
 HidStatus _API Hid_GetHiddenState(HidContext context, HidProcId procId, HidActiveState* state, HidPsInheritTypes* inheritType)
 {
-	return SendIoctl_GetPsStatePacket((PHidContextInternal)context, procId, PsHiddenObject, state, inheritType);
+	return SendIoctl_GetPsStatePacket((PHidContextInternal)context, procId, PsActiveHiddenObject, state, inheritType);
 }
 
 HidStatus _API Hid_AttachHiddenState(HidContext context, HidProcId procId, HidPsInheritTypes inheritType)
 {
-	return SendIoctl_SetPsStatePacket((PHidContextInternal)context, procId, PsHiddenObject, HidActiveState::StateEnabled, inheritType);
+	return SendIoctl_SetPsStatePacket((PHidContextInternal)context, procId, PsActiveHiddenObject, HidActiveState::StateEnabled, inheritType);
 }
 
 HidStatus _API Hid_RemoveHiddenState(HidContext context, HidProcId procId)
 {
-	return SendIoctl_SetPsStatePacket((PHidContextInternal)context, procId, PsHiddenObject, HidActiveState::StateDisabled, HidPsInheritTypes::WithoutInherit);
+	return SendIoctl_SetPsStatePacket((PHidContextInternal)context, procId, PsActiveHiddenObject, HidActiveState::StateDisabled, HidPsInheritTypes::WithoutInherit);
 }
 
 HidStatus _API Hid_NormalizeFilePath(const wchar_t* filePath, wchar_t* normalized, size_t normalizedLen)

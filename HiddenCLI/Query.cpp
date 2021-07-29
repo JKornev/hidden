@@ -62,8 +62,8 @@ void CommandQuery::PerformCommand(Connection& connection)
 	}
 	else if (m_queryType == EQueryType::QueryProcess)
 	{
-		HidActiveState excludeState, protectedState;
-		HidPsInheritTypes excludedInherit, protectedInherit;
+		HidActiveState excludeState, protectedState, hiddenState;
+		HidPsInheritTypes excludedInherit, protectedInherit, hiddenInherit;
 
 		status = Hid_GetExcludedState(connection.GetContext(), m_targetProcId, &excludeState, &excludedInherit);
 		if (!HID_STATUS_SUCCESSFUL(status))
@@ -73,13 +73,20 @@ void CommandQuery::PerformCommand(Connection& connection)
 		if (!HID_STATUS_SUCCESSFUL(status))
 			throw WException(HID_STATUS_CODE(status), L"Error, query protected state rejected");
 
+		status = Hid_GetHiddenState(connection.GetContext(), m_targetProcId, &hiddenState, &hiddenInherit);
+		if (!HID_STATUS_SUCCESSFUL(status))
+			throw WException(HID_STATUS_CODE(status), L"Error, query hidden state rejected");
+
 		g_stderr << L"Ignored state:" << (excludeState == HidActiveState::StateEnabled ? L"true" : L"false")
-			<< L", inherit:" << ConvertInheritTypeToUnicode(excludedInherit) << endl;
+				 << L", inherit:" << ConvertInheritTypeToUnicode(excludedInherit) << endl;
 		g_stderr << L"Protected state:" << (protectedState == HidActiveState::StateEnabled ? L"true" : L"false")
-			<< L", inherit:" << ConvertInheritTypeToUnicode(protectedInherit) << endl;
+				 << L", inherit:" << ConvertInheritTypeToUnicode(protectedInherit) << endl;
+		g_stderr << L"Hidden state:" << (hiddenState == HidActiveState::StateEnabled ? L"true" : L"false")
+				 << L", inherit:" << ConvertInheritTypeToUnicode(hiddenInherit) << endl;
 
 		g_stdout << L"ignored:" << static_cast<unsigned short>(excludeState) << L"," << static_cast<unsigned short>(excludedInherit)
-			<< L";protected:" << static_cast<unsigned short>(protectedState) << L"," << static_cast<unsigned short>(protectedInherit) << endl;
+				 << L";protected:" << static_cast<unsigned short>(protectedState) << L"," << static_cast<unsigned short>(protectedInherit)
+				 << L";hidden:" << static_cast<unsigned short>(hiddenState) << L"," << static_cast<unsigned short>(hiddenInherit) << endl;
 	}
 }
 

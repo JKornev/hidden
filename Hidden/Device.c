@@ -236,7 +236,7 @@ NTSTATUS GetPsObjectInfo(PHid_GetPsObjectInfoPacket Packet, USHORT Size, PHid_Ge
 	case PsProtectedObject:
 		status = GetProtectedProcessState((HANDLE)Packet->procId, &inheritType, &enable);
 		break;
-	case PsHiddenObject:
+	case PsActiveHiddenObject:
 		status = GetHiddenProcessState((HANDLE)Packet->procId, &inheritType, &enable);
 		break;
 	default:
@@ -270,7 +270,7 @@ NTSTATUS SetPsObjectInfo(PHid_SetPsObjectInfoPacket Packet, USHORT Size)
 	case PsProtectedObject:
 		status = SetProtectedProcessState((HANDLE)Packet->procId, Packet->inheritType, (Packet->enable ? TRUE : FALSE));
 		break;
-	case PsHiddenObject:
+	case PsActiveHiddenObject:
 		status = SetHiddenProcessState((HANDLE)Packet->procId, Packet->inheritType, (Packet->enable ? TRUE : FALSE));
 		break;
 	default:
