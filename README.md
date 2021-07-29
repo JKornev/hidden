@@ -43,12 +43,12 @@ Important: Keep in mind that the driver bitness have to be the same to an OS bit
 
 A command line tool **hiddencli** is used for managing a driver. You are able to use it for hiding and unhiding objects, changing a driver state and so on.
 
-To hide a calc.exe try this one
+To hide a file try the command
 ```
 hiddencli /hide file c:\Windows\System32\calc.exe
 ```
 
-Want to hide directory? No problems
+Want to hide a directory? No problems
 ```
 hiddencli /hide dir "c:\Program Files\VMWare"
 ```
@@ -58,12 +58,12 @@ Registry key?
 hiddencli /hide regkey "HKCU\Software\VMware, Inc."
 ```
 
-Maybe process?
+Maybe a process?
 ```
 hiddencli /hide pid 2340
 ```
 
-By process image name?
+By a process image name?
 ```
 hiddencli /hide image apply:forall c:\Windows\Explorer.EXE
 ```
