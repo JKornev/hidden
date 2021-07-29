@@ -217,7 +217,7 @@ VOID InitializeHiddenProcessTable(VOID)
 	LogTrace("Initialization is completed");
 }
 
-VOID DestroyHiddenProcessTable()
+VOID ClearHiddenProcessTable(VOID(*CleanupCallback)(PEPROCESS))
 {
 	PHiddenProcessTableEntry entry;
 	PVOID restartKey = NULL;
@@ -228,6 +228,9 @@ VOID DestroyHiddenProcessTable()
 		 entry != NULL;
 		 entry = RtlEnumerateGenericTableWithoutSplayingAvl(&g_hiddenProcessTable, &restartKey))
 	{
+		if (CleanupCallback)
+			CleanupCallback(entry->reference);
+
 		ObDereferenceObject(entry->reference);
 
 		if (!RtlDeleteElementGenericTableAvl(&g_hiddenProcessTable, entry))
@@ -237,8 +240,6 @@ VOID DestroyHiddenProcessTable()
 	}
 
 	ExReleaseFastMutex(&g_hiddenProcessTableLock);
-
-	LogTrace("Deinitialization is completed");
 }
 
 BOOLEAN AddHiddenProcessToProcessTable(PEPROCESS process)
@@ -299,4 +300,3 @@ BOOLEAN GetHiddenProcessInProcessTable(PHiddenProcessTableEntry entry)
 
 	return (entry2 ? TRUE : FALSE);
 }
-

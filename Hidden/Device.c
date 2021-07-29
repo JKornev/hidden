@@ -329,6 +329,9 @@ NTSTATUS RemoveAllPsObjects(PHid_RemoveAllPsObjectsPacket Packet, USHORT Size)
 	case PsHiddenObject:
 		status = RemoveAllHiddenImages();
 		break;
+	case PsActiveHiddenObject:
+		status = RemoveAllHiddenProcesses();
+		break;
 	default:
 		LogWarning("Unsupported object type: %u", Packet->objType);
 		return STATUS_INVALID_PARAMETER;

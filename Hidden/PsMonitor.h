@@ -30,3 +30,4 @@ NTSTATUS GetHiddenProcessState(HANDLE ProcessId, PULONG InheritType, PBOOLEAN En
 NTSTATUS SetHiddenProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN Enable);
 NTSTATUS RemoveHiddenImage(ULONGLONG ObjId);
 NTSTATUS RemoveAllHiddenImages();
+NTSTATUS RemoveAllHiddenProcesses();

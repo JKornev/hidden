@@ -769,6 +769,11 @@ HidStatus _API Hid_RemoveAllHiddenImages(HidContext context)
 	return SendIoctl_RemoveAllPsObjectsPacket((PHidContextInternal)context, PsHiddenObject);
 }
 
+HidStatus _API Hid_RemoveAllHiddenProcesses(HidContext context)
+{
+	return SendIoctl_RemoveAllPsObjectsPacket((PHidContextInternal)context, PsActiveHiddenObject);
+}
+
 HidStatus _API Hid_GetHiddenState(HidContext context, HidProcId procId, HidActiveState* state, HidPsInheritTypes* inheritType)
 {
 	return SendIoctl_GetPsStatePacket((PHidContextInternal)context, procId, PsHiddenObject, state, inheritType);

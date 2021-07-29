@@ -41,9 +41,8 @@ typedef struct _HiddenProcessTableEntry {
 } HiddenProcessTableEntry, * PHiddenProcessTableEntry;
 
 VOID InitializeHiddenProcessTable(VOID);
-VOID DestroyHiddenProcessTable();
+VOID ClearHiddenProcessTable(VOID(*CleanupCallback)(PEPROCESS));
 
 BOOLEAN AddHiddenProcessToProcessTable(PEPROCESS process);
-//BOOLEAN RemoveHiddenProcessFromProcessTable(PHiddenProcessTableEntry entry);
 BOOLEAN RemoveHiddenProcessFromProcessTable(PEPROCESS process);
 BOOLEAN GetHiddenProcessInProcessTable(PHiddenProcessTableEntry entry);

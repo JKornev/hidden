@@ -243,9 +243,6 @@ void CommandUnhide::LoadArgs(Arguments& args, CommandModeType mode)
 		if (!m_targetId)
 			throw WException(ERROR_INVALID_PARAMETER, L"Error, invalid target objid for command 'unhide'");
 	}
-
-	if (m_targetAll && m_hideType == EObjTypes::TypePsId)
-		throw WException(ERROR_INVALID_PARAMETER, L"Error, parameter 'pid' can't be applied for all");
 }
 
 void CommandUnhide::PerformCommand(Connection& connection)
@@ -270,6 +267,9 @@ void CommandUnhide::PerformCommand(Connection& connection)
 			break;
 		case EObjTypes::TypePsImg:
 			status = Hid_RemoveAllHiddenImages(connection.GetContext());
+			break;
+		case EObjTypes::TypePsId:
+			status = Hid_RemoveAllHiddenProcesses(connection.GetContext());
 			break;
 		default:
 			throw WException(ERROR_UNKNOWN_COMPONENT, L"Internal error #1, invalid type for command 'unhide'");

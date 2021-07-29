@@ -510,7 +510,6 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 		if (!result)
 			LogWarning("Warning, can't remove process(pid:%p) from process table", ProcessId);
 	}
-
 }
 
 BOOLEAN IsProcessExcluded(HANDLE ProcessId)
@@ -797,6 +796,11 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 	return status;
 }
 
+VOID CleanupHiddenProcessCallback(PEPROCESS process)
+{
+	LinkProcessToActiveProcessLinks(process);
+}
+
 NTSTATUS DestroyPsMonitor()
 {
 	if (!g_psMonitorInited)
@@ -818,7 +822,7 @@ NTSTATUS DestroyPsMonitor()
 	DestroyProcessTable();
 	ExReleaseFastMutex(&g_processTableLock);
 
-	DestroyHiddenProcessTable();
+	ClearHiddenProcessTable(&CleanupHiddenProcessCallback);
 
 	g_psMonitorInited = FALSE;
 
@@ -1287,4 +1291,10 @@ NTSTATUS RemoveHiddenImage(ULONGLONG ObjId)
 NTSTATUS RemoveAllHiddenImages()
 {
 	return RemoveAllRulesFromPsRuleList(g_hideProcessRules);
+}
+
+NTSTATUS RemoveAllHiddenProcesses()
+{
+	ClearHiddenProcessTable(&CleanupHiddenProcessCallback);
+	return STATUS_SUCCESS;
 }
