@@ -125,7 +125,7 @@ OB_PREOP_CALLBACK_STATUS ProcessPreCallback(PVOID RegistrationContext, POB_PRE_O
 	if (OperationInformation->KernelHandle)
 		return OB_PREOP_SUCCESS;
 	
-	LogInfo("Process object operation, destPid:%d, srcTid:%d, oper: %s, space: %s",
+	LogInfo("Process object operation, destPid:%Iu, srcTid:%Iu, oper: %s, space: %s",
 		PsGetProcessId(OperationInformation->Object), PsGetCurrentThreadId(),
 		(OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE ? "create" : "dup"),
 		(OperationInformation->KernelHandle ? "kernel" : "user")
@@ -133,11 +133,11 @@ OB_PREOP_CALLBACK_STATUS ProcessPreCallback(PVOID RegistrationContext, POB_PRE_O
 
 	if (!CheckProtectedOperation(PsGetCurrentProcessId(), PsGetProcessId(OperationInformation->Object)))
 	{
-		LogInfo("Allow protected process access from %Iu to %Iu", (ULONG_PTR)PsGetCurrentProcessId(), (ULONG_PTR)PsGetProcessId(OperationInformation->Object));
+		LogInfo("Allow protected process access from %Iu to %Iu", PsGetCurrentProcessId(), PsGetProcessId(OperationInformation->Object));
 		return OB_PREOP_SUCCESS;
 	}
 
-	LogTrace("Disallow protected process access from %Iu to %Iu", (ULONG_PTR)PsGetCurrentProcessId(), (ULONG_PTR)PsGetProcessId(OperationInformation->Object));
+	LogTrace("Disallow protected process access from %Iu to %Iu", PsGetCurrentProcessId(), PsGetProcessId(OperationInformation->Object));
 
 	if (OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE)
 		OperationInformation->Parameters->CreateHandleInformation.DesiredAccess = (SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION);
@@ -158,20 +158,20 @@ OB_PREOP_CALLBACK_STATUS ThreadPreCallback(PVOID RegistrationContext, POB_PRE_OP
 		return OB_PREOP_SUCCESS;
 
 	LogInfo("Thread object operation, destPid:%Iu, destTid:%Iu, srcPid:%Iu, oper:%s, space:%s",
-		(ULONG_PTR)PsGetThreadProcessId(OperationInformation->Object),
-		(ULONG_PTR)PsGetThreadId(OperationInformation->Object),
-		(ULONG_PTR)PsGetCurrentProcessId(),
+		PsGetThreadProcessId(OperationInformation->Object),
+		PsGetThreadId(OperationInformation->Object),
+		PsGetCurrentProcessId(),
 		(OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE ? "create" : "dup"),
 		(OperationInformation->KernelHandle ? "kernel" : "user")
 	);
 
 	if (!CheckProtectedOperation(PsGetCurrentProcessId(), PsGetThreadProcessId(OperationInformation->Object)))
 	{
-		LogInfo("Allow protected thread access from %Iu to %Iu", (ULONG_PTR)PsGetCurrentProcessId(), (ULONG_PTR)PsGetThreadProcessId(OperationInformation->Object));
+		LogInfo("Allow protected thread access from %Iu to %Iu", PsGetCurrentProcessId(), PsGetThreadProcessId(OperationInformation->Object));
 		return OB_PREOP_SUCCESS;
 	}
 
-	LogTrace("Disallow protected thread access from %Iu to %Iu", (ULONG_PTR)PsGetCurrentProcessId(), (ULONG_PTR)PsGetThreadProcessId(OperationInformation->Object));
+	LogTrace("Disallow protected thread access from %Iu to %Iu", PsGetCurrentProcessId(), PsGetThreadProcessId(OperationInformation->Object));
 
 	if (OperationInformation->Operation == OB_OPERATION_HANDLE_CREATE)
 		OperationInformation->Parameters->CreateHandleInformation.DesiredAccess = (SYNCHRONIZE | THREAD_QUERY_LIMITED_INFORMATION);
@@ -240,6 +240,11 @@ VOID UnlinkProcessFromList(PLIST_ENTRY Current)
 	Current->Flink = (PLIST_ENTRY)&Current->Flink;
 }
 
+//
+//Note: when we remove a process from ActiveProcessLinks it prevents a usermode
+//      code to enum processes. But a process still accessible by PID. To fix it
+//      we have to hack PspCidTable too.
+//
 VOID UnlinkProcessFromActiveProcessLinks(PEPROCESS Process)
 {
 	ULONG eprocListOffset = 0;
@@ -435,7 +440,7 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 
 	if (CreateInfo)
 		LogInfo(
-			"Created process, pid:%p, srcPid:%p, srcTid:%p, image:%wZ",
+			"Created process, pid:%Iu, srcPid:%Iu, srcTid:%Iu, image:%wZ",
 			ProcessId, 
 			PsGetCurrentProcessId(), 
 			PsGetCurrentThreadId(), 
@@ -443,7 +448,7 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 		);
 	else
 		LogInfo(
-			"Destroyed process, pid:%p, srcPid:%p, srcTid:%p",
+			"Destroyed process, pid:%Iu, srcPid:%Iu, srcTid:%Iu",
 			ProcessId,
 			PsGetCurrentProcessId(),
 			PsGetCurrentThreadId()
@@ -480,20 +485,20 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 		CheckProcessFlags(&entry, &normalized, PsGetCurrentProcessId());
 
 		if (entry.excluded)
-			LogTrace("Excluded process:%p", ProcessId);
+			LogTrace("Excluded process:%Iu", ProcessId);
 
 		if (entry.protected)
-			LogTrace("Protected process:%p", ProcessId);
+			LogTrace("Protected process:%Iu", ProcessId);
 
 		if (entry.hidden)
-			LogTrace("Hidden process:%p", ProcessId);
+			LogTrace("Hidden process:%Iu", ProcessId);
 
 		ExAcquireFastMutex(&g_processTableLock);
 		result = AddProcessToProcessTable(&entry);
 		ExReleaseFastMutex(&g_processTableLock);
 
 		if (!result)
-			LogWarning("Warning, can't add process(pid:%p) to process table", ProcessId);
+			LogWarning("Warning, can't add process(pid:%Iu) to process table", ProcessId);
 
 		ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
 	}
@@ -504,7 +509,7 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 		ExReleaseFastMutex(&g_processTableLock);
 
 		if (!result)
-			LogWarning("Warning, can't remove process(pid:%p) from process table", ProcessId);
+			LogWarning("Warning, can't remove process(pid:%%Iu) from process table", ProcessId);
 	}
 }
 
@@ -878,7 +883,7 @@ NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Exclude
 		status = ZwOpenProcess(&hProcess, 0x1000/*PROCESS_QUERY_LIMITED_INFORMATION*/, &attribs, &clientId);
 		if (!NT_SUCCESS(status))
 		{
-			LogWarning("Can't open process (pid:%p) failed with code:%08x", processInfo->ProcessId, status);
+			LogWarning("Can't open process (pid:%Iu) failed with code:%08x", processInfo->ProcessId, status);
 			offset = processInfo->NextEntryOffset;
 			continue;
 		}
@@ -888,7 +893,7 @@ NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Exclude
 
 		if (!NT_SUCCESS(status))
 		{
-			LogWarning("Query process information(pid:%p) failed with code:%08x", processInfo->ProcessId, status);
+			LogWarning("Query process information(pid:%Iu) failed with code:%08x", processInfo->ProcessId, status);
 			offset = processInfo->NextEntryOffset;
 			continue;
 		}
@@ -934,7 +939,7 @@ NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Exclude
 			ExReleaseFastMutex(&g_processTableLock);
 
 			if (!result)
-				LogWarning("Can't update process %p", processInfo->ProcessId);
+				LogWarning("Can't update process %Iu", processInfo->ProcessId);
 		}
 
 		FreeInformation(procName);

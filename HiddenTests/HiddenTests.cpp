@@ -446,7 +446,7 @@ void do_psmon_prot_tests(HidContext context)
 	unsigned int error_code;
 	STARTUPINFOW si;
 	PROCESS_INFORMATION pi;
-	wchar_t path[] = L"c:\\windows\\system32\\calc.exe";
+	wchar_t path[] = L"c:\\windows\\system32\\charmap.exe";
 	HidObjId objId[3];
 	HANDLE hproc = 0;
 	HidActiveState state;
@@ -659,12 +659,12 @@ void do_psmon_excl_tests(HidContext context)
 	wcout << L"Process monitor excl tests result:" << endl;
 	wcout << L"--------------------------------" << endl;
 
-	memset(&si, 0, sizeof(si));
-	memset(&pi, 0, sizeof(pi));
-	si.cb = sizeof(si);
-
 	try
 	{
+		memset(&si, 0, sizeof(si));
+		memset(&pi, 0, sizeof(pi));
+		si.cb = sizeof(si);
+
 		wcout << L"Test 1: hide file, add excluded process, check file" << endl;
 
 		gen_temp_path(file_path);
@@ -842,6 +842,102 @@ void do_psmon_excl_tests(HidContext context)
 	DeleteFileW(file_path.c_str());
 }
 
+void do_psmon_hide_tests(HidContext context)
+{
+	HidStatus  hid_status;
+	HidActiveState state;
+	HidPsInheritTypes inheritType;
+	STARTUPINFOW si;
+	PROCESS_INFORMATION pi;
+	wchar_t path[] = L"c:\\windows\\system32\\charmap.exe";
+	HANDLE hproc = 0;
+
+	wcout << L"--------------------------------" << endl;
+	wcout << L"Process monitor hide tests result:" << endl;
+	wcout << L"--------------------------------" << endl;
+
+	try
+	{
+		memset(&si, 0, sizeof(si));
+		memset(&pi, 0, sizeof(pi));
+		si.cb = sizeof(si);
+
+		wcout << L"Test 1: hide, test, unhide protection" << endl;
+
+		hid_status = Hid_GetHiddenState(context, GetCurrentProcessId(), &state, &inheritType);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't get self state, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		if (state != HidActiveState::StateDisabled)
+		{
+			wcout << L"Error, state isn't StateDisabled, state: " << (UINT)state << " " << (UINT)inheritType << endl;
+			throw exception();
+		}
+
+		hid_status = Hid_AttachHiddenState(context, GetCurrentProcessId(), HidPsInheritTypes::WithoutInherit);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't hide self image, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		hid_status = Hid_GetHiddenState(context, GetCurrentProcessId(), &state, &inheritType);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't get self status, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		if (state != HidActiveState::StateEnabled || inheritType != HidPsInheritTypes::WithoutInherit)
+		{
+			wcout << L"Error, state isn't StateEnabled, state: " << (UINT)state << " " << (UINT)inheritType << endl;
+			throw exception();
+		}
+
+		hid_status = Hid_RemoveHiddenState(context, GetCurrentProcessId());
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't can't unhide self, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		hid_status = Hid_GetHiddenState(context, GetCurrentProcessId(), &state, &inheritType);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't get self state, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		if (state != HidActiveState::StateDisabled)
+		{
+			wcout << L"Error, state isn't StateDisabled, state: " << (UINT)state << " " << (UINT)inheritType << endl;
+			throw exception();
+		}
+
+		wcout << L" successful!" << endl;
+	}
+	catch (exception&)
+	{
+		wcout << L" failed!" << endl;
+	}
+
+	if (hproc)
+		CloseHandle(hproc);
+
+	if (pi.hProcess)
+	{
+		TerminateProcess(pi.hProcess, 0);
+		CloseHandle(pi.hProcess);
+	}
+
+	Hid_RemoveHiddenState(context, GetCurrentProcessId());
+	Hid_RemoveAllHiddenImages(context);
+	Hid_RemoveAllHiddenProcesses(context);
+}
+
 void disable_wow64_redirection()
 {
 #ifndef _M_AMD64
@@ -875,6 +971,7 @@ int wmain(int argc, wchar_t* argv[])
 	do_regmon_tests(hid_context);
 	do_psmon_prot_tests(hid_context);
 	do_psmon_excl_tests(hid_context);
+	do_psmon_hide_tests(hid_context);
 
 	Hid_Destroy(hid_context);
 

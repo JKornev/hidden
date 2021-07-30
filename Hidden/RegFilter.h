@@ -12,4 +12,3 @@ NTSTATUS RemoveAllHiddenRegKeys();
 NTSTATUS AddHiddenRegValue(PUNICODE_STRING ValuePath, PULONGLONG ObjId);
 NTSTATUS RemoveHiddenRegValue(ULONGLONG ObjId);
 NTSTATUS RemoveAllHiddenRegValues();
-

@@ -88,7 +88,7 @@ VOID FreeInformation(PVOID Buffer);
 
 NTSTATUS NormalizeDevicePath(PCUNICODE_STRING Path, PUNICODE_STRING Normalized);
 
-#define _LogMsg(lvl, lvlname, frmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, lvl , "hidden!" __FUNCTION__ "[irql:%Iu,pid:%Iu][" lvlname "]: " frmt "\n", (ULONG_PTR)KeGetCurrentIrql(), (ULONG_PTR)PsGetCurrentProcessId(), __VA_ARGS__)
+#define _LogMsg(lvl, lvlname, frmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, lvl , "[" lvlname "] [irql:%Iu,pid:%Iu] hidden!" __FUNCTION__ ": " frmt "\n", KeGetCurrentIrql(), PsGetCurrentProcessId(), __VA_ARGS__)
 
 #define LogError(frmt,   ...) _LogMsg(DPFLTR_ERROR_LEVEL,   "error",   frmt, __VA_ARGS__)
 #define LogWarning(frmt, ...) _LogMsg(DPFLTR_WARNING_LEVEL, "warning", frmt, __VA_ARGS__)
