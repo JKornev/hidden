@@ -24,6 +24,8 @@ PsRulesContext g_hideProcessRules;
 FAST_MUTEX      g_processTableLock;
 KGUARDED_MUTEX  g_activeProcListLock;
 
+volatile ULONG g_activeProcessListOffset = 0;
+
 typedef struct _ProcessListEntry {
 	LPCWSTR path;
 	ULONG inherit;
@@ -47,15 +49,6 @@ CONST ProcessListEntry g_protectProcesses[] = {
 
 UNICODE_STRING g_csrssPath;
 WCHAR          g_csrssPathBuffer[CSRSS_PAHT_BUFFER_SIZE];
-
-_Must_inspect_result_
-_IRQL_requires_max_(APC_LEVEL)
-NTKERNELAPI
-NTSTATUS
-PsLookupProcessByProcessId(
-	_In_ HANDLE ProcessId,
-	_Outptr_ PEPROCESS* Process
-);
 
 BOOLEAN CheckProtectedOperation(HANDLE Source, HANDLE Destination)
 {
@@ -199,8 +192,16 @@ BOOLEAN FindActiveProcessLinksOffset(PEPROCESS Process, ULONG* Offset)
 	ULONG peak = 0x150;
 #endif
 	HANDLE* ptr = (HANDLE*)Process;
-	HANDLE processId = PsGetProcessId(Process);
+	HANDLE processId;
 	ULONG i;
+
+	if (g_activeProcessListOffset)
+	{
+		*Offset = g_activeProcessListOffset;
+		return TRUE;
+	}
+
+	processId = PsGetProcessId(Process);
 
 	// EPROCESS ActiveProcessLinks field is next to UniqueProcessId
 	//    ...
@@ -208,12 +209,14 @@ BOOLEAN FindActiveProcessLinksOffset(PEPROCESS Process, ULONG* Offset)
 	//	+ 0x0b8 ActiveProcessLinks : _LIST_ENTRY
 	//	+ 0x0c0 Flags2 : Uint4B
 	//    ...
-	for (i = 10; i < peak / sizeof(HANDLE); i++)
+	for (i = 15; i < peak / sizeof(HANDLE); i++)
 	{
 		if (ptr[i] == processId)
 		{
-			*Offset = sizeof(HANDLE) * (i + 1);
-			LogInfo("EPROCESS->ActiveProcessList offset is %x", *Offset);
+			ULONG offset = sizeof(HANDLE) * (i + 1);
+			InterlockedExchange((LONG volatile*)&g_activeProcessListOffset, offset);
+			LogInfo("EPROCESS->ActiveProcessList offset is %x", offset);
+			*Offset = offset;
 			return TRUE;
 		}
 	}

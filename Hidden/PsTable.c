@@ -8,15 +8,6 @@ RTL_AVL_TABLE  g_processTable;
 RTL_AVL_TABLE  g_hiddenProcessTable;
 FAST_MUTEX     g_hiddenProcessTableLock;
 
-_Must_inspect_result_
-_IRQL_requires_max_(APC_LEVEL)
-NTKERNELAPI
-NTSTATUS
-PsLookupProcessByProcessId(
-	_In_ HANDLE ProcessId,
-	_Outptr_ PEPROCESS* Process
-);
-
 _Function_class_(RTL_AVL_COMPARE_ROUTINE)
 RTL_GENERIC_COMPARE_RESULTS CompareProcessTableEntry(struct _RTL_AVL_TABLE  *Table, PVOID  FirstStruct, PVOID  SecondStruct)
 {

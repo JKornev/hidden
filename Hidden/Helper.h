@@ -71,6 +71,15 @@ NTSYSAPI NTSTATUS NTAPI ZwQueryInformationProcess(
 	_Out_opt_ PULONG                    ReturnLength
 );
 
+_Must_inspect_result_
+_IRQL_requires_max_(APC_LEVEL)
+NTKERNELAPI
+NTSTATUS
+PsLookupProcessByProcessId(
+	_In_ HANDLE ProcessId,
+	_Outptr_ PEPROCESS* Process
+);
+
 NTSTATUS QuerySystemInformation(SYSTEM_INFORMATION_CLASS Class, PVOID* InfoBuffer, PSIZE_T InfoSize);
 NTSTATUS QueryProcessInformation(PROCESSINFOCLASS Class, HANDLE ProcessId, PVOID* InfoBuffer, PSIZE_T InfoSize);
 VOID FreeInformation(PVOID Buffer);
