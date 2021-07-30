@@ -8,6 +8,15 @@ RTL_AVL_TABLE  g_processTable;
 RTL_AVL_TABLE  g_hiddenProcessTable;
 FAST_MUTEX     g_hiddenProcessTableLock;
 
+_Must_inspect_result_
+_IRQL_requires_max_(APC_LEVEL)
+NTKERNELAPI
+NTSTATUS
+PsLookupProcessByProcessId(
+	_In_ HANDLE ProcessId,
+	_Outptr_ PEPROCESS* Process
+);
+
 _Function_class_(RTL_AVL_COMPARE_ROUTINE)
 RTL_GENERIC_COMPARE_RESULTS CompareProcessTableEntry(struct _RTL_AVL_TABLE  *Table, PVOID  FirstStruct, PVOID  SecondStruct)
 {
@@ -43,17 +52,36 @@ VOID FreeProcessTableEntry(struct _RTL_AVL_TABLE  *Table, PVOID  Buffer)
 
 BOOLEAN AddProcessToProcessTable(PProcessTableEntry entry)
 {
-	BOOLEAN result = FALSE;
-	
-	if (RtlInsertElementGenericTableAvl(&g_processTable, entry, sizeof(ProcessTableEntry), &result) == NULL)
-		return FALSE;
+	BOOLEAN newone = FALSE;
 
-	return result;
+	ObReferenceObject(entry->reference);
+	
+	if (!RtlInsertElementGenericTableAvl(&g_processTable, entry, sizeof(ProcessTableEntry), &newone))
+	{
+		ObDereferenceObject(entry->reference);
+		return FALSE;
+	}
+
+	if (!newone)
+	{
+		ObDereferenceObject(entry->reference);
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 BOOLEAN RemoveProcessFromProcessTable(PProcessTableEntry entry)
 {
-	return RtlDeleteElementGenericTableAvl(&g_processTable, entry);
+	BOOLEAN result = FALSE;
+
+	if (GetProcessInProcessTable(entry))
+		result = RtlDeleteElementGenericTableAvl(&g_processTable, entry);
+
+	if (result)
+		ObDereferenceObject(entry->reference);
+
+	return result;
 }
 
 BOOLEAN GetProcessInProcessTable(PProcessTableEntry entry)
@@ -74,7 +102,13 @@ BOOLEAN UpdateProcessInProcessTable(PProcessTableEntry entry)
 	entry2 = (PProcessTableEntry)RtlLookupElementGenericTableAvl(&g_processTable, entry);
 
 	if (entry2)
+	{
+		// We don't want allow modify reference cuz it can lead to resource leak
+		if (entry->reference != entry2->reference)
+			return FALSE;
+
 		RtlCopyMemory(entry2, entry, sizeof(ProcessTableEntry));
+	}
 
 	return (entry2 ? TRUE : FALSE);
 }
@@ -109,6 +143,7 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 		CLIENT_ID clientId;
 		OBJECT_ATTRIBUTES attribs;
 		HANDLE hProcess;
+		PEPROCESS process = 0;
 
 		// Get process path
 
@@ -147,11 +182,24 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 		RtlZeroMemory(&entry, sizeof(entry));
 		entry.processId = processInfo->ProcessId;
 
+		status = PsLookupProcessByProcessId(processInfo->ProcessId, &process);
+		if (!NT_SUCCESS(status))
+		{
+			LogWarning("Warning, lookup eprocess (pid:%p) failed with code:%08x", processInfo->ProcessId, status);
+			FreeInformation(procName);
+			offset = processInfo->NextEntryOffset;
+			continue;
+		}
+
+		entry.reference = process;
+
 		LogTrace("New process: %p, %wZ", processInfo->ProcessId, procName);
 
 		InitProcessEntryCallback(&entry, procName, processInfo->InheritedFromProcessId);
 		if (!AddProcessToProcessTable(&entry))
 			LogWarning("Warning, can't add process(pid:%p) to process table", processInfo->ProcessId);
+
+		ObDereferenceObject(process);
 
 		if (entry.excluded)
 			LogTrace(" excluded process:%p", entry.processId);
@@ -161,6 +209,9 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 
 		if (entry.subsystem)
 			LogTrace(" subsystem process:%p", entry.processId);
+
+		if (entry.hidden)
+			LogTrace(" hidden process:%p", entry.processId);
 
 		// Go to next
 
@@ -174,7 +225,7 @@ NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEnt
 	return status;
 }
 
-VOID DestroyProcessTable()
+VOID ClearProcessTable(VOID(*CleanupCallback)(PProcessTableEntry))
 {
 	PProcessTableEntry entry;
 	PVOID restartKey = NULL;
@@ -183,6 +234,11 @@ VOID DestroyProcessTable()
 		 entry != NULL;
 		 entry = RtlEnumerateGenericTableWithoutSplayingAvl(&g_processTable, &restartKey))
 	{
+		if (CleanupCallback)
+			CleanupCallback(entry);
+
+		ObDereferenceObject(entry->reference);
+
 		if (!RtlDeleteElementGenericTableAvl(&g_processTable, entry))
 			LogWarning("Warning, can't remove element from process table, looks like memory leak");
 
@@ -191,112 +247,15 @@ VOID DestroyProcessTable()
 	LogTrace("Deinitialization is completed");
 }
 
-// ===================
-
-_Function_class_(RTL_AVL_COMPARE_ROUTINE)
-RTL_GENERIC_COMPARE_RESULTS CompareHiddenProcessTableEntry(struct _RTL_AVL_TABLE* Table, PVOID  FirstStruct, PVOID  SecondStruct)
+VOID EnumProcessTable(VOID(*EnumCallback)(PProcessTableEntry))
 {
-	PHiddenProcessTableEntry first = (PHiddenProcessTableEntry)FirstStruct;
-	PHiddenProcessTableEntry second = (PHiddenProcessTableEntry)SecondStruct;
-
-	UNREFERENCED_PARAMETER(Table);
-
-	if (first->processId > second->processId)
-		return GenericGreaterThan;
-
-	if (first->processId < second->processId)
-		return GenericLessThan;
-
-	return GenericEqual;
-}
-
-VOID InitializeHiddenProcessTable(VOID)
-{
-	RtlInitializeGenericTableAvl(&g_hiddenProcessTable, CompareHiddenProcessTableEntry, AllocateProcessTableEntry, FreeProcessTableEntry, NULL);
-	ExInitializeFastMutex(&g_hiddenProcessTableLock);
-	LogTrace("Initialization is completed");
-}
-
-VOID ClearHiddenProcessTable(VOID(*CleanupCallback)(PEPROCESS))
-{
-	PHiddenProcessTableEntry entry;
+	PProcessTableEntry entry;
 	PVOID restartKey = NULL;
 
-	ExAcquireFastMutex(&g_hiddenProcessTableLock);
-
-	for (entry = RtlEnumerateGenericTableWithoutSplayingAvl(&g_hiddenProcessTable, &restartKey);
+	for (entry = RtlEnumerateGenericTableWithoutSplayingAvl(&g_processTable, &restartKey);
 		 entry != NULL;
-		 entry = RtlEnumerateGenericTableWithoutSplayingAvl(&g_hiddenProcessTable, &restartKey))
+		 entry = RtlEnumerateGenericTableWithoutSplayingAvl(&g_processTable, &restartKey))
 	{
-		if (CleanupCallback)
-			CleanupCallback(entry->reference);
-
-		ObDereferenceObject(entry->reference);
-
-		if (!RtlDeleteElementGenericTableAvl(&g_hiddenProcessTable, entry))
-			LogWarning("Warning, can't remove element from hidden process table, looks like memory leak");
-
-		restartKey = NULL; // reset enum
+		EnumCallback(entry);
 	}
-
-	ExReleaseFastMutex(&g_hiddenProcessTableLock);
-}
-
-BOOLEAN AddHiddenProcessToProcessTable(PEPROCESS process)
-{
-	HiddenProcessTableEntry entry;
-	BOOLEAN result = FALSE, newone = FALSE;
-
-	ObReferenceObject(process);
-
-	RtlZeroMemory(&entry, sizeof(entry));
-
-	entry.processId = PsGetProcessId(process);
-	entry.reference = process;
-
-	ExAcquireFastMutex(&g_hiddenProcessTableLock);
-
-	if (RtlInsertElementGenericTableAvl(&g_hiddenProcessTable, &entry, sizeof(entry), &newone))
-		result = TRUE;
-
-	ExReleaseFastMutex(&g_hiddenProcessTableLock);
-
-	result = (result && newone ? TRUE : FALSE);
-
-	if (!result)
-		ObDereferenceObject(process);
-
-	return result;
-}
-
-BOOLEAN RemoveHiddenProcessFromProcessTable(PEPROCESS process)
-{
-	BOOLEAN result;
-	HiddenProcessTableEntry entry;
-
-	entry.processId = PsGetProcessId(process);
-	entry.reference = 0;
-
-	ExAcquireFastMutex(&g_hiddenProcessTableLock);
-	result = RtlDeleteElementGenericTableAvl(&g_hiddenProcessTable, &entry);
-	ExReleaseFastMutex(&g_hiddenProcessTableLock);
-
-	if (result)
-		ObDereferenceObject(process);
-
-	return result;
-}
-
-BOOLEAN GetHiddenProcessInProcessTable(PHiddenProcessTableEntry entry)
-{
-	PHiddenProcessTableEntry entry2;
-
-	ExAcquireFastMutex(&g_hiddenProcessTableLock);
-	entry2 = (PHiddenProcessTableEntry)RtlLookupElementGenericTableAvl(&g_hiddenProcessTable, entry);
-	ExReleaseFastMutex(&g_hiddenProcessTableLock);
-
-	if (entry2)
-		RtlCopyMemory(entry, entry2, sizeof(HiddenProcessTableEntry));
-
-	return (entry2 ? TRUE : FALSE);
 }

@@ -13,6 +13,7 @@ typedef struct _ProcessTableEntry {
 
 	BOOLEAN hidden;
 	ULONG   inheritStealth;
+	PEPROCESS reference;
 
 	BOOLEAN subsystem;
 	BOOLEAN inited;
@@ -20,7 +21,8 @@ typedef struct _ProcessTableEntry {
 } ProcessTableEntry, *PProcessTableEntry;
 
 NTSTATUS InitializeProcessTable(VOID(*InitProcessEntryCallback)(PProcessTableEntry, PCUNICODE_STRING, HANDLE));
-VOID DestroyProcessTable();
+VOID ClearProcessTable(VOID(*CleanupCallback)(PProcessTableEntry));
+VOID EnumProcessTable(VOID(*EnumCallback)(PProcessTableEntry));
 
 // Important notice:
 // Keep in mind that internal sync mechanisms removed from functions below (including DestroyProcessTable) 
@@ -32,17 +34,3 @@ BOOLEAN AddProcessToProcessTable(PProcessTableEntry entry);
 BOOLEAN RemoveProcessFromProcessTable(PProcessTableEntry entry);
 BOOLEAN GetProcessInProcessTable(PProcessTableEntry entry);
 BOOLEAN UpdateProcessInProcessTable(PProcessTableEntry entry);
-
-// Hidden processes database
-
-typedef struct _HiddenProcessTableEntry {
-	HANDLE processId;
-	PEPROCESS reference;
-} HiddenProcessTableEntry, * PHiddenProcessTableEntry;
-
-VOID InitializeHiddenProcessTable(VOID);
-VOID ClearHiddenProcessTable(VOID(*CleanupCallback)(PEPROCESS));
-
-BOOLEAN AddHiddenProcessToProcessTable(PEPROCESS process);
-BOOLEAN RemoveHiddenProcessFromProcessTable(PEPROCESS process);
-BOOLEAN GetHiddenProcessInProcessTable(PHiddenProcessTableEntry entry);
