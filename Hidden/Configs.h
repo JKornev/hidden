@@ -15,6 +15,7 @@ enum CfgMultiStringTables {
 	HideRegValuesTable,
 	IgnoreImagesTable,
 	ProtectImagesTable,
+	HideImagesTable,
 	MaxTableEntries,
 };
 

@@ -617,6 +617,18 @@ VOID LoadIgnoredRulesCallback(PUNICODE_STRING Str, PVOID Params)
 		AddExcludedImage(&path, inherit, FALSE, &ruleId);
 }
 
+VOID LoadHiddenRulesCallback(PUNICODE_STRING Str, PVOID Params)
+{
+	UNICODE_STRING path;
+	ULONG inherit;
+	PsRuleEntryId ruleId;
+
+	UNREFERENCED_PARAMETER(Params);
+	
+	if (NT_SUCCESS(ParsePsConfigEntry(Str, &path, &inherit)))
+		AddHiddenImage(&path, inherit, FALSE, &ruleId);
+}
+
 NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 {
 	const USHORT maxBufSize = 512;
@@ -726,14 +738,15 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 		return status;
 	}
 
-	//TODO: load hidden config
+	// Load entries from the config
+	CfgEnumConfigsTable(HideImagesTable, &LoadHiddenRulesCallback, NULL);
 
 	// Process table
 
 	ExInitializeFastMutex(&g_processTableLock);
 	KeInitializeGuardedMutex(&g_activeProcListLock);
 
-	status = InitializeProcessTable(CheckProcessFlags);
+	status = InitializeProcessTable(&CheckProcessFlags);
 	if (!NT_SUCCESS(status))
 	{
 		DestroyPsRuleListContext(g_excludeProcessRules);
@@ -775,7 +788,7 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 
 	// Register rocess create\destroy callback
 
-	status = PsSetCreateProcessNotifyRoutineEx(CreateProcessNotifyCallback, FALSE);
+	status = PsSetCreateProcessNotifyRoutineEx(&CreateProcessNotifyCallback, FALSE);
 	if (!NT_SUCCESS(status))
 	{
 		LogError("Error, process notify registartion failed with code:%08x", status);
@@ -808,14 +821,14 @@ NTSTATUS DestroyPsMonitor()
 		g_obRegCallback = NULL;
 	}
 
-	PsSetCreateProcessNotifyRoutineEx(CreateProcessNotifyCallback, TRUE);
+	PsSetCreateProcessNotifyRoutineEx(&CreateProcessNotifyCallback, TRUE);
 
 	DestroyPsRuleListContext(g_excludeProcessRules);
 	DestroyPsRuleListContext(g_protectProcessRules);
 	DestroyPsRuleListContext(g_hideProcessRules);
 
 	ExAcquireFastMutex(&g_processTableLock);
-	ClearProcessTable(CleanupHiddenProcessCallback);
+	ClearProcessTable(&CleanupHiddenProcessCallback);
 	ExReleaseFastMutex(&g_processTableLock);
 
 	g_psMonitorInited = FALSE;

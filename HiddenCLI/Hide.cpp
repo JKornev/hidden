@@ -123,36 +123,46 @@ void CommandHide::InstallCommand(RegistryKey& configKey)
 	vector<wstring> commands;
 	const wchar_t* valueName;
 	HidStatus status;
-	wstring entry;
+	wstring entry, normilized;
 
-	entry.insert(0, m_path.size() + HID_NORMALIZATION_OVERHEAD, L'\0');
+	normilized.insert(0, m_path.size() + HID_NORMALIZATION_OVERHEAD, L'\0');
 
 	switch (m_hideType)
 	{
 	case EObjTypes::TypeFile:
 		valueName = L"Hid_HideFsFiles";
-		status = Hid_NormalizeFilePath(m_path.c_str(), const_cast<wchar_t*>(entry.c_str()), entry.size());
+		status = Hid_NormalizeFilePath(m_path.c_str(), const_cast<wchar_t*>(normilized.c_str()), normilized.size());
 		break;
 	case EObjTypes::TypeDir:
 		valueName = L"Hid_HideFsDirs";
-		status = Hid_NormalizeFilePath(m_path.c_str(), const_cast<wchar_t*>(entry.c_str()), entry.size());
+		status = Hid_NormalizeFilePath(m_path.c_str(), const_cast<wchar_t*>(normilized.c_str()), normilized.size());
 		break;
 	case EObjTypes::TypeRegKey:
 		valueName = L"Hid_HideRegKeys";
-		status = Hid_NormalizeRegistryPath(m_regRootType, m_path.c_str(), const_cast<wchar_t*>(entry.c_str()), entry.size());
+		status = Hid_NormalizeRegistryPath(m_regRootType, m_path.c_str(), const_cast<wchar_t*>(normilized.c_str()), normilized.size());
 		break;
 	case EObjTypes::TypeRegVal:
 		valueName = L"Hid_HideRegValues";
-		status = Hid_NormalizeRegistryPath(m_regRootType, m_path.c_str(), const_cast<wchar_t*>(entry.c_str()), entry.size());
+		status = Hid_NormalizeRegistryPath(m_regRootType, m_path.c_str(), const_cast<wchar_t*>(normilized.c_str()), normilized.size());
 		break;
 	case EObjTypes::TypePsImg:
-		valueName = L"Hid_HidePsImages";
-		status = Hid_NormalizeFilePath(m_image.c_str(), const_cast<wchar_t*>(entry.c_str()), entry.size());
+		valueName = L"Hid_HideImages";
+		status = Hid_NormalizeFilePath(m_image.c_str(), const_cast<wchar_t*>(normilized.c_str()), normilized.size());
 		break;
 	default:
 		throw WException(ERROR_UNKNOWN_COMPONENT, L"Internal error, invalid type for command 'hide'");
 	}
 	
+	if (!HID_STATUS_SUCCESSFUL(status))
+		throw WException(HID_STATUS_CODE(status), L"Error, can't normalize path, 'hide' rejected");
+	
+	entry += normilized.c_str();
+	if (m_hideType == EObjTypes::TypePsImg)
+	{
+		entry += L";";
+		entry += ConvertInheritTypeToUnicode(m_inheritType);
+	}
+
 	configKey.GetMultiStrValue(valueName, commands);
 	commands.push_back(entry);
 	configKey.SetMultiStrValue(valueName, commands);
@@ -168,6 +178,7 @@ void CommandHide::UninstallCommand(RegistryKey& configKey)
 	try { configKey.RemoveValue(L"Hid_HideFsDirs");    } catch (...) { errors++; }
 	try { configKey.RemoveValue(L"Hid_HideRegKeys");   } catch (...) { errors++; }
 	try { configKey.RemoveValue(L"Hid_HideRegValues"); } catch (...) { errors++; }
+	try { configKey.RemoveValue(L"Hid_HideImages");    } catch (...) { errors++; }
 
 	if (errors < 4)
 		g_stderr << L"Uninstall 'hide' successful" << endl;

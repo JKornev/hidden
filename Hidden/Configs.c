@@ -12,6 +12,7 @@ typedef struct _HidConfigContext {
 	UNICODE_STRING hideRegValues;
 	UNICODE_STRING ignoreImages;
 	UNICODE_STRING protectImages;
+	UNICODE_STRING hideImages;
 } HidConfigContext, *PHidConfigContext;
 
 PHidConfigContext g_configContext = NULL;
@@ -59,6 +60,7 @@ NTSTATUS InitializeConfigs(PUNICODE_STRING RegistryPath)
 
 	QueryAndAllocRegistryData(hkey, L"Hid_IgnoredImages",   REG_MULTI_SZ, &config.ignoreImages,  NULL);
 	QueryAndAllocRegistryData(hkey, L"Hid_ProtectedImages", REG_MULTI_SZ, &config.protectImages, NULL);
+	QueryAndAllocRegistryData(hkey, L"Hid_HideImages",		REG_MULTI_SZ, &config.hideImages,    NULL);
 
 	ZwClose(hkey);
 
@@ -135,6 +137,9 @@ NTSTATUS CfgEnumConfigsTable(enum CfgMultiStringTables Table, CfgMultiStringCall
 	case ProtectImagesTable:
 		table = &g_configContext->protectImages;
 		break;
+	case HideImagesTable:
+		table = &g_configContext->hideImages;
+		break;
 	default:
 		return STATUS_INVALID_VARIANT;
 	}
@@ -182,6 +187,7 @@ VOID ReleaseConfigContext(PHidConfigContext context)
 	ReleaseRegistryData(&context->hideRegValues);
 	ReleaseRegistryData(&context->ignoreImages);
 	ReleaseRegistryData(&context->protectImages);
+	ReleaseRegistryData(&context->hideImages);
 }
 
 NTSTATUS GetRegistryDWORD(HANDLE hKey, LPCWSTR Value, PULONG Data, ULONG Default)
