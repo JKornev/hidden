@@ -156,7 +156,6 @@
     <FilesToPackage Include="@(Inf->'%(CopyOutput)')" Condition="'@(Inf)'!=''" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="back.txt" />
     <Text Include="todo.txt" />
   </ItemGroup>
   <ItemGroup>

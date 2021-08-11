@@ -1,22 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Source Files">
-      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
-      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
-    </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
-    </Filter>
-    <Filter Include="Driver Files">
-      <UniqueIdentifier>{8E41214B-6785-4CFE-B992-037D68949A14}</UniqueIdentifier>
-      <Extensions>inf;inv;inx;mof;mc;</Extensions>
-    </Filter>
     <Filter Include="Disasm">
       <UniqueIdentifier>{0bbd724a-9a8a-4c30-a5a8-569d4d08b402}</UniqueIdentifier>
     </Filter>
@@ -28,36 +12,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ExcludeList.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="RegFilter.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Driver.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="FsFilter.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="PsMonitor.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Device.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Helper.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="PsTable.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="PsRules.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Configs.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Disasm\Zydis\Decoder.c">
       <Filter>Disasm\Zydis</Filter>
     </ClCompile>
@@ -100,50 +54,21 @@
     <ClCompile Include="Disasm\Zydis\String2.c">
       <Filter>Disasm\Zydis</Filter>
     </ClCompile>
+    <ClCompile Include="Configs.c" />
+    <ClCompile Include="Device.c" />
+    <ClCompile Include="Driver.c" />
+    <ClCompile Include="ExcludeList.c" />
+    <ClCompile Include="FsFilter.c" />
+    <ClCompile Include="Helper.c" />
+    <ClCompile Include="PsMonitor.c" />
+    <ClCompile Include="PsRules.c" />
+    <ClCompile Include="PsTable.c" />
+    <ClCompile Include="RegFilter.c" />
   </ItemGroup>
   <ItemGroup>
-    <ResourceCompile Include="Hidden.rc">
-      <Filter>Resource Files</Filter>
-    </ResourceCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="back.txt" />
     <Text Include="todo.txt" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ExcludeList.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="RegFilter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="FsFilter.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PsMonitor.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Driver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="DeviceAPI.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Device.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Helper.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PsTable.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="PsRules.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Configs.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Disasm\Zydis\Decoder.h">
       <Filter>Disasm\Zydis</Filter>
     </ClInclude>
@@ -237,10 +162,22 @@
     <ClInclude Include="Disasm\Zycore\API\Thread.h">
       <Filter>Disasm\Zycore</Filter>
     </ClInclude>
+    <ClInclude Include="RegFilter.h" />
+    <ClInclude Include="Configs.h" />
+    <ClInclude Include="Device.h" />
+    <ClInclude Include="DeviceAPI.h" />
+    <ClInclude Include="Driver.h" />
+    <ClInclude Include="ExcludeList.h" />
+    <ClInclude Include="FsFilter.h" />
+    <ClInclude Include="Helper.h" />
+    <ClInclude Include="PsMonitor.h" />
+    <ClInclude Include="PsRules.h" />
+    <ClInclude Include="PsTable.h" />
   </ItemGroup>
   <ItemGroup>
-    <Inf Include="Hidden.inf">
-      <Filter>Driver Files</Filter>
-    </Inf>
+    <ResourceCompile Include="Hidden.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Inf Include="Hidden.inf" />
   </ItemGroup>
 </Project>
