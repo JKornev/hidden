@@ -9,6 +9,7 @@
 #include "Driver.h"
 #include "Configs.h"
 #include "Helper.h"
+#include "KernelAnalyzer.h"
 
 #define DRIVER_ALLOC_TAG 'nddH'
 
@@ -87,6 +88,8 @@ VOID DriverUnload(PDRIVER_OBJECT DriverObject)
 	DestroyRegistryFilter();
 	DestroyFSMiniFilter();
 	DestroyPsMonitor();
+
+	DestroyKernelAnalyzer();
 }
 
 _Function_class_(DRIVER_INITIALIZE)
@@ -103,6 +106,8 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT DriverObject, PUNICODE_STRING RegistryPath)
 		LogWarning("Error, can't initialize configs");
 
 	EnableDisableDriver(CfgGetDriverState());
+
+	InitializeKernelAnalyzer();
 
 	status = InitializePsMonitor(DriverObject);
 	if (!NT_SUCCESS(status))

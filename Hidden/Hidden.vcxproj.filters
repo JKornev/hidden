@@ -64,6 +64,7 @@
     <ClCompile Include="PsRules.c" />
     <ClCompile Include="PsTable.c" />
     <ClCompile Include="RegFilter.c" />
+    <ClCompile Include="KernelAnalyzer.c" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="todo.txt" />
@@ -173,6 +174,7 @@
     <ClInclude Include="PsMonitor.h" />
     <ClInclude Include="PsRules.h" />
     <ClInclude Include="PsTable.h" />
+    <ClInclude Include="KernelAnalyzer.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Hidden.rc" />
