@@ -17,6 +17,15 @@
       <UniqueIdentifier>{8E41214B-6785-4CFE-B992-037D68949A14}</UniqueIdentifier>
       <Extensions>inf;inv;inx;mof;mc;</Extensions>
     </Filter>
+    <Filter Include="Disasm">
+      <UniqueIdentifier>{0bbd724a-9a8a-4c30-a5a8-569d4d08b402}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Disasm\Zydis">
+      <UniqueIdentifier>{93d92f21-5ec7-4f5c-b8d6-8148cbb97fa8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Disasm\Zycore">
+      <UniqueIdentifier>{4c452f66-e59f-4175-b6d4-fedb5cf9e18b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ExcludeList.c">
@@ -48,6 +57,48 @@
     </ClCompile>
     <ClCompile Include="Configs.c">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Disasm\Zydis\Decoder.c">
+      <Filter>Disasm\Zydis</Filter>
+    </ClCompile>
+    <ClCompile Include="Disasm\Zydis\DecoderData.c">
+      <Filter>Disasm\Zydis</Filter>
+    </ClCompile>
+    <ClCompile Include="Disasm\Zydis\Formatter.c">
+      <Filter>Disasm\Zydis</Filter>
+    </ClCompile>
+    <ClCompile Include="Disasm\Zydis\FormatterATT.c">
+      <Filter>Disasm\Zydis</Filter>
+    </ClCompile>
+    <ClCompile Include="Disasm\Zydis\FormatterBase.c">
+      <Filter>Disasm\Zydis</Filter>
+    </ClCompile>
+    <ClCompile Include="Disasm\Zydis\FormatterBuffer.c">
+      <Filter>Disasm\Zydis</Filter>
+    </ClCompile>
+    <ClCompile Include="Disasm\Zydis\FormatterIntel.c">
+      <Filter>Disasm\Zydis</Filter>
+    </ClCompile>
+    <ClCompile Include="Disasm\Zydis\MetaInfo.c">
+      <Filter>Disasm\Zydis</Filter>
+    </ClCompile>
+    <ClCompile Include="Disasm\Zydis\Mnemonic.c">
+      <Filter>Disasm\Zydis</Filter>
+    </ClCompile>
+    <ClCompile Include="Disasm\Zydis\Register.c">
+      <Filter>Disasm\Zydis</Filter>
+    </ClCompile>
+    <ClCompile Include="Disasm\Zydis\SharedData.c">
+      <Filter>Disasm\Zydis</Filter>
+    </ClCompile>
+    <ClCompile Include="Disasm\Zydis\Utils.c">
+      <Filter>Disasm\Zydis</Filter>
+    </ClCompile>
+    <ClCompile Include="Disasm\Zydis\Zydis.c">
+      <Filter>Disasm\Zydis</Filter>
+    </ClCompile>
+    <ClCompile Include="Disasm\Zydis\String2.c">
+      <Filter>Disasm\Zydis</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -92,6 +143,99 @@
     </ClInclude>
     <ClInclude Include="Configs.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zydis\Decoder.h">
+      <Filter>Disasm\Zydis</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zydis\DecoderTypes.h">
+      <Filter>Disasm\Zydis</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zydis\Formatter.h">
+      <Filter>Disasm\Zydis</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zydis\FormatterBuffer.h">
+      <Filter>Disasm\Zydis</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zydis\MetaInfo.h">
+      <Filter>Disasm\Zydis</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zydis\Mnemonic.h">
+      <Filter>Disasm\Zydis</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zydis\Register.h">
+      <Filter>Disasm\Zydis</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zydis\SharedTypes.h">
+      <Filter>Disasm\Zydis</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zydis\ShortString.h">
+      <Filter>Disasm\Zydis</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zydis\Status.h">
+      <Filter>Disasm\Zydis</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zydis\Utils.h">
+      <Filter>Disasm\Zydis</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zydis\Zydis.h">
+      <Filter>Disasm\Zydis</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\Allocator.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\ArgParse.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\Bitset.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\Comparison.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\Defines.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\Format.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\LibC.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\List.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\Object.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\Status.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\String.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\Types.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\Vector.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\Zycore.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\API\Memory.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\API\Process.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\API\Synchronization.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\API\Terminal.h">
+      <Filter>Disasm\Zycore</Filter>
+    </ClInclude>
+    <ClInclude Include="Disasm\Zycore\API\Thread.h">
+      <Filter>Disasm\Zycore</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

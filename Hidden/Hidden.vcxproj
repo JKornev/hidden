@@ -21,6 +21,20 @@
   <ItemGroup>
     <ClCompile Include="Configs.c" />
     <ClCompile Include="Device.c" />
+    <ClCompile Include="Disasm\Zydis\Decoder.c" />
+    <ClCompile Include="Disasm\Zydis\DecoderData.c" />
+    <ClCompile Include="Disasm\Zydis\Formatter.c" />
+    <ClCompile Include="Disasm\Zydis\FormatterATT.c" />
+    <ClCompile Include="Disasm\Zydis\FormatterBase.c" />
+    <ClCompile Include="Disasm\Zydis\FormatterBuffer.c" />
+    <ClCompile Include="Disasm\Zydis\FormatterIntel.c" />
+    <ClCompile Include="Disasm\Zydis\MetaInfo.c" />
+    <ClCompile Include="Disasm\Zydis\Mnemonic.c" />
+    <ClCompile Include="Disasm\Zydis\Register.c" />
+    <ClCompile Include="Disasm\Zydis\SharedData.c" />
+    <ClCompile Include="Disasm\Zydis\String2.c" />
+    <ClCompile Include="Disasm\Zydis\Utils.c" />
+    <ClCompile Include="Disasm\Zydis\Zydis.c" />
     <ClCompile Include="FsFilter.c" />
     <ClCompile Include="Helper.c" />
     <ClCompile Include="PsMonitor.c" />
@@ -102,24 +116,40 @@
       <AdditionalDependencies>$(DDK_LIB_PATH)\fltmgr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/INTEGRITYCHECK %(AdditionalOptions)</AdditionalOptions>
     </Link>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(ProjectDir)Disasm;$(ProjectDir)Disasm\Zydis;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>ZYCORE_STATIC_DEFINE;ZYDIS_STATIC_DEFINE;ZYAN_NO_LIBC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Link>
       <AdditionalDependencies>$(DDK_LIB_PATH)\fltmgr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/INTEGRITYCHECK %(AdditionalOptions)</AdditionalOptions>
     </Link>
+    <ClCompile>
+      <PreprocessorDefinitions>ZYCORE_STATIC_DEFINE;ZYDIS_STATIC_DEFINE;ZYAN_NO_LIBC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)Disasm;$(ProjectDir)Disasm\Zydis;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
       <AdditionalDependencies>$(DDK_LIB_PATH)\fltmgr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/INTEGRITYCHECK %(AdditionalOptions)</AdditionalOptions>
     </Link>
+    <ClCompile>
+      <PreprocessorDefinitions>ZYCORE_STATIC_DEFINE;ZYDIS_STATIC_DEFINE;ZYAN_NO_LIBC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)Disasm;$(ProjectDir)Disasm\Zydis;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Link>
       <AdditionalDependencies>$(DDK_LIB_PATH)\fltmgr.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalOptions>/INTEGRITYCHECK %(AdditionalOptions)</AdditionalOptions>
     </Link>
+    <ClCompile>
+      <PreprocessorDefinitions>ZYCORE_STATIC_DEFINE;ZYDIS_STATIC_DEFINE;ZYAN_NO_LIBC;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>$(ProjectDir)Disasm;$(ProjectDir)Disasm\Zydis;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <FilesToPackage Include="$(TargetPath)" />
@@ -133,6 +163,37 @@
     <ClInclude Include="Configs.h" />
     <ClInclude Include="Device.h" />
     <ClInclude Include="DeviceAPI.h" />
+    <ClInclude Include="Disasm\Zycore\Allocator.h" />
+    <ClInclude Include="Disasm\Zycore\API\Memory.h" />
+    <ClInclude Include="Disasm\Zycore\API\Process.h" />
+    <ClInclude Include="Disasm\Zycore\API\Synchronization.h" />
+    <ClInclude Include="Disasm\Zycore\API\Terminal.h" />
+    <ClInclude Include="Disasm\Zycore\API\Thread.h" />
+    <ClInclude Include="Disasm\Zycore\ArgParse.h" />
+    <ClInclude Include="Disasm\Zycore\Bitset.h" />
+    <ClInclude Include="Disasm\Zycore\Comparison.h" />
+    <ClInclude Include="Disasm\Zycore\Defines.h" />
+    <ClInclude Include="Disasm\Zycore\Format.h" />
+    <ClInclude Include="Disasm\Zycore\LibC.h" />
+    <ClInclude Include="Disasm\Zycore\List.h" />
+    <ClInclude Include="Disasm\Zycore\Object.h" />
+    <ClInclude Include="Disasm\Zycore\Status.h" />
+    <ClInclude Include="Disasm\Zycore\String.h" />
+    <ClInclude Include="Disasm\Zycore\Types.h" />
+    <ClInclude Include="Disasm\Zycore\Vector.h" />
+    <ClInclude Include="Disasm\Zycore\Zycore.h" />
+    <ClInclude Include="Disasm\Zydis\Decoder.h" />
+    <ClInclude Include="Disasm\Zydis\DecoderTypes.h" />
+    <ClInclude Include="Disasm\Zydis\Formatter.h" />
+    <ClInclude Include="Disasm\Zydis\FormatterBuffer.h" />
+    <ClInclude Include="Disasm\Zydis\MetaInfo.h" />
+    <ClInclude Include="Disasm\Zydis\Mnemonic.h" />
+    <ClInclude Include="Disasm\Zydis\Register.h" />
+    <ClInclude Include="Disasm\Zydis\SharedTypes.h" />
+    <ClInclude Include="Disasm\Zydis\ShortString.h" />
+    <ClInclude Include="Disasm\Zydis\Status.h" />
+    <ClInclude Include="Disasm\Zydis\Utils.h" />
+    <ClInclude Include="Disasm\Zydis\Zydis.h" />
     <ClInclude Include="ExcludeList.h" />
     <ClInclude Include="FsFilter.h" />
     <ClInclude Include="Driver.h" />
