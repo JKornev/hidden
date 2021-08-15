@@ -62,46 +62,30 @@ BOOLEAN AddProcessToProcessTable(PProcessTableEntry entry)
 	return TRUE;
 }
 
-BOOLEAN RemoveProcessFromProcessTable(PProcessTableEntry entry)
+BOOLEAN RemoveProcessFromProcessTable(HANDLE ProcessId)
 {
 	BOOLEAN result = FALSE;
+	PProcessTableEntry entry = GetProcessInProcessTable(ProcessId);
 
-	if (GetProcessInProcessTable(entry))
-		result = RtlDeleteElementGenericTableAvl(&g_processTable, entry);
-
-	if (result)
-		ObDereferenceObject(entry->reference);
+	if (entry)
+	{
+		ProcessTableEntry entry2 = {0};
+		entry2.processId = entry->processId;
+		entry2.reference = entry->reference;
+		
+		result = RtlDeleteElementGenericTableAvl(&g_processTable, &entry2);
+		if (result)
+			ObDereferenceObject(entry2.reference);
+	}
 
 	return result;
 }
 
-BOOLEAN GetProcessInProcessTable(PProcessTableEntry entry)
+PProcessTableEntry GetProcessInProcessTable(HANDLE ProcessId)
 {
-	PProcessTableEntry entry2;
-
-	entry2 = (PProcessTableEntry)RtlLookupElementGenericTableAvl(&g_processTable, entry);
-	if (entry2)
-		RtlCopyMemory(entry, entry2, sizeof(ProcessTableEntry));
-
-	return (entry2 ? TRUE : FALSE);
-}
-
-BOOLEAN UpdateProcessInProcessTable(PProcessTableEntry entry)
-{
-	PProcessTableEntry entry2;
-
-	entry2 = (PProcessTableEntry)RtlLookupElementGenericTableAvl(&g_processTable, entry);
-
-	if (entry2)
-	{
-		// We don't want allow modify reference cuz it can lead to resource leak
-		if (entry->reference != entry2->reference)
-			return FALSE;
-
-		RtlCopyMemory(entry2, entry, sizeof(ProcessTableEntry));
-	}
-
-	return (entry2 ? TRUE : FALSE);
+	ProcessTableEntry query = {0};
+	query.processId = ProcessId;
+	return (PProcessTableEntry)RtlLookupElementGenericTableAvl(&g_processTable, &query);
 }
 
 // Initialization

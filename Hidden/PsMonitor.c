@@ -5,6 +5,8 @@
 #include "PsRules.h"
 #include "Driver.h"
 #include "Configs.h"
+#include "KernelAnalyzer.h"
+
 
 #define PSMON_ALLOC_TAG 'nMsP'
 
@@ -52,67 +54,49 @@ WCHAR          g_csrssPathBuffer[CSRSS_PAHT_BUFFER_SIZE];
 
 BOOLEAN CheckProtectedOperation(HANDLE Source, HANDLE Destination)
 {
-	ProcessTableEntry srcInfo, destInfo;
-	BOOLEAN result;
+	PProcessTableEntry srcInfo, destInfo;
+	BOOLEAN result = TRUE;
 
 	if (Source == Destination)
 		return FALSE;
 
-	srcInfo.processId = Source;
-	
 	ExAcquireFastMutex(&g_processTableLock);
-	result = GetProcessInProcessTable(&srcInfo);
-	ExReleaseFastMutex(&g_processTableLock);
 	
-	if (!result)
+	srcInfo = GetProcessInProcessTable(Source);
+	if (!srcInfo)
+	{
+		ExReleaseFastMutex(&g_processTableLock);
 		return FALSE;
+	}
 
-	destInfo.processId = Destination;
-
-	// Spinlock is locked once for both Get\Update process table functions
-	// because we want to prevent situations when another thread can change 
-	// any state of process beetwen get and update functions on this place
-	ExAcquireFastMutex(&g_processTableLock);
-
-	if (!GetProcessInProcessTable(&destInfo))
+	destInfo = GetProcessInProcessTable(Destination);
+	if (!destInfo)
 	{
 		ExReleaseFastMutex(&g_processTableLock);
 		return FALSE;
 	}
 
 	// Not-inited process can open any process (parent, csrss, etc)
-	if (!destInfo.inited)
+	if (!destInfo->inited)
 	{
-		result = TRUE;
-
 		// Update if source is subsystem and destination isn't inited
-		if (srcInfo.subsystem)
-		{
-			destInfo.inited = TRUE;
-			if (!UpdateProcessInProcessTable(&destInfo))
-				result = FALSE;
-		}
+		if (srcInfo->subsystem)
+			destInfo->inited = TRUE;
 
 		ExReleaseFastMutex(&g_processTableLock);
-
-		if (!result)
-			LogWarning("Warning, can't update initial state for process: %p", destInfo.processId);
-
 		return FALSE;
 	}
 
+	if (!destInfo->protected)
+		result = FALSE;
+	else if (srcInfo->protected)
+		result = FALSE;
+	else if (srcInfo->subsystem)
+		result = FALSE;
+
 	ExReleaseFastMutex(&g_processTableLock);
-
-	if (!destInfo.protected)
-		return FALSE;
-
-	if (srcInfo.protected)
-		return FALSE;
-
-	if (srcInfo.subsystem)
-		return FALSE;
 	
-	return TRUE;
+	return result;
 }
 
 OB_PREOP_CALLBACK_STATUS ProcessPreCallback(PVOID RegistrationContext, POB_PRE_OPERATION_INFORMATION OperationInformation)
@@ -204,7 +188,7 @@ BOOLEAN FindActiveProcessLinksOffset(PEPROCESS Process, ULONG* Offset)
 	processId = PsGetProcessId(Process);
 
 	// EPROCESS ActiveProcessLinks field is next to UniqueProcessId
-	//    ...
+	//    ... 
 	//	+ 0x0b4 UniqueProcessId : Ptr32 Void
 	//	+ 0x0b8 ActiveProcessLinks : _LIST_ENTRY
 	//	+ 0x0c0 Flags2 : Uint4B
@@ -314,11 +298,137 @@ VOID LinkProcessToActiveProcessLinks(PEPROCESS Process)
 	ObDereferenceObject(System);
 }
 
+typedef struct _CidTableContext {
+	HANDLE ProcessId;
+	BOOLEAN Found;
+} CidTableContext, *PCidTableContext;
+
+BOOLEAN EnumHandleCallback(PHANDLE_TABLE_ENTRY HandleTableEntry, HANDLE Handle, PVOID EnumParameter)
+{
+	PCidTableContext context = (PCidTableContext)EnumParameter;
+
+	if (context->ProcessId == Handle)
+	{
+		HandleTableEntry->u1.Object = 0;
+		context->Found = TRUE;
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+VOID SystemPoolCallerRoutine(PVOID Param)
+{
+	PVOID* shared = Param;
+	PWORKER_THREAD_ROUTINE routine = (PWORKER_THREAD_ROUTINE)shared[0];
+	PVOID context = shared[1];
+	PKEVENT event = shared[2];
+
+	LogInfo("!!!! Routine start");
+	routine(context);
+	LogInfo("!!!! Routine end");
+
+	KeSetEvent(event, 0, FALSE);
+}
+
+VOID RunRoutineInSystemPool(PWORKER_THREAD_ROUTINE Routine, PVOID Context)
+{
+	WORK_QUEUE_ITEM item;
+	KEVENT event;
+	//PVOID shared[3] = { (PVOID)Routine, (PVOID)Context, (PVOID) &event };
+	PVOID shared[3];
+	shared[0] = (PVOID)Routine;
+	shared[1] = (PVOID)Context;
+	shared[2] = (PVOID)&event;
+
+	KeInitializeEvent(&event, SynchronizationEvent, FALSE);
+
+	ExInitializeWorkItem(&item, SystemPoolCallerRoutine, shared);
+	LogInfo("!!!! Queue working item");
+	ExQueueWorkItem(&item, CriticalWorkQueue);
+	LogInfo("!!!! Wait for signal");
+	NTSTATUS status = KeWaitForSingleObject(&event, Executive, KernelMode, FALSE, NULL);
+	if (!NT_SUCCESS(status))
+	{
+		LogWarning("Warning, can't wait for %p routine in a system pool, code: %08x", Routine, status);
+		return;
+	}
+
+	//TODO: do we need to release PKEVENT or work item?
+}
+
+VOID UnlinkProcessFromCidTable(PEPROCESS Process)
+{
+	//ISSUE: deadlock if we do it from a DriverEntry (reg policy)
+	/*
+	0: kd> k
+	 # ChildEBP RetAddr  
+	00 af2f76e4 8189989e nt!KiSwapContext+0x19
+	01 af2f7794 81898ebc nt!KiSwapThread+0x59e
+	02 af2f77e8 8189885f nt!KiCommitThreadWait+0x18c
+	03 af2f78a0 818f3bb6 nt!KeWaitForSingleObject+0x1ff
+	04 af2f78e4 818f39a6 nt!ExTimedWaitForUnblockPushLock+0x7a
+	05 af2f7944 81c3692d nt!ExBlockOnAddressPushLock+0x58
+	06 af2f7958 81d0c8a7 nt!ExpBlockOnLockedHandleEntry+0x15
+	07 af2f797c bf806b31 nt!ExEnumHandleTable+0xfdfb7
+	08 af2f79a0 bf805855 Hidden!UnlinkProcessFromCidTable+0x61 [X:\Work\projects\hidden\Hidden\PsMonitor.c @ 348] 
+	09 af2f79ac bf805107 Hidden!HideProcess+0x15 [X:\Work\projects\hidden\Hidden\PsMonitor.c @ 367] 
+	0a af2f79ec bf807652 Hidden!CheckProcessFlags+0x287 [X:\Work\projects\hidden\Hidden\PsMonitor.c @ 490] 
+	0b af2f7a68 bf805c73 Hidden!InitializeProcessTable+0x282 [X:\Work\projects\hidden\Hidden\PsTable.c @ 190] 
+	0c af2f7aa0 bf809cfc Hidden!InitializePsMonitor+0x413 [X:\Work\projects\hidden\Hidden\PsMonitor.c @ 815] 
+	0d af2f7ab0 81c4a8db Hidden!DriverEntry+0x5c [X:\Work\projects\hidden\Hidden\Driver.c @ 155] 
+	0e af2f7ad8 81c47d38 nt!PnpCallDriverEntry+0x31
+	0f af2f7bc0 81c44c11 nt!IopLoadDriver+0x480
+	10 af2f7be8 81907a18 nt!IopLoadUnloadDriver+0x4d
+	11 af2f7c38 81917fec nt!ExpWorkerThread+0xf8
+	12 af2f7c70 819ab59d nt!PspSystemThreadStartup+0x4a
+	13 af2f7c7c 00000000 nt!KiThreadStartup+0x15 */
+	//
+	// So lets solve it using thread pool ExQueueWorkItem 
+	//
+
+	PVOID PspCidTable = GetPspCidTablePointer();
+
+	if (!PspCidTable)
+		LogWarning("Can't unlink process %p from PspCidTable(NULL)", Process);
+
+	CidTableContext context;
+	context.ProcessId = PsGetProcessId(Process);
+	context.Found = FALSE;
+
+	if (!ExEnumHandleTable(PspCidTable, EnumHandleCallback, &context, NULL))
+	{
+		LogWarning("Can't unlink process %p from PspCidTable", Process);
+		return;
+	}
+
+	if (!context.Found)
+		LogWarning("Can't find process %p in PspCidTable", Process);
+}
+
+VOID RestoreProcessInCidTable(PEPROCESS Process)
+{
+	UNREFERENCED_PARAMETER(Process);
+}
+
+VOID HideProcess(PEPROCESS Process)
+{
+	UnlinkProcessFromActiveProcessLinks(Process);
+	//UnlinkProcessFromCidTable(Process);
+	//RunRoutineInSystemPool(UnlinkProcessFromCidTable, Process);
+}
+
+VOID RestoreHiddenProcess(PEPROCESS Process)
+{
+	RestoreProcessInCidTable(Process);
+	//LinkProcessToActiveProcessLinks(Process);
+	//RunRoutineInSystemPool(LinkProcessToActiveProcessLinks, Process);
+}
+
 VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDLE ParentId)
 {
-	ProcessTableEntry lookup;
+	PProcessTableEntry lookup;
 	ULONG inheritType;
-	BOOLEAN result;
 
 	RtlZeroMemory(&lookup, sizeof(lookup));
 
@@ -340,25 +450,24 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 	}
 	else if (ParentId != 0)
 	{
-		lookup.processId = ParentId;
-
 		ExAcquireFastMutex(&g_processTableLock);
-		result = GetProcessInProcessTable(&lookup);
-		ExReleaseFastMutex(&g_processTableLock);
-
-		if (result)
+		
+		lookup = GetProcessInProcessTable(ParentId);
+		if (lookup)
 		{
-			if (lookup.inheritExclusion == PsRuleTypeInherit)
+			if (lookup->inheritExclusion == PsRuleTypeInherit)
 			{
 				Entry->excluded = TRUE;
 				Entry->inheritExclusion = PsRuleTypeInherit;
 			}
-			else if (lookup.inheritExclusion == PsRuleTypeInheritOnce)
+			else if (lookup->inheritExclusion == PsRuleTypeInheritOnce)
 			{
 				Entry->excluded = TRUE;
 				Entry->inheritExclusion = PsRuleTypeWithoutInherit;
 			}
 		}
+
+		ExReleaseFastMutex(&g_processTableLock);
 	}
 
 	// Check protected flag
@@ -373,25 +482,24 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 	}
 	else if (ParentId != 0)
 	{
-		lookup.processId = ParentId;
-
 		ExAcquireFastMutex(&g_processTableLock);
-		result = GetProcessInProcessTable(&lookup);
-		ExReleaseFastMutex(&g_processTableLock);
-
-		if (result)
+		
+		lookup = GetProcessInProcessTable(ParentId);
+		if (lookup)
 		{
-			if (lookup.inheritProtection == PsRuleTypeInherit)
+			if (lookup->inheritProtection == PsRuleTypeInherit)
 			{
 				Entry->protected = TRUE;
 				Entry->inheritProtection = PsRuleTypeInherit;
 			}
-			else if (lookup.inheritProtection == PsRuleTypeInheritOnce)
+			else if (lookup->inheritProtection == PsRuleTypeInheritOnce)
 			{
 				Entry->protected = TRUE;
 				Entry->inheritProtection = PsRuleTypeWithoutInherit;
 			}
 		}
+
+		ExReleaseFastMutex(&g_processTableLock);
 	}
 
 	// Check hidden flag
@@ -406,34 +514,32 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 	}
 	else if (ParentId != 0)
 	{
-		lookup.processId = ParentId;
-
 		ExAcquireFastMutex(&g_processTableLock);
-		result = GetProcessInProcessTable(&lookup);
-		ExReleaseFastMutex(&g_processTableLock);
-
-		if (result)
+		
+		lookup = GetProcessInProcessTable(ParentId);
+		if (lookup)
 		{
-			if (lookup.inheritStealth == PsRuleTypeInherit)
+			if (lookup->inheritStealth == PsRuleTypeInherit)
 			{
 				Entry->hidden = TRUE;
 				Entry->inheritStealth = PsRuleTypeInherit;
 			}
-			else if (lookup.inheritStealth == PsRuleTypeInheritOnce)
+			else if (lookup->inheritStealth == PsRuleTypeInheritOnce)
 			{
 				Entry->hidden = TRUE;
 				Entry->inheritStealth = PsRuleTypeWithoutInherit;
 			}
 		}
+
+		ExReleaseFastMutex(&g_processTableLock);
 	}
 
 	if (Entry->hidden)
-		UnlinkProcessFromActiveProcessLinks(Entry->reference);
+		HideProcess(Entry->reference);
 }
 
 VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE_NOTIFY_INFO CreateInfo)
 {
-	ProcessTableEntry entry;
 	BOOLEAN result;
 
 	UNREFERENCED_PARAMETER(Process);
@@ -454,12 +560,9 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 			PsGetCurrentThreadId()
 		);
 
-	RtlZeroMemory(&entry, sizeof(entry));
-	entry.processId = ProcessId;
-	entry.reference = Process;
-
 	if (CreateInfo)
 	{
+		ProcessTableEntry entry;
 		const USHORT maxBufSize = CreateInfo->ImageFileName->Length + NORMALIZE_INCREAMENT;
 		UNICODE_STRING normalized;
 		NTSTATUS status;
@@ -481,6 +584,10 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 			ExFreePoolWithTag(normalized.Buffer, PSMON_ALLOC_TAG);
 			return;
 		}
+
+		RtlZeroMemory(&entry, sizeof(entry));
+		entry.processId = ProcessId;
+		entry.reference = Process;
 
 		CheckProcessFlags(&entry, &normalized, PsGetCurrentProcessId());
 
@@ -505,50 +612,42 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 	else
 	{
 		ExAcquireFastMutex(&g_processTableLock);
-		result = RemoveProcessFromProcessTable(&entry);
+		result = RemoveProcessFromProcessTable(ProcessId);
 		ExReleaseFastMutex(&g_processTableLock);
 
 		if (!result)
-			LogWarning("Warning, can't remove process(pid:%%Iu) from process table", ProcessId);
+			LogWarning("Warning, can't remove process(pid:%Iu) from process table", ProcessId);
 	}
 }
 
 BOOLEAN IsProcessExcluded(HANDLE ProcessId)
 {
-	ProcessTableEntry entry;
+	PProcessTableEntry entry;
 	BOOLEAN result;
 
 	// Exclude system process because we don't want affect to kernel-mode threads
 	if (ProcessId == SYSTEM_PROCESS_ID)
 		return TRUE;
 
-	entry.processId = ProcessId;
-
 	ExAcquireFastMutex(&g_processTableLock);
-	result = GetProcessInProcessTable(&entry);
+	entry = GetProcessInProcessTable(ProcessId);
+	result = (entry && entry->excluded ? TRUE : FALSE);
 	ExReleaseFastMutex(&g_processTableLock);
 
-	if (!result)
-		return FALSE;
-
-	return entry.excluded;
+	return result;
 }
 
 BOOLEAN IsProcessProtected(HANDLE ProcessId)
 {
-	ProcessTableEntry entry;
+	PProcessTableEntry entry;
 	BOOLEAN result;
 
-	entry.processId = ProcessId;
-
 	ExAcquireFastMutex(&g_processTableLock);
-	result = GetProcessInProcessTable(&entry);
+	entry = GetProcessInProcessTable(ProcessId);
+	result = (entry && entry->protected ? TRUE : FALSE);
 	ExReleaseFastMutex(&g_processTableLock);
 
-	if (!result)
-		return FALSE;
-
-	return entry.protected;
+	return result;
 }
 
 NTSTATUS ParsePsConfigEntry(PUNICODE_STRING Entry, PUNICODE_STRING Path, PULONG Inherit)
@@ -813,7 +912,7 @@ VOID CleanupHiddenProcessCallback(PProcessTableEntry entry)
 	if (!entry->hidden)
 		return;
 
-	LinkProcessToActiveProcessLinks(entry->reference);
+	RestoreHiddenProcess(entry->reference);
 
 	entry->hidden = FALSE;
 }
@@ -866,7 +965,6 @@ NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Exclude
 		CLIENT_ID clientId;
 		OBJECT_ATTRIBUTES attribs;
 		PUNICODE_STRING procName;
-		ProcessTableEntry entry;
 
 		processInfo = (PSYSTEM_PROCESS_INFORMATION)((SIZE_T)processInfo + offset);
 
@@ -898,48 +996,38 @@ NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Exclude
 			continue;
 		}
 
-		entry.processId = processInfo->ProcessId;
-
 		if (RtlCompareUnicodeString(procName, ImagePath, TRUE) == 0)
 		{
-			BOOLEAN result = TRUE;
+			PProcessTableEntry entry;
 
-			// Spinlock is locked once for both Get\Update process table functions
-			// because we want to prevent situations when another thread can change 
-			// any state of process beetwen get and update functions on this place
 			ExAcquireFastMutex(&g_processTableLock);
 			
-			if (GetProcessInProcessTable(&entry))
+			entry = GetProcessInProcessTable(processInfo->ProcessId);
+			if (entry)
 			{
 				if (Excluded)
 				{
-					entry.excluded = TRUE;
-					entry.inheritExclusion = PsRuleTypeWithoutInherit;
+					entry->excluded = TRUE;
+					entry->inheritExclusion = PsRuleTypeWithoutInherit;
 				}
 
 				if (Protected)
 				{
-					entry.protected = TRUE;
-					entry.inheritProtection = PsRuleTypeWithoutInherit;
+					entry->protected = TRUE;
+					entry->inheritProtection = PsRuleTypeWithoutInherit;
 				}
 
 				if (Hidden)
 				{
-					if (!entry.hidden)
-						UnlinkProcessFromActiveProcessLinks(entry.reference);
+					if (!entry->hidden)
+						HideProcess(entry->reference);
 
-					entry.hidden = TRUE;
-					entry.inheritStealth = PsRuleTypeWithoutInherit;
+					entry->hidden = TRUE;
+					entry->inheritStealth = PsRuleTypeWithoutInherit;
 				}
-
-				if (!UpdateProcessInProcessTable(&entry))
-					result = FALSE;
 			}
 
 			ExReleaseFastMutex(&g_processTableLock);
-
-			if (!result)
-				LogWarning("Can't update process %Iu", processInfo->ProcessId);
 		}
 
 		FreeInformation(procName);
@@ -987,58 +1075,50 @@ NTSTATUS AddProtectedImage(PUNICODE_STRING ImagePath, ULONG InheritType, BOOLEAN
 
 NTSTATUS GetProtectedProcessState(HANDLE ProcessId, PULONG InheritType, PBOOLEAN Enable)
 {
-	ProcessTableEntry entry;
-	BOOLEAN result;
-
-	entry.processId = ProcessId;
+	PProcessTableEntry entry;
+	BOOLEAN found = FALSE;
 
 	ExAcquireFastMutex(&g_processTableLock);
-	result = GetProcessInProcessTable(&entry);
+
+	entry = GetProcessInProcessTable(ProcessId);
+	if (entry)
+	{
+		*Enable = entry->protected;
+		*InheritType = entry->inheritProtection;
+		found = TRUE;
+	}
+
 	ExReleaseFastMutex(&g_processTableLock);
 
-	if (!result)
-		return STATUS_NOT_FOUND;
-
-	*Enable = entry.protected;
-	*InheritType = entry.inheritProtection;
-
-	return STATUS_SUCCESS;
+	return (found ? STATUS_SUCCESS : STATUS_NOT_FOUND);
 }
 
 NTSTATUS SetProtectedProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN Enable)
 {
-	NTSTATUS status = STATUS_SUCCESS;
-	ProcessTableEntry entry;
-	BOOLEAN result;
-
-	entry.processId = ProcessId;
+	PProcessTableEntry entry;
+	BOOLEAN found = FALSE;
 
 	ExAcquireFastMutex(&g_processTableLock);
 
-	if (!GetProcessInProcessTable(&entry))
+	entry = GetProcessInProcessTable(ProcessId);
+	if (entry)
 	{
-		ExReleaseFastMutex(&g_processTableLock);
-		return STATUS_NOT_FOUND;
-	}
+		if (Enable)
+		{
+			entry->protected = TRUE;
+			entry->inheritProtection = InheritType;
+		}
+		else
+		{
+			entry->protected = FALSE;
+		}
 
-	if (Enable)
-	{
-		entry.protected = TRUE;
-		entry.inheritProtection = InheritType;
+		found = TRUE;
 	}
-	else
-	{
-		entry.protected = FALSE;
-	}
-
-	result = UpdateProcessInProcessTable(&entry);
 	
 	ExReleaseFastMutex(&g_processTableLock);
 
-	if (!result)
-		return STATUS_NOT_FOUND;
-
-	return status;
+	return (found ? STATUS_SUCCESS : STATUS_NOT_FOUND);
 }
 
 NTSTATUS RemoveProtectedImage(ULONGLONG ObjId)
@@ -1088,58 +1168,50 @@ NTSTATUS AddExcludedImage(PUNICODE_STRING ImagePath, ULONG InheritType, BOOLEAN 
 
 NTSTATUS GetExcludedProcessState(HANDLE ProcessId, PULONG InheritType, PBOOLEAN Enable)
 {
-	ProcessTableEntry entry;
-	BOOLEAN result;
-
-	entry.processId = ProcessId;
+	PProcessTableEntry entry;
+	BOOLEAN found = FALSE;
 
 	ExAcquireFastMutex(&g_processTableLock);
-	result = GetProcessInProcessTable(&entry);
+
+	entry = GetProcessInProcessTable(ProcessId);
+	if (entry)
+	{
+		*Enable = entry->excluded;
+		*InheritType = entry->inheritExclusion;
+		found = TRUE;
+	}
+
 	ExReleaseFastMutex(&g_processTableLock);
 
-	if (!result)
-		return STATUS_NOT_FOUND;
-
-	*Enable = entry.excluded;
-	*InheritType = entry.inheritExclusion;
-
-	return STATUS_SUCCESS;
+	return (found ? STATUS_SUCCESS : STATUS_NOT_FOUND);
 }
 
 NTSTATUS SetExcludedProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN Enable)
 {
-	NTSTATUS status = STATUS_SUCCESS;
-	ProcessTableEntry entry;
-	BOOLEAN result;
-
-	entry.processId = ProcessId;
+	PProcessTableEntry entry;
+	BOOLEAN found = FALSE;
 
 	ExAcquireFastMutex(&g_processTableLock);
-	
-	if (!GetProcessInProcessTable(&entry))
+
+	entry = GetProcessInProcessTable(ProcessId);
+	if (entry)
 	{
-		ExReleaseFastMutex(&g_processTableLock);
-		return STATUS_NOT_FOUND;
+		if (Enable)
+		{
+			entry->excluded = TRUE;
+			entry->inheritExclusion = InheritType;
+		}
+		else
+		{
+			entry->excluded = FALSE;
+		}
+
+		found = TRUE;
 	}
 
-	if (Enable)
-	{
-		entry.excluded = TRUE;
-		entry.inheritExclusion = InheritType;
-	}
-	else
-	{
-		entry.excluded = FALSE;
-	}
-
-	result = UpdateProcessInProcessTable(&entry);
-	
 	ExReleaseFastMutex(&g_processTableLock);
 
-	if (!result)
-		return STATUS_NOT_FOUND;
-
-	return status;
+	return (found ? STATUS_SUCCESS : STATUS_NOT_FOUND);
 }
 
 NTSTATUS RemoveExcludedImage(ULONGLONG ObjId)
@@ -1190,72 +1262,62 @@ NTSTATUS AddHiddenImage(PUNICODE_STRING ImagePath, ULONG InheritType, BOOLEAN Ap
 
 NTSTATUS GetHiddenProcessState(HANDLE ProcessId, PULONG InheritType, PBOOLEAN Enable)
 {
-	ProcessTableEntry entry;
-	BOOLEAN result;
-
-	entry.processId = ProcessId;
+	PProcessTableEntry entry;
+	BOOLEAN found = FALSE;
 
 	ExAcquireFastMutex(&g_processTableLock);
-	result = GetProcessInProcessTable(&entry);
+
+	entry = GetProcessInProcessTable(ProcessId);
+	if (entry)
+	{
+		*Enable = entry->hidden;
+		*InheritType = entry->inheritStealth;
+		found = TRUE;
+	}
+
 	ExReleaseFastMutex(&g_processTableLock);
 
-	if (!result)
-		return STATUS_NOT_FOUND;
-
-	*Enable = entry.hidden;
-	*InheritType = entry.inheritStealth;
-
-	return STATUS_SUCCESS;
+	return (found ? STATUS_SUCCESS : STATUS_NOT_FOUND);
 }
 
 NTSTATUS SetHiddenProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN Enable) 
 {
-	ProcessTableEntry entry;
-	BOOLEAN result;
-
-	if (!ProcessId || ProcessId == SYSTEM_PROCESS_ID)
-		return STATUS_NOT_SUPPORTED;
-
-	entry.processId = ProcessId;
+	PProcessTableEntry entry;
+	BOOLEAN found = FALSE;
 
 	ExAcquireFastMutex(&g_processTableLock);
-	
-	if (!GetProcessInProcessTable(&entry))
-	{
-		ExReleaseFastMutex(&g_processTableLock);
-		return STATUS_NOT_FOUND;
-	}
 
-	if (Enable)
+	entry = GetProcessInProcessTable(ProcessId);
+	if (entry)
 	{
-		if (!entry.hidden)
-			UnlinkProcessFromActiveProcessLinks(entry.reference);
-
-		entry.hidden = TRUE;
-		entry.inheritStealth = InheritType;
-	}
-	else
-	{
-		if (!entry.hidden)
+		if (Enable)
 		{
-			ExReleaseFastMutex(&g_processTableLock);
-			return STATUS_NOT_CAPABLE;
+			if (!entry->hidden)
+				HideProcess(entry->reference);
+
+			entry->hidden = TRUE;
+			entry->inheritStealth = InheritType;
+		}
+		else
+		{
+			if (!entry->hidden)
+			{
+				ExReleaseFastMutex(&g_processTableLock);
+				return STATUS_NOT_CAPABLE;
+			}
+
+			RestoreHiddenProcess(entry->reference);
+
+			entry->hidden = FALSE;
+			entry->inheritStealth = 0;
 		}
 
-		LinkProcessToActiveProcessLinks(entry.reference);
-
-		entry.hidden = FALSE;
-		entry.inheritStealth = 0;
+		found = TRUE;
 	}
 
-	result = UpdateProcessInProcessTable(&entry);
-	
 	ExReleaseFastMutex(&g_processTableLock);
 
-	if (!result)
-		return STATUS_NOT_FOUND;
-
-	return STATUS_SUCCESS;
+	return (found ? STATUS_SUCCESS : STATUS_NOT_FOUND);
 }
 
 NTSTATUS RemoveHiddenImage(ULONGLONG ObjId)

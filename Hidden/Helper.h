@@ -80,6 +80,41 @@ PsLookupProcessByProcessId(
 	_Outptr_ PEPROCESS* Process
 );
 
+typedef struct _HANDLE_TABLE_ENTRY {
+	union
+	{
+		PVOID Object;
+		ULONG ObAttributes;
+		PVOID InfoTable;
+		ULONG Value;
+	} u1;
+	union
+	{
+		ULONG GrantedAccess;
+		struct
+		{
+			USHORT GrantedAccessIndex;
+			USHORT CreatorBackTraceIndex;
+		} s1;
+		LONG NextFreeTableEntry;
+	} u2;
+} HANDLE_TABLE_ENTRY, *PHANDLE_TABLE_ENTRY;
+
+typedef BOOLEAN(*EX_ENUMERATE_HANDLE_ROUTINE)(
+	IN PHANDLE_TABLE_ENTRY HandleTableEntry,
+	IN HANDLE Handle,
+	IN PVOID EnumParameter
+);
+
+NTKERNELAPI
+BOOLEAN
+ExEnumHandleTable(
+	_In_  PVOID HandleTable,
+	_In_  EX_ENUMERATE_HANDLE_ROUTINE EnumHandleProcedure,
+	_In_  PVOID EnumParameter,
+	_Out_opt_ PHANDLE Handle
+);
+
 NTSTATUS QuerySystemInformation(SYSTEM_INFORMATION_CLASS Class, PVOID* InfoBuffer, PSIZE_T InfoSize);
 NTSTATUS QueryProcessInformation(PROCESSINFOCLASS Class, HANDLE ProcessId, PVOID* InfoBuffer, PSIZE_T InfoSize);
 VOID FreeInformation(PVOID Buffer);

@@ -31,6 +31,5 @@ VOID EnumProcessTable(VOID(*EnumCallback)(PProcessTableEntry));
 // functions, excluding InitializeProcessTable, should be synced manualy from external code
 
 BOOLEAN AddProcessToProcessTable(PProcessTableEntry entry);
-BOOLEAN RemoveProcessFromProcessTable(PProcessTableEntry entry);
-BOOLEAN GetProcessInProcessTable(PProcessTableEntry entry);
-BOOLEAN UpdateProcessInProcessTable(PProcessTableEntry entry);
+BOOLEAN RemoveProcessFromProcessTable(HANDLE ProcessId);
+PProcessTableEntry GetProcessInProcessTable(HANDLE ProcessId);
