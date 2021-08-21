@@ -1,22 +1,25 @@
 #pragma once
 
 #include <Ntddk.h>
+#include "Helper.h"
 
 typedef struct _ProcessTableEntry {
-	HANDLE processId;
+	HANDLE      processId;
 
-	BOOLEAN excluded;
-	ULONG   inheritExclusion;
+	BOOLEAN     excluded;
+	ULONG       inheritExclusion;
 
-	BOOLEAN protected;
-	ULONG   inheritProtection;
+	BOOLEAN     protected;
+	ULONG       inheritProtection;
 
-	BOOLEAN hidden;
-	ULONG   inheritStealth;
-	PEPROCESS reference;
+	BOOLEAN     hidden;
+	ULONG       inheritStealth;
+	PEPROCESS   reference;
+	HANDLE_TABLE_ENTRY cidEntryBackup;
+	PHANDLE_TABLE_ENTRY cidEntry;
 
-	BOOLEAN subsystem;
-	BOOLEAN inited;
+	BOOLEAN     subsystem;
+	BOOLEAN     inited;
 
 } ProcessTableEntry, *PProcessTableEntry;
 

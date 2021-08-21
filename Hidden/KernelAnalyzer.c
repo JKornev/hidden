@@ -122,7 +122,17 @@ BOOLEAN LookForPspCidTableCallback(ZyanU64 address, ZydisDecodedInstruction* ins
 
 		//TODO: validate PspCidTable
 
-		s_NTinternals.PspCidTable = (PVOID)(ULONG_PTR)pointer;
+		if (instruction->operands[1].type != ZYDIS_OPERAND_TYPE_MEMORY)
+			return TRUE;
+
+#if _M_AMD64
+		if (instruction->operands[1].mem.segment == ZYDIS_REGISTER_GS)
+#else
+		if (instruction->operands[1].mem.segment == ZYDIS_REGISTER_FS)
+#endif
+			return TRUE;
+
+		s_NTinternals.PspCidTable = *(PVOID*)(ULONG_PTR)pointer;
 		LogInfo("PspCidTable address: %p", pointer);
 		// Stop scanning if we found a PspCidTable
 		return FALSE;
@@ -140,7 +150,7 @@ BOOLEAN LookForPspCidTableCallback(ZyanU64 address, ZydisDecodedInstruction* ins
 			return TRUE;
 
 		EnterCalls = FALSE;
-		Disassemble((PVOID)(ULONG)callAddress, 0x20, &LookForPspCidTableCallback, &EnterCalls);
+		Disassemble((PVOID)(ULONG_PTR)callAddress, 0x20, &LookForPspCidTableCallback, &EnterCalls);
 		// Stop scan after a first entering a call instruction
 		return FALSE;
 	}

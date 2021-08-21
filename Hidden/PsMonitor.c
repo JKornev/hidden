@@ -229,8 +229,9 @@ VOID UnlinkProcessFromList(PLIST_ENTRY Current)
 //      code to enum processes. But a process still accessible by PID. To fix it
 //      we have to hack PspCidTable too.
 //
-VOID UnlinkProcessFromActiveProcessLinks(PEPROCESS Process)
+VOID UnlinkProcessFromActiveProcessLinks(PProcessTableEntry Entry)
 {
+	PEPROCESS Process = Entry->reference;
 	ULONG eprocListOffset = 0;
 	PLIST_ENTRY CurrentList = NULL;
 
@@ -268,8 +269,9 @@ VOID LinkProcessFromList(PLIST_ENTRY Current, PLIST_ENTRY Target)
 	Next->Blink = (PLIST_ENTRY)&Current->Flink;
 }
 
-VOID LinkProcessToActiveProcessLinks(PEPROCESS Process)
+VOID LinkProcessToActiveProcessLinks(PProcessTableEntry Entry)
 {
+	PEPROCESS Process = Entry->reference;
 	ULONG eprocListOffset = 0;
 	PLIST_ENTRY CurrentList = NULL, TargetList = NULL;
 	PEPROCESS System;
@@ -301,128 +303,130 @@ VOID LinkProcessToActiveProcessLinks(PEPROCESS Process)
 typedef struct _CidTableContext {
 	HANDLE ProcessId;
 	BOOLEAN Found;
+	HANDLE_TABLE_ENTRY EntryBackup;
+	PHANDLE_TABLE_ENTRY Entry;
 } CidTableContext, *PCidTableContext;
 
-BOOLEAN EnumHandleCallback(PHANDLE_TABLE_ENTRY HandleTableEntry, HANDLE Handle, PVOID EnumParameter)
+BOOLEAN RemoveHandleCallbackWin8(PVOID PspCidTable, PHANDLE_TABLE_ENTRY HandleTableEntry, HANDLE Handle, PVOID EnumParameter)
 {
 	PCidTableContext context = (PCidTableContext)EnumParameter;
+	PHANDLE_TABLE_WIN8 cidTable = (PHANDLE_TABLE_WIN8)PspCidTable;
+	BOOLEAN result = FALSE;
+
+
+	if (PspCidTable != GetPspCidTablePointer())
+	{
+		LogWarning("Attempt to enumerate invalid table, %p != %p", PspCidTable, GetPspCidTablePointer());
+		result = TRUE;
+		goto cleanup;
+	}
 
 	if (context->ProcessId == Handle)
 	{
-		HandleTableEntry->u1.Object = 0;
+		PEPROCESS System;
+		NTSTATUS status;
+
+		status = PsLookupProcessByProcessId(SYSTEM_PROCESS_ID, &System);
+		if (!NT_SUCCESS(status))
+		{
+			LogWarning("Warning, can't find active system process");
+			goto cleanup;
+		}
+
 		context->Found = TRUE;
-		return TRUE;
+		context->Entry = HandleTableEntry;
+		context->EntryBackup = *HandleTableEntry;
+		result = TRUE;
+
+		HandleTableEntry->u1.Object = 0;
+		HandleTableEntry->u2.NextFreeTableEntry = (ULONG_PTR)HandleTableEntry;
+
+		LogInfo(
+			"PID %Iu has been removed from PspCidTable, entry:%p, object:%p, access:%08x",
+			Handle,
+			HandleTableEntry,
+			context->EntryBackup.u1.Object,
+			context->EntryBackup.u2.GrantedAccess
+		);
+
+		goto cleanup_no_unlock;
 	}
 
-	return FALSE;
+cleanup:
+
+	_InterlockedExchangeAdd((volatile LONG*)&HandleTableEntry->u1.Value, EXHANDLE_TABLE_ENTRY_LOCK_BIT);
+	_InterlockedOr((volatile LONG*)&HandleTableEntry->u1.Value, 0); // Why do we have it in ntoskrnl?
+
+cleanup_no_unlock:
+
+	if (cidTable->HandleTableLock)
+		ExfUnblockPushLock(&cidTable->HandleTableLock, 0);
+
+	return result;
 }
 
-VOID SystemPoolCallerRoutine(PVOID Param)
+VOID UnlinkProcessFromCidTable(PProcessTableEntry Entry)
 {
-	PVOID* shared = Param;
-	PWORKER_THREAD_ROUTINE routine = (PWORKER_THREAD_ROUTINE)shared[0];
-	PVOID context = shared[1];
-	PKEVENT event = shared[2];
-
-	LogInfo("!!!! Routine start");
-	routine(context);
-	LogInfo("!!!! Routine end");
-
-	KeSetEvent(event, 0, FALSE);
-}
-
-VOID RunRoutineInSystemPool(PWORKER_THREAD_ROUTINE Routine, PVOID Context)
-{
-	WORK_QUEUE_ITEM item;
-	KEVENT event;
-	//PVOID shared[3] = { (PVOID)Routine, (PVOID)Context, (PVOID) &event };
-	PVOID shared[3];
-	shared[0] = (PVOID)Routine;
-	shared[1] = (PVOID)Context;
-	shared[2] = (PVOID)&event;
-
-	KeInitializeEvent(&event, SynchronizationEvent, FALSE);
-
-	ExInitializeWorkItem(&item, SystemPoolCallerRoutine, shared);
-	LogInfo("!!!! Queue working item");
-	ExQueueWorkItem(&item, CriticalWorkQueue);
-	LogInfo("!!!! Wait for signal");
-	NTSTATUS status = KeWaitForSingleObject(&event, Executive, KernelMode, FALSE, NULL);
-	if (!NT_SUCCESS(status))
-	{
-		LogWarning("Warning, can't wait for %p routine in a system pool, code: %08x", Routine, status);
-		return;
-	}
-
-	//TODO: do we need to release PKEVENT or work item?
-}
-
-VOID UnlinkProcessFromCidTable(PEPROCESS Process)
-{
-	//ISSUE: deadlock if we do it from a DriverEntry (reg policy)
-	/*
-	0: kd> k
-	 # ChildEBP RetAddr  
-	00 af2f76e4 8189989e nt!KiSwapContext+0x19
-	01 af2f7794 81898ebc nt!KiSwapThread+0x59e
-	02 af2f77e8 8189885f nt!KiCommitThreadWait+0x18c
-	03 af2f78a0 818f3bb6 nt!KeWaitForSingleObject+0x1ff
-	04 af2f78e4 818f39a6 nt!ExTimedWaitForUnblockPushLock+0x7a
-	05 af2f7944 81c3692d nt!ExBlockOnAddressPushLock+0x58
-	06 af2f7958 81d0c8a7 nt!ExpBlockOnLockedHandleEntry+0x15
-	07 af2f797c bf806b31 nt!ExEnumHandleTable+0xfdfb7
-	08 af2f79a0 bf805855 Hidden!UnlinkProcessFromCidTable+0x61 [X:\Work\projects\hidden\Hidden\PsMonitor.c @ 348] 
-	09 af2f79ac bf805107 Hidden!HideProcess+0x15 [X:\Work\projects\hidden\Hidden\PsMonitor.c @ 367] 
-	0a af2f79ec bf807652 Hidden!CheckProcessFlags+0x287 [X:\Work\projects\hidden\Hidden\PsMonitor.c @ 490] 
-	0b af2f7a68 bf805c73 Hidden!InitializeProcessTable+0x282 [X:\Work\projects\hidden\Hidden\PsTable.c @ 190] 
-	0c af2f7aa0 bf809cfc Hidden!InitializePsMonitor+0x413 [X:\Work\projects\hidden\Hidden\PsMonitor.c @ 815] 
-	0d af2f7ab0 81c4a8db Hidden!DriverEntry+0x5c [X:\Work\projects\hidden\Hidden\Driver.c @ 155] 
-	0e af2f7ad8 81c47d38 nt!PnpCallDriverEntry+0x31
-	0f af2f7bc0 81c44c11 nt!IopLoadDriver+0x480
-	10 af2f7be8 81907a18 nt!IopLoadUnloadDriver+0x4d
-	11 af2f7c38 81917fec nt!ExpWorkerThread+0xf8
-	12 af2f7c70 819ab59d nt!PspSystemThreadStartup+0x4a
-	13 af2f7c7c 00000000 nt!KiThreadStartup+0x15 */
-	//
-	// So lets solve it using thread pool ExQueueWorkItem 
-	//
-
 	PVOID PspCidTable = GetPspCidTablePointer();
 
 	if (!PspCidTable)
-		LogWarning("Can't unlink process %p from PspCidTable(NULL)", Process);
+	{
+		LogWarning("Can't unlink process %p from PspCidTable(NULL)", Entry->reference);
+		return;
+	}
 
 	CidTableContext context;
-	context.ProcessId = PsGetProcessId(Process);
+	context.ProcessId = PsGetProcessId(Entry->reference);
 	context.Found = FALSE;
 
-	if (!ExEnumHandleTable(PspCidTable, EnumHandleCallback, &context, NULL))
+	if (!ExEnumHandleTable(PspCidTable, (EX_ENUMERATE_HANDLE_ROUTINE)RemoveHandleCallbackWin8, &context, NULL))
 	{
-		LogWarning("Can't unlink process %p from PspCidTable", Process);
+		LogWarning("Can't unlink process %p from PspCidTable", Entry->reference);
 		return;
 	}
 
 	if (!context.Found)
-		LogWarning("Can't find process %p in PspCidTable", Process);
+	{
+		LogWarning("Can't find process %p in PspCidTable", Entry->reference);
+		return;
+	}
+
+	Entry->cidEntryBackup = context.EntryBackup;
+	Entry->cidEntry = context.Entry;
 }
 
-VOID RestoreProcessInCidTable(PEPROCESS Process)
+VOID RestoreProcessInCidTable(PProcessTableEntry Entry)
 {
-	UNREFERENCED_PARAMETER(Process);
+	//TODO: the check should be deleted
+	if (!Entry->cidEntry)
+		return;
+
+	// Add a lock bit to avoid a deadlock when we return from CreateProcessNotifyCallback(destroy)
+	Entry->cidEntryBackup.u1.Value |= EXHANDLE_TABLE_ENTRY_LOCK_BIT;
+	*Entry->cidEntry = Entry->cidEntryBackup;
+
+	LogInfo(
+		"PID %Iu has been restored to PspCidTable, entry:%p, object:%p, access:%08x", 
+		Entry->processId, 
+		Entry->cidEntry, 
+		Entry->cidEntry->u1.Object,
+		Entry->cidEntry->u2.GrantedAccess
+	);
+
+	RtlZeroMemory(&Entry->cidEntryBackup, sizeof(Entry->cidEntryBackup));
+	Entry->cidEntry = 0;
 }
 
-VOID HideProcess(PEPROCESS Process)
+VOID HideProcess(PProcessTableEntry Entry)
 {
-	UnlinkProcessFromActiveProcessLinks(Process);
-	//UnlinkProcessFromCidTable(Process);
-	//RunRoutineInSystemPool(UnlinkProcessFromCidTable, Process);
+	UnlinkProcessFromActiveProcessLinks(Entry);
+	UnlinkProcessFromCidTable(Entry);
 }
 
-VOID RestoreHiddenProcess(PEPROCESS Process)
+VOID RestoreHiddenProcess(PProcessTableEntry Entry)
 {
-	RestoreProcessInCidTable(Process);
-	//LinkProcessToActiveProcessLinks(Process);
-	//RunRoutineInSystemPool(LinkProcessToActiveProcessLinks, Process);
+	RestoreProcessInCidTable(Entry);
+	LinkProcessToActiveProcessLinks(Entry);
 }
 
 VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDLE ParentId)
@@ -535,7 +539,7 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 	}
 
 	if (Entry->hidden)
-		HideProcess(Entry->reference);
+		HideProcess(Entry);
 }
 
 VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE_NOTIFY_INFO CreateInfo)
@@ -612,6 +616,9 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 	else
 	{
 		ExAcquireFastMutex(&g_processTableLock);
+		PProcessTableEntry entry = GetProcessInProcessTable(ProcessId);
+		if (entry && entry->hidden)
+			RestoreProcessInCidTable(entry);
 		result = RemoveProcessFromProcessTable(ProcessId);
 		ExReleaseFastMutex(&g_processTableLock);
 
@@ -912,7 +919,7 @@ VOID CleanupHiddenProcessCallback(PProcessTableEntry entry)
 	if (!entry->hidden)
 		return;
 
-	RestoreHiddenProcess(entry->reference);
+	RestoreHiddenProcess(entry);
 
 	entry->hidden = FALSE;
 }
@@ -1020,7 +1027,7 @@ NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Exclude
 				if (Hidden)
 				{
 					if (!entry->hidden)
-						HideProcess(entry->reference);
+						HideProcess(entry);
 
 					entry->hidden = TRUE;
 					entry->inheritStealth = PsRuleTypeWithoutInherit;
@@ -1293,7 +1300,7 @@ NTSTATUS SetHiddenProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN Enab
 		if (Enable)
 		{
 			if (!entry->hidden)
-				HideProcess(entry->reference);
+				HideProcess(entry);
 
 			entry->hidden = TRUE;
 			entry->inheritStealth = InheritType;
@@ -1306,7 +1313,7 @@ NTSTATUS SetHiddenProcessState(HANDLE ProcessId, ULONG InheritType, BOOLEAN Enab
 				return STATUS_NOT_CAPABLE;
 			}
 
-			RestoreHiddenProcess(entry->reference);
+			RestoreHiddenProcess(entry);
 
 			entry->hidden = FALSE;
 			entry->inheritStealth = 0;

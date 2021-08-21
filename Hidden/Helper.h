@@ -80,27 +80,42 @@ PsLookupProcessByProcessId(
 	_Outptr_ PEPROCESS* Process
 );
 
-typedef struct _HANDLE_TABLE_ENTRY {
-	union
-	{
-		PVOID Object;
-		ULONG ObAttributes;
-		PVOID InfoTable;
-		ULONG Value;
-	} u1;
-	union
-	{
-		ULONG GrantedAccess;
-		struct
-		{
-			USHORT GrantedAccessIndex;
-			USHORT CreatorBackTraceIndex;
-		} s1;
-		LONG NextFreeTableEntry;
-	} u2;
-} HANDLE_TABLE_ENTRY, *PHANDLE_TABLE_ENTRY;
+#define EXHANDLE_TABLE_ENTRY_LOCK_BIT    1
 
+typedef struct _HANDLE_TABLE_ENTRY {
+	union {
+		VOID* Object;
+		ULONG_PTR Value;
+	} u1;
+	union {
+		ULONG GrantedAccess;
+		ULONG_PTR NextFreeTableEntry;
+	} u2;
+} HANDLE_TABLE_ENTRY, * PHANDLE_TABLE_ENTRY;
+
+typedef struct _HANDLE_TABLE_WIN8 {
+	ULONG NextHandleNeedingPool;
+	LONG ExtraInfoPages;
+	volatile ULONG TableCode;
+	struct _EPROCESS* QuotaProcess;
+	struct _LIST_ENTRY HandleTableList;
+	ULONG UniqueProcessId;
+	ULONG Flags;
+	EX_PUSH_LOCK HandleContentionEvent;
+	EX_PUSH_LOCK HandleTableLock;
+	// ... other useless fields
+} HANDLE_TABLE_WIN8, *PHANDLE_TABLE_WIN8;
+
+// Windows 7
 typedef BOOLEAN(*EX_ENUMERATE_HANDLE_ROUTINE)(
+	IN PHANDLE_TABLE_ENTRY HandleTableEntry,
+	IN HANDLE Handle,
+	IN PVOID EnumParameter
+);
+
+// Windows 8
+typedef BOOLEAN(*EX_ENUMERATE_HANDLE_ROUTINE_WIN8)(
+	IN PVOID PspCidTable,
 	IN PHANDLE_TABLE_ENTRY HandleTableEntry,
 	IN HANDLE Handle,
 	IN PVOID EnumParameter
@@ -115,6 +130,14 @@ ExEnumHandleTable(
 	_Out_opt_ PHANDLE Handle
 );
 
+NTKERNELAPI
+VOID
+FASTCALL
+ExfUnblockPushLock(
+	PEX_PUSH_LOCK PushLock,
+	PVOID CurrentWaitBlock
+);
+
 NTSTATUS QuerySystemInformation(SYSTEM_INFORMATION_CLASS Class, PVOID* InfoBuffer, PSIZE_T InfoSize);
 NTSTATUS QueryProcessInformation(PROCESSINFOCLASS Class, HANDLE ProcessId, PVOID* InfoBuffer, PSIZE_T InfoSize);
 VOID FreeInformation(PVOID Buffer);
@@ -123,7 +146,15 @@ VOID FreeInformation(PVOID Buffer);
 
 NTSTATUS NormalizeDevicePath(PCUNICODE_STRING Path, PUNICODE_STRING Normalized);
 
-#define _LogMsg(lvl, lvlname, frmt, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, lvl , "[" lvlname "] [irql:%Iu,pid:%Iu] hidden!" __FUNCTION__ ": " frmt "\n", KeGetCurrentIrql(), PsGetCurrentProcessId(), __VA_ARGS__)
+#define _LogMsg(lvl, lvlname, frmt, ...) \
+	DbgPrintEx(\
+		DPFLTR_IHVDRIVER_ID, \
+		lvl, \
+		"[" lvlname "] [irql:%Iu,pid:%Iu] hidden!" __FUNCTION__ ": " frmt "\n", \
+		KeGetCurrentIrql(), \
+		PsGetCurrentProcessId(), \
+		__VA_ARGS__ \
+	)
 
 #define LogError(frmt,   ...) _LogMsg(DPFLTR_ERROR_LEVEL,   "error",   frmt, __VA_ARGS__)
 #define LogWarning(frmt, ...) _LogMsg(DPFLTR_WARNING_LEVEL, "warning", frmt, __VA_ARGS__)
