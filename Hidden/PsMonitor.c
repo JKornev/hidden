@@ -76,18 +76,9 @@ BOOLEAN CheckProtectedOperation(HANDLE Source, HANDLE Destination)
 		return FALSE;
 	}
 
-	// Not-inited process can open any process (parent, csrss, etc)
 	if (!destInfo->inited)
-	{
-		// Update if source is subsystem and destination isn't inited
-		if (srcInfo->subsystem)
-			destInfo->inited = TRUE;
-
-		ExReleaseFastMutex(&g_processTableLock);
-		return FALSE;
-	}
-
-	if (!destInfo->protected)
+		result = FALSE; // If the process isn't inited yet it can be opened by any process
+	else if (!destInfo->protected)
 		result = FALSE;
 	else if (srcInfo->protected)
 		result = FALSE;
@@ -371,23 +362,23 @@ VOID UnlinkProcessFromCidTable(PProcessTableEntry Entry)
 
 	if (!PspCidTable)
 	{
-		LogWarning("Can't unlink process %p from PspCidTable(NULL)", Entry->reference);
+		LogWarning("Can't unlink process %Iu from PspCidTable(NULL)", Entry->processId);
 		return;
 	}
 
 	CidTableContext context;
-	context.ProcessId = PsGetProcessId(Entry->reference);
+	context.ProcessId = Entry->processId;
 	context.Found = FALSE;
 
 	if (!ExEnumHandleTable(PspCidTable, (EX_ENUMERATE_HANDLE_ROUTINE)RemoveHandleCallbackWin8, &context, NULL))
 	{
-		LogWarning("Can't unlink process %p from PspCidTable", Entry->reference);
+		LogWarning("Can't unlink process %Iu from PspCidTable", Entry->processId);
 		return;
 	}
 
 	if (!context.Found)
 	{
-		LogWarning("Can't find process %p in PspCidTable", Entry->reference);
+		LogWarning("Can't find process %Iu in PspCidTable", Entry->processId);
 		return;
 	}
 
@@ -539,7 +530,33 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 	}
 
 	if (Entry->hidden)
-		HideProcess(Entry);
+		UnlinkProcessFromActiveProcessLinks(Entry);
+}
+
+VOID LoadProcessImageNotifyCallback(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIMAGE_INFO ImageInfo)
+{
+	PProcessTableEntry lookup;
+
+	LogInfo(
+		"Load image pid:%Iu, img:%wZ, addr:%p",
+		ProcessId,
+		FullImageName,
+		ImageInfo->ImageBase
+	);
+
+	ExAcquireFastMutex(&g_processTableLock);
+
+	lookup = GetProcessInProcessTable(ProcessId);
+	if (!lookup->inited)
+	{
+		lookup->inited = TRUE;
+		LogTrace("Process has been initialized:%Iu", ProcessId);
+
+		if (lookup->hidden)
+			UnlinkProcessFromCidTable(lookup);
+	}
+
+	ExReleaseFastMutex(&g_processTableLock);
 }
 
 VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE_NOTIFY_INFO CreateInfo)
@@ -910,6 +927,14 @@ NTSTATUS InitializePsMonitor(PDRIVER_OBJECT DriverObject)
 		return status;
 	}
 
+	status = PsSetLoadImageNotifyRoutine(&LoadProcessImageNotifyCallback);
+	if (!NT_SUCCESS(status))
+	{
+		LogError("Error, image load notify registartion failed with code:%08x", status);
+		DestroyPsMonitor();
+		return status;
+	}
+
 	LogTrace("Initialization is completed");
 	return status;
 }
@@ -935,6 +960,7 @@ NTSTATUS DestroyPsMonitor()
 		g_obRegCallback = NULL;
 	}
 
+	PsRemoveLoadImageNotifyRoutine(&LoadProcessImageNotifyCallback);
 	PsSetCreateProcessNotifyRoutineEx(&CreateProcessNotifyCallback, TRUE);
 
 	DestroyPsRuleListContext(g_excludeProcessRules);
