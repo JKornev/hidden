@@ -851,6 +851,7 @@ void do_psmon_hide_tests(HidContext context)
 	PROCESS_INFORMATION pi;
 	wchar_t path[] = L"c:\\windows\\system32\\charmap.exe";
 	HANDLE hproc = 0;
+	HidObjId objId[3];
 
 	wcout << L"--------------------------------" << endl;
 	wcout << L"Process monitor hide tests result:" << endl;
@@ -918,14 +919,55 @@ void do_psmon_hide_tests(HidContext context)
 		}
 
 		wcout << L" successful!" << endl;
+
+		wcout << L"Test 2: create process, hide, check, unhide" << endl;
+
+		hid_status = Hid_AddHiddenImage(context, path, HidPsInheritTypes::WithoutInherit, FALSE, &objId[1]);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't hide image, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		if (!CreateProcessW(NULL, path, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi))
+		{
+			auto error_code = GetLastError();
+			wcout << L"Error, CreateProcessW() failed with code: " << error_code << endl;
+			throw exception();
+		}
+
+		CloseHandle(pi.hThread);
+
+		hid_status = Hid_GetHiddenState(context, pi.dwProcessId, &state, &inheritType);
+		if (!HID_STATUS_SUCCESSFUL(hid_status))
+		{
+			wcout << L"Error, can't process hidden state, code: " << HID_STATUS_CODE(hid_status) << endl;
+			throw exception();
+		}
+
+		if (state != HidActiveState::StateEnabled || inheritType != HidPsInheritTypes::WithoutInherit)
+		{
+			wcout << L"Error, state or inheritType invalid, state: " << (UINT)state << " type: " << (UINT)inheritType << endl;
+			throw exception();
+		}
+
+		// Because hiding process on a start is async op we need to wait a bit before checking a state
+		Sleep(1000);
+
+		hproc = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pi.dwProcessId);
+		if (hproc)
+		{
+			CloseHandle(hproc);
+			wcout << L"Error, process isn't hidden" << endl;
+			throw exception();
+		}
+
+		wcout << L" successful!" << endl;
 	}
 	catch (exception&)
 	{
 		wcout << L" failed!" << endl;
 	}
-
-	if (hproc)
-		CloseHandle(hproc);
 
 	if (pi.hProcess)
 	{

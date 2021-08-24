@@ -150,9 +150,10 @@ NTSTATUS NormalizeDevicePath(PCUNICODE_STRING Path, PUNICODE_STRING Normalized);
 	DbgPrintEx(\
 		DPFLTR_IHVDRIVER_ID, \
 		lvl, \
-		"[" lvlname "] [irql:%Iu,pid:%Iu] hidden!" __FUNCTION__ ": " frmt "\n", \
+		"[" lvlname "] [irql:%Iu,pid:%Iu,tid:%Iu]\thidden!" __FUNCTION__ ": " frmt "\n", \
 		KeGetCurrentIrql(), \
 		PsGetCurrentProcessId(), \
+		PsGetCurrentThreadId(), \
 		__VA_ARGS__ \
 	)
 
