@@ -249,3 +249,23 @@ NTSTATUS NormalizeDevicePath(PCUNICODE_STRING Path, PUNICODE_STRING Normalized)
 
 	return STATUS_SUCCESS;
 }
+
+BOOLEAN IsWin8OrAbove()
+{//TODO: cache it
+	RTL_OSVERSIONINFOW version;
+	NTSTATUS status;
+
+	RtlZeroMemory(&version, sizeof(version));
+
+	status = RtlGetVersion(&version);
+	if (!NT_SUCCESS(status))
+		LogWarning("Can't get an OS version, status:%x", status);
+
+	if (version.dwMajorVersion < 6)
+		return FALSE;
+
+	if (version.dwMajorVersion == 6 && version.dwMinorVersion < 2) // NT 6.2 == Win8
+		return FALSE;
+
+	return TRUE;
+}

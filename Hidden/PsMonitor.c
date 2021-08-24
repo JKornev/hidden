@@ -304,7 +304,6 @@ BOOLEAN RemoveHandleCallbackWin8(PVOID PspCidTable, PHANDLE_TABLE_ENTRY HandleTa
 	PHANDLE_TABLE_WIN8 cidTable = (PHANDLE_TABLE_WIN8)PspCidTable;
 	BOOLEAN result = FALSE;
 
-
 	if (PspCidTable != GetPspCidTablePointer())
 	{
 		LogWarning("Attempt to enumerate invalid table, %p != %p", PspCidTable, GetPspCidTablePointer());
@@ -314,16 +313,6 @@ BOOLEAN RemoveHandleCallbackWin8(PVOID PspCidTable, PHANDLE_TABLE_ENTRY HandleTa
 
 	if (context->ProcessId == Handle)
 	{
-		PEPROCESS System;
-		NTSTATUS status;
-
-		status = PsLookupProcessByProcessId(SYSTEM_PROCESS_ID, &System);
-		if (!NT_SUCCESS(status))
-		{
-			LogWarning("Warning, can't find active system process");
-			goto cleanup;
-		}
-
 		context->Found = TRUE;
 		context->Entry = HandleTableEntry;
 		context->EntryBackup = *HandleTableEntry;
@@ -356,6 +345,28 @@ cleanup_no_unlock:
 	return result;
 }
 
+BOOLEAN RemoveHandleCallback(PHANDLE_TABLE_ENTRY HandleTableEntry, HANDLE Handle, PVOID EnumParameter)
+{
+	PCidTableContext context = (PCidTableContext)EnumParameter;
+
+	if (context->ProcessId != Handle)
+		return FALSE;
+
+	context->Found = TRUE;
+	context->Entry = HandleTableEntry;
+	context->EntryBackup = *HandleTableEntry;
+
+	LogInfo(
+		"PID %Iu has been removed from PspCidTable, entry:%p, object:%p, access:%08x",
+		Handle,
+		HandleTableEntry,
+		context->EntryBackup.u1.Object,
+		context->EntryBackup.u2.GrantedAccess
+	);
+
+	return TRUE;
+}
+
 VOID UnlinkProcessFromCidTable(PProcessTableEntry Entry)
 {
 	PVOID PspCidTable = GetPspCidTablePointer();
@@ -370,7 +381,8 @@ VOID UnlinkProcessFromCidTable(PProcessTableEntry Entry)
 	context.ProcessId = Entry->processId;
 	context.Found = FALSE;
 
-	if (!ExEnumHandleTable(PspCidTable, (EX_ENUMERATE_HANDLE_ROUTINE)RemoveHandleCallbackWin8, &context, NULL))
+	EX_ENUMERATE_HANDLE_ROUTINE routine = (IsWin8OrAbove() ? (EX_ENUMERATE_HANDLE_ROUTINE)&RemoveHandleCallbackWin8 : &RemoveHandleCallback);
+	if (!ExEnumHandleTable(PspCidTable, routine, &context, NULL))
 	{
 		LogWarning("Can't unlink process %Iu from PspCidTable", Entry->processId);
 		return;
@@ -380,6 +392,13 @@ VOID UnlinkProcessFromCidTable(PProcessTableEntry Entry)
 	{
 		LogWarning("Can't find process %Iu in PspCidTable", Entry->processId);
 		return;
+	}
+
+	// Hack for Windows Vista, 7, to avoid lock bit leak
+	if (!IsWin8OrAbove())
+	{
+		context.Entry->u1.Object = NULL;
+		context.Entry->u2.GrantedAccess = 0;
 	}
 
 	Entry->cidEntryBackup = context.EntryBackup;
@@ -530,7 +549,16 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 	}
 
 	if (Entry->hidden)
-		UnlinkProcessFromActiveProcessLinks(Entry);
+	{
+		// If CheckProcessFlags() performed for initialized process we can safely perform full process 
+		// hiding code. But if a process isn't initialized (for instance on a ps create notification) we
+		// need to postpone removing from PspCidTable because in a current step it would break a process
+		// initialization
+		if (Entry->inited)
+			HideProcess(Entry);
+		else
+			UnlinkProcessFromActiveProcessLinks(Entry);
+	}
 }
 
 VOID LoadProcessImageNotifyCallback(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIMAGE_INFO ImageInfo)
@@ -547,7 +575,7 @@ VOID LoadProcessImageNotifyCallback(PUNICODE_STRING FullImageName, HANDLE Proces
 	ExAcquireFastMutex(&g_processTableLock);
 
 	lookup = GetProcessInProcessTable(ProcessId);
-	if (!lookup->inited)
+	if (lookup && !lookup->inited)
 	{
 		lookup->inited = TRUE;
 		LogTrace("Process has been initialized:%Iu", ProcessId);

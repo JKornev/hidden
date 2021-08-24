@@ -103,16 +103,10 @@ BOOLEAN LookForPspCidTableCallback(ZyanU64 address, ZydisDecodedInstruction* ins
 {
 	BOOLEAN EnterCalls = *(BOOLEAN*)params;
 
-#ifdef _M_AMD64
-	UCHAR opcodeMOV = 0x8B; // MOV Reg, Mem
-#else
-	UCHAR opcodeMOV = 0xA1; // MOV Reg, Mem
-#endif
-
 	if (instruction->mnemonic == ZYDIS_MNEMONIC_RET)
 		return FALSE; // Stop scan if the function is ended
 
-	if (instruction->mnemonic == ZYDIS_MNEMONIC_MOV && instruction->opcode == opcodeMOV)
+	if (instruction->mnemonic == ZYDIS_MNEMONIC_MOV)
 	{
 		ZyanU64 pointer = 0;
 
