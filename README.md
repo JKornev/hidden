@@ -6,7 +6,7 @@ Hidden has been developed like a solution for reverse engineering and researchin
 
 - hide registry keys and values
 - hide files and directories
-- hide processes
+- hide processes (*experemental, might be not stable*)
 - protect specific processes using ObRegisterCallbacks
 - exclude specific processes from hidding and protection features
 - usermode interface (lib and cli) for working with a driver
