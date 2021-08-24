@@ -34,7 +34,7 @@
 /* Physical instruction encodings                                                                 */
 /* ---------------------------------------------------------------------------------------------- */
 
-#include <Generated/InstructionEncodings.inc>
+#include <Generated/InstructionEncodings.inc.h>
 
 /* ---------------------------------------------------------------------------------------------- */
 /* Decoder tree                                                                                   */
@@ -47,7 +47,7 @@
 #define ZYDIS_DEFINITION(encoding_id, id) \
     { ZYDIS_NODETYPE_DEFINITION_MASK | encoding_id, id }
 
-#include <Generated/DecoderTables.inc>
+#include <Generated/DecoderTables.inc.h>
 
 #undef ZYDIS_INVALID
 #undef ZYDIS_FILTER
