@@ -76,9 +76,26 @@ BOOLEAN CheckProtectedOperation(HANDLE Source, HANDLE Destination)
 		return FALSE;
 	}
 
+	// Not-inited process can open any process (parent, csrss, etc)
 	if (!destInfo->inited)
-		result = FALSE; // If the process isn't inited yet it can be opened by any process
-	else if (!destInfo->protected)
+	{
+		BOOLEAN initialized = FALSE;
+		// Update if source is subsystem and destination isn't inited
+		if (srcInfo->subsystem)
+		{
+			destInfo->inited = TRUE;
+			initialized = TRUE;
+		}
+
+		ExReleaseFastMutex(&g_processTableLock);
+
+		if (initialized)
+			LogTrace("Process has been initialized:%Iu", destInfo->processId);
+
+		return FALSE;
+	}
+
+	if (!destInfo->protected)
 		result = FALSE;
 	else if (srcInfo->protected)
 		result = FALSE;
@@ -519,6 +536,7 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 	// Check hidden flag
 
 	Entry->hidden = FALSE;
+	Entry->postponeHiding = FALSE;
 	Entry->inheritStealth = PsRuleTypeWithoutInherit;
 
 	if (FindInheritanceInPsRuleList(g_hideProcessRules, ImgPath, &inheritType))
@@ -554,17 +572,17 @@ VOID CheckProcessFlags(PProcessTableEntry Entry, PCUNICODE_STRING ImgPath, HANDL
 		// hiding code. But if a process isn't initialized (for instance on a ps create notification) we
 		// need to postpone removing from PspCidTable because in a current step it would break a process
 		// initialization
-		if (Entry->inited)
-			HideProcess(Entry);
-		else
+		Entry->postponeHiding = (!Entry->inited ? TRUE : FALSE);
+
+		if (Entry->postponeHiding)
 			UnlinkProcessFromActiveProcessLinks(Entry);
+		else
+			HideProcess(Entry);
 	}
 }
 
 VOID LoadProcessImageNotifyCallback(PUNICODE_STRING FullImageName, HANDLE ProcessId, PIMAGE_INFO ImageInfo)
 {
-	PProcessTableEntry lookup;
-
 	LogInfo(
 		"Load image pid:%Iu, img:%wZ, addr:%p",
 		ProcessId,
@@ -574,14 +592,11 @@ VOID LoadProcessImageNotifyCallback(PUNICODE_STRING FullImageName, HANDLE Proces
 
 	ExAcquireFastMutex(&g_processTableLock);
 
-	lookup = GetProcessInProcessTable(ProcessId);
-	if (lookup && !lookup->inited)
+	PProcessTableEntry lookup = GetProcessInProcessTable(ProcessId);
+	if (lookup && lookup->postponeHiding && lookup->hidden)
 	{
-		lookup->inited = TRUE;
-		LogTrace("Process has been initialized:%Iu", ProcessId);
-
-		if (lookup->hidden)
-			UnlinkProcessFromCidTable(lookup);
+		UnlinkProcessFromCidTable(lookup);
+		lookup->postponeHiding = FALSE;
 	}
 
 	ExReleaseFastMutex(&g_processTableLock);
@@ -662,7 +677,7 @@ VOID CreateProcessNotifyCallback(PEPROCESS Process, HANDLE ProcessId, PPS_CREATE
 	{
 		ExAcquireFastMutex(&g_processTableLock);
 		PProcessTableEntry entry = GetProcessInProcessTable(ProcessId);
-		if (entry && entry->hidden)
+		if (entry && entry->hidden)//TODO: move logic to Remove callback
 			RestoreProcessInCidTable(entry);
 		result = RemoveProcessFromProcessTable(ProcessId);
 		ExReleaseFastMutex(&g_processTableLock);
@@ -975,6 +990,7 @@ VOID CleanupHiddenProcessCallback(PProcessTableEntry entry)
 	RestoreHiddenProcess(entry);
 
 	entry->hidden = FALSE;
+	entry->postponeHiding = FALSE;
 }
 
 NTSTATUS DestroyPsMonitor()
@@ -1084,6 +1100,7 @@ NTSTATUS SetStateForProcessesByImage(PCUNICODE_STRING ImagePath, BOOLEAN Exclude
 						HideProcess(entry);
 
 					entry->hidden = TRUE;
+					entry->postponeHiding = FALSE;
 					entry->inheritStealth = PsRuleTypeWithoutInherit;
 				}
 			}

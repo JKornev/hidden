@@ -193,7 +193,7 @@ BOOLEAN InitializeDisasm()
 		return FALSE;
 	}
 
-	//TODO: mb we need to remove it
+	//TODO: mb we need remove it
 	if (!ZYAN_SUCCESS(ZydisFormatterInit(&s_disasmFormatter, ZYDIS_FORMATTER_STYLE_INTEL)))
 		return FALSE;
 

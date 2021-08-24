@@ -13,6 +13,7 @@ typedef struct _ProcessTableEntry {
 	ULONG       inheritProtection;
 
 	BOOLEAN     hidden;
+	BOOLEAN     postponeHiding;
 	ULONG       inheritStealth;
 	PEPROCESS   reference;
 	HANDLE_TABLE_ENTRY cidEntryBackup;
