@@ -1,6 +1,7 @@
 #include "KernelAnalyzer.h"
 #include "Helper.h"
 #include <Zydis/Zydis.h>
+#include <stdlib.h>
 
 typedef struct _KernelInternals {
 	ULONG ActiveProcessLinksOffset;
@@ -18,6 +19,14 @@ static ZydisFormatter s_disasmFormatter;
 PVOID GetPspCidTablePointer()
 {
 	return s_NTinternals.PspCidTable;
+}
+
+PLIST_ENTRY GetActiveProcessLinksList(PEPROCESS Process)
+{
+	if (!s_NTinternals.ActiveProcessLinksOffset)
+		return NULL;
+
+	return (PLIST_ENTRY)((ULONG_PTR)Process + s_NTinternals.ActiveProcessLinksOffset);
 }
 
 // =========================================================================================
@@ -168,9 +177,93 @@ VOID LookForPspCidTable()
 	}
 }
 
-VOID LookActiveProcessLock()
+// =========================================================================================
+
+BOOLEAN IsKernelAddress(PVOID Address)
 {
-	//Disassemble()
+#ifdef _M_AMD64
+	ULONG_PTR kernelStarts = 0x800000000000;
+#else
+	ULONG_PTR kernelStarts = 0x80000000;
+#endif
+
+	if ((ULONG_PTR)Address <= kernelStarts)
+		return FALSE;
+
+	if (!MmIsAddressValid(Address))
+		return FALSE;
+
+	return TRUE;
+}
+
+BOOLEAN IsValidActiveProcessLinksOffset(PEPROCESS Process, HANDLE ProcessId, ULONG Offset)
+{
+	// EPROCESS ActiveProcessLinks field is next to UniqueProcessId
+	//    ... 
+	//	+ 0x0b4 UniqueProcessId : Ptr32 Void
+	//	+ 0x0b8 ActiveProcessLinks : _LIST_ENTRY
+	//	+ 0x0c0 Flags2 : Uint4B
+	//    ...
+	__try
+	{
+		HANDLE UniqueProcessId = *(HANDLE*)((ULONG_PTR)Process + Offset - sizeof(HANDLE));
+		if (UniqueProcessId != ProcessId)
+			return FALSE;
+
+		PLIST_ENTRY ActiveProcessLinks = (PLIST_ENTRY)((ULONG_PTR)Process + Offset);
+		if (!IsKernelAddress(ActiveProcessLinks->Blink) || !IsKernelAddress(ActiveProcessLinks->Flink))
+			return FALSE;
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
+ULONG FindActiveProcessLinksOffset(PEPROCESS Process)
+{
+#ifdef _M_AMD64
+	ULONG knownOffsets[] = { 0xE8/*Vista*/, 0x188/*7*/, 0x2E8/*8*/, 0x2F0/*TH1*/, 0x448/*20H1*/ };
+	ULONG lookingStartOffset = 0xC0;
+	ULONG lookingPeakOffset = 0x500;
+#else
+	ULONG knownOffsets[] = { 0xA0/*Vista*/, 0xB8/*7*/, 0xE8/*20H1*/ };
+	ULONG lookingStartOffset = 0x80;
+	ULONG lookingPeakOffset = 0x200;
+#endif
+	
+	HANDLE processId = PsGetProcessId(Process);
+
+	// Fast check
+
+	for (ULONG i = 0; i < _countof(knownOffsets); i++)
+	{
+		if (IsValidActiveProcessLinksOffset(Process, processId, knownOffsets[i]))
+			return knownOffsets[i];
+	}
+
+	// Slow check
+
+	for (ULONG offset = lookingStartOffset; offset < lookingPeakOffset; offset += sizeof(void*))
+	{
+		if (IsValidActiveProcessLinksOffset(Process, processId, offset))
+			return offset;
+	}
+
+	return 0;
+}
+
+VOID LookForActiveProcessLinks()
+{
+	s_NTinternals.ActiveProcessLinksOffset = FindActiveProcessLinksOffset(PsGetCurrentProcess());
+	if (s_NTinternals.ActiveProcessLinksOffset)
+		LogInfo("EPROCESS->ActiveProcessList offset is %x", s_NTinternals.ActiveProcessLinksOffset);
+	else
+		LogWarning("Failed to find EPROCESS->ActiveProcessList");
+
+	//TODO: PspActiveProcessLock
 }
 
 // =========================================================================================
@@ -208,7 +301,7 @@ VOID InitializeKernelAnalyzer()
 		return;
 
 	LookForPspCidTable();
-	LookActiveProcessLock();
+	LookForActiveProcessLinks();
 }
 
 VOID DestroyKernelAnalyzer()

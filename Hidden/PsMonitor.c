@@ -173,49 +173,6 @@ OB_PREOP_CALLBACK_STATUS ThreadPreCallback(PVOID RegistrationContext, POB_PRE_OP
 	return OB_PREOP_SUCCESS;
 }
 
-//TODO:
-// - Find an offset on driver initialization step
-
-BOOLEAN FindActiveProcessLinksOffset(PEPROCESS Process, ULONG* Offset)
-{
-#ifdef _M_AMD64
-	ULONG peak = 0x300;
-#else
-	ULONG peak = 0x150;
-#endif
-	HANDLE* ptr = (HANDLE*)Process;
-	HANDLE processId;
-	ULONG i;
-
-	if (g_activeProcessListOffset)
-	{
-		*Offset = g_activeProcessListOffset;
-		return TRUE;
-	}
-
-	processId = PsGetProcessId(Process);
-
-	// EPROCESS ActiveProcessLinks field is next to UniqueProcessId
-	//    ... 
-	//	+ 0x0b4 UniqueProcessId : Ptr32 Void
-	//	+ 0x0b8 ActiveProcessLinks : _LIST_ENTRY
-	//	+ 0x0c0 Flags2 : Uint4B
-	//    ...
-	for (i = 15; i < peak / sizeof(HANDLE); i++)
-	{
-		if (ptr[i] == processId)
-		{
-			ULONG offset = sizeof(HANDLE) * (i + 1);
-			InterlockedExchange((LONG volatile*)&g_activeProcessListOffset, offset);
-			LogInfo("EPROCESS->ActiveProcessList offset is %x", offset);
-			*Offset = offset;
-			return TRUE;
-		}
-	}
-
-	return FALSE;
-}
-
 VOID UnlinkProcessFromList(PLIST_ENTRY Current)
 { // https://github.com/landhb/HideProcess/blob/master/driver/hideprocess.c
 	PLIST_ENTRY Previous, Next;
@@ -239,17 +196,12 @@ VOID UnlinkProcessFromList(PLIST_ENTRY Current)
 //
 VOID UnlinkProcessFromActiveProcessLinks(PProcessTableEntry Entry)
 {
-	PEPROCESS Process = Entry->reference;
-	ULONG eprocListOffset = 0;
-	PLIST_ENTRY CurrentList = NULL;
-
-	if (!FindActiveProcessLinksOffset(Process, &eprocListOffset))
+	PLIST_ENTRY CurrentList = GetActiveProcessLinksList(Entry->reference);
+	if (!CurrentList)
 	{
-		LogError("Error, can't find active process list offset, eprocess:%p", Process);
+		LogWarning("Error, can't get active process links list, eprocess:%p", Entry->reference);
 		return;
 	}
-
-	CurrentList = (PLIST_ENTRY)((ULONG_PTR)Process + eprocListOffset);
 
 	// We use g_activeProcListLock to sync our modification inside hidden and raise
 	// IRQL to disable special APC's because we want to minimize a BSOD chance because
@@ -279,31 +231,30 @@ VOID LinkProcessFromList(PLIST_ENTRY Current, PLIST_ENTRY Target)
 
 VOID LinkProcessToActiveProcessLinks(PProcessTableEntry Entry)
 {
-	PEPROCESS Process = Entry->reference;
-	ULONG eprocListOffset = 0;
 	PLIST_ENTRY CurrentList = NULL, TargetList = NULL;
 	PEPROCESS System;
 	NTSTATUS status;
 
-	if (!FindActiveProcessLinksOffset(Process, &eprocListOffset))
-	{
-		LogWarning("Warning, can't find active process list offset, eprocess:%p", Process);
-		return;
-	}
-
 	status = PsLookupProcessByProcessId(SYSTEM_PROCESS_ID, &System);
 	if (!NT_SUCCESS(status))
 	{
-		LogWarning("Warning, can't find active system process");
+		LogWarning("Error, can't find active system process");
 		return;
 	}
 
-	CurrentList = (PLIST_ENTRY)((ULONG_PTR)Process + eprocListOffset);
-	TargetList  = (PLIST_ENTRY)((ULONG_PTR)System + eprocListOffset);
+	CurrentList = GetActiveProcessLinksList(Entry->reference);
+	TargetList  = GetActiveProcessLinksList(System);
 
-	KeAcquireGuardedMutex(&g_activeProcListLock);
-	LinkProcessFromList(CurrentList, TargetList);
-	KeReleaseGuardedMutex(&g_activeProcListLock);
+	if (CurrentList && TargetList)
+	{
+		KeAcquireGuardedMutex(&g_activeProcListLock);
+		LinkProcessFromList(CurrentList, TargetList);
+		KeReleaseGuardedMutex(&g_activeProcListLock);
+	}
+	else
+	{
+		LogWarning("Error, can't get active process links list, eprocess:%p,%p", Entry->reference, System);
+	}
 
 	ObDereferenceObject(System);
 }
