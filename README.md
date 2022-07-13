@@ -1,12 +1,12 @@
 # Hidden 🇺🇦
 
-Hidden has been developed like a solution for reverse engineering and researching tasks. This is a windows driver with a usermode interface which is used for hiding specific environment on your windows machine, like installed RCE programs (ex. procmon, wireshark), vm infrastracture (ex. vmware tools) and etc. 
+Hidden has been developed like a solution for reverse engineering and researching tasks. This is a windows driver with a usermode interface which is used for hiding specific environment on your windows machine, like installed RCE programs (ex. procmon, wireshark), vm infrastructure (ex. vmware tools) and etc.
 
 ## Features
 
 - hide registry keys and values
 - hide files and directories
-- hide processes (*experemental, might be not stable*)
+- hide processes (*experimental, might be not stable*)
 - protect specific processes
 - exclude specific processes from hiding and protection features
 - usermode interface (lib and cli) for working with a driver
